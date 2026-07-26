@@ -33,6 +33,7 @@ import {
 } from "./diversionAirports.js";
 
 const STORAGE_KEY = "mynattrack_route_v1";
+const PREV_ROUTE_STATS_KEY = "mynattrack_prev_route_stats_v1";
 const SETTINGS_KEY = "mynattrack_settings_v1";
 /** Waypoints learned silently from NAT track messages (coords already in the message). */
 const LEARNED_WP_KEY = "mynattrack_learned_waypoints_v1";
@@ -85,6 +86,8 @@ const state = {
    */
   activeLegIndex: null,
   routeSeqKey: "",
+  /** Stats for the route before the latest edit (for NM comparison). */
+  previousRouteStats: null,
 };
 
 const el = {
@@ -97,6 +100,7 @@ const el = {
   routeList: document.getElementById("route-list"),
   legsBody: document.getElementById("legs-body"),
   totals: document.getElementById("totals"),
+  totalsCompare: document.getElementById("totals-compare"),
   chart: document.getElementById("chart"),
   error: document.getElementById("error"),
   settingsBtn: document.getElementById("settings-btn"),
@@ -251,6 +255,60 @@ function loadRoute() {
   } catch (_) {
     state.route = [];
   }
+}
+
+function loadPreviousRouteStats() {
+  try {
+    const raw = localStorage.getItem(PREV_ROUTE_STATS_KEY);
+    if (!raw) {
+      state.previousRouteStats = null;
+      return;
+    }
+    const parsed = JSON.parse(raw);
+    if (
+      parsed &&
+      Number.isFinite(parsed.waypoints) &&
+      Number.isFinite(parsed.totalNm)
+    ) {
+      state.previousRouteStats = {
+        waypoints: parsed.waypoints,
+        totalNm: parsed.totalNm,
+        key: parsed.key || "",
+      };
+    } else {
+      state.previousRouteStats = null;
+    }
+  } catch {
+    state.previousRouteStats = null;
+  }
+}
+
+function savePreviousRouteStats(stats) {
+  state.previousRouteStats = stats;
+  try {
+    if (stats) {
+      localStorage.setItem(PREV_ROUTE_STATS_KEY, JSON.stringify(stats));
+    } else {
+      localStorage.removeItem(PREV_ROUTE_STATS_KEY);
+    }
+  } catch {
+    /* ignore */
+  }
+}
+
+/**
+ * Call immediately before mutating state.route so the outgoing route
+ * becomes the “last loaded” baseline for the comparison line.
+ */
+function capturePreviousRouteStats() {
+  if (!state.route || state.route.length < 2) return;
+  const key = routeSequenceKey(state.route);
+  const { totalNm } = computeLegs();
+  savePreviousRouteStats({
+    waypoints: state.route.length,
+    totalNm,
+    key,
+  });
 }
 
 function saveRoute() {
@@ -800,10 +858,55 @@ function gpsProgressSuffix() {
   );
 }
 
+function formatNmDelta(deltaNm) {
+  const abs = formatDistanceNm(Math.abs(deltaNm));
+  if (Math.abs(deltaNm) < 0.05) return { text: `Difference: ${abs} NM`, kind: "same" };
+  if (deltaNm < 0) return { text: `Difference: −${abs} NM`, kind: "shorter" };
+  return { text: `Difference: +${abs} NM`, kind: "longer" };
+}
+
+function updateTotalsCompare(currentNm) {
+  if (!el.totalsCompare) return;
+  const prev = state.previousRouteStats;
+  if (!prev || !Number.isFinite(prev.totalNm) || !Number.isFinite(prev.waypoints)) {
+    el.totalsCompare.hidden = true;
+    el.totalsCompare.textContent = "";
+    return;
+  }
+  const curKey = routeSequenceKey(state.route);
+  // Hide when we have nothing useful yet, or still on the same route as the snapshot
+  if (prev.key && curKey && prev.key === curKey) {
+    el.totalsCompare.hidden = true;
+    el.totalsCompare.textContent = "";
+    return;
+  }
+  if (!state.route.length) {
+    el.totalsCompare.innerHTML =
+      `Your last loaded route was ${prev.waypoints} waypoints · ` +
+      `${formatDistanceNm(prev.totalNm)} NM total`;
+    el.totalsCompare.hidden = false;
+    return;
+  }
+  const nm = currentNm != null ? currentNm : computeLegs().totalNm;
+  const diff = formatNmDelta(nm - prev.totalNm);
+  const diffClass =
+    diff.kind === "shorter"
+      ? "diff-shorter"
+      : diff.kind === "longer"
+        ? "diff-longer"
+        : "";
+  el.totalsCompare.innerHTML =
+    `Your last loaded route was ${prev.waypoints} waypoints · ` +
+    `${formatDistanceNm(prev.totalNm)} NM total · ` +
+    `<span class="${diffClass}">${diff.text}</span>`;
+  el.totalsCompare.hidden = false;
+}
+
 function updateTotalsLine(legsCount, totalNm) {
   if (!el.totals) return;
   if (!state.route.length) {
     el.totals.textContent = "—";
+    updateTotalsCompare(0);
     return;
   }
   const nLegs =
@@ -815,6 +918,7 @@ function updateTotalsLine(legsCount, totalNm) {
   el.totals.textContent =
     `${state.route.length} waypoints · ${nLegs} legs · ${formatDistanceNm(nm)} NM total` +
     gpsProgressSuffix();
+  updateTotalsCompare(nm);
 }
 
 function renderLegs() {
@@ -1342,16 +1446,20 @@ function addWaypointFromInput() {
       showError("When editing, enter a single waypoint (or Cancel, then paste a full route).");
       return;
     }
+    capturePreviousRouteStats();
     state.route[state.editingIndex] = points[0];
     state.editingIndex = null;
   } else if (state.insertAfterIndex != null) {
+    capturePreviousRouteStats();
     const at = state.insertAfterIndex + 1;
     state.route.splice(at, 0, ...points);
     state.insertAfterIndex = null;
   } else if (!state.route.length && points.length > 1) {
     // Initial multi-waypoint paste into empty route → load whole string
+    capturePreviousRouteStats();
     state.route = points;
   } else {
+    capturePreviousRouteStats();
     state.route.push(...points);
   }
 
@@ -1490,6 +1598,7 @@ async function init() {
   ensureRouteHintPlacement();
   loadSettings();
   loadRoute();
+  loadPreviousRouteStats();
 
   const cachedNat = loadCachedNatTracks();
   if (cachedNat) {
@@ -1590,6 +1699,7 @@ async function init() {
       return;
     }
     if (state.route.length && !confirm("Clear entire route?")) return;
+    capturePreviousRouteStats();
     state.route = [];
     resetChartView();
     renderAll();
@@ -1625,6 +1735,7 @@ async function init() {
       el.input.focus();
     } else if (btn.dataset.del != null) {
       const i = Number(btn.dataset.del);
+      capturePreviousRouteStats();
       state.route.splice(i, 1);
       if (state.editingIndex === i) {
         state.editingIndex = null;
@@ -1641,6 +1752,7 @@ async function init() {
     } else if (btn.dataset.up != null) {
       const i = Number(btn.dataset.up);
       if (i > 0) {
+        capturePreviousRouteStats();
         [state.route[i - 1], state.route[i]] = [state.route[i], state.route[i - 1]];
         if (state.editingIndex === i) state.editingIndex = i - 1;
         else if (state.editingIndex === i - 1) state.editingIndex = i;
@@ -1651,6 +1763,7 @@ async function init() {
     } else if (btn.dataset.down != null) {
       const i = Number(btn.dataset.down);
       if (i < state.route.length - 1) {
+        capturePreviousRouteStats();
         [state.route[i + 1], state.route[i]] = [state.route[i], state.route[i + 1]];
         if (state.editingIndex === i) state.editingIndex = i + 1;
         else if (state.editingIndex === i + 1) state.editingIndex = i;

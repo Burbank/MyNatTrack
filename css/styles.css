@@ -955,9 +955,13 @@ html.theme-bright .icon-btn {
 
 .route-item {
   display: grid;
-  /* idx | waypoint block (hugs content) | actions (fill rest, spaced) */
-  grid-template-columns: 1.6rem max-content minmax(0, 1fr);
-  gap: 0.2rem 0.45rem;
+  /*
+   * Fixed info column so Edit / +↓ / ↑ / ↓ / × line up in vertical columns
+   * across every tile (whole-degree vs half-degree names/coords no longer shift buttons).
+   * 12.5rem fits cockpit long-hand under the index (e.g. N52 30.0 W050 00.0).
+   */
+  grid-template-columns: 1.6rem 12.5rem minmax(0, 1fr);
+  gap: 0.2rem 0.55rem;
   align-items: center;
   padding: 0.38rem 0.5rem;
   background: var(--soft-panel);
@@ -983,6 +987,9 @@ html.theme-bright .route-item {
   font-size: 0.95rem;
   line-height: 1.2;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 .route-item .coords {
@@ -995,24 +1002,25 @@ html.theme-bright .route-item {
   line-height: 1.2;
   white-space: nowrap;
   letter-spacing: 0.02em;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .route-item .actions {
   grid-column: 3;
   grid-row: 1 / span 2;
-  display: flex;
-  flex-wrap: nowrap;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(2.4rem, 1fr));
   align-items: center;
-  justify-content: space-between;
-  gap: 0.35rem;
+  gap: 0.4rem;
   width: 100%;
   min-width: 0;
-  padding-left: 0.15rem;
+  margin-left: 0.25rem;
 }
 
 .route-item .actions button {
-  flex: 0 0 auto;
-  /* ~30% larger than prior 1.85rem touch targets */
+  /* Equal columns → same x-position for each control on every route row */
+  width: 100%;
   min-width: 2.4rem;
   min-height: 2.4rem;
   border-radius: 7px;
@@ -1021,7 +1029,7 @@ html.theme-bright .route-item {
   color: var(--text);
   cursor: pointer;
   font-size: 0.94rem;
-  padding: 0 0.4rem;
+  padding: 0 0.35rem;
   line-height: 1;
 }
 
@@ -1203,6 +1211,26 @@ table.legs th {
   margin-top: 0.65rem;
   color: var(--accent);
   font-weight: 600;
+}
+
+.totals-compare {
+  margin: 0.35rem 0 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+.totals-compare[hidden] {
+  display: none !important;
+}
+
+.totals-compare .diff-shorter {
+  color: #6bcf8e;
+}
+
+.totals-compare .diff-longer {
+  color: var(--warn);
 }
 
 .settings-footer {
