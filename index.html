@@ -76,17 +76,26 @@
             Bright
           </button>
         </div>
-        <span class="tag">NAT HLA planning aid</span>
       </div>
-      <div id="verify-banner">Waypoint accuracy last verified on 2026-07-26</div>
+      <div class="header-center">
+        <div id="verify-banner">Waypoint accuracy last verified on 2026-07-26</div>
+        <p class="header-disclaimer">
+          Educational and Simulator use only. Not certified for navigation.<br />
+          WGS-84 Vincenty tracks &amp; distances; magnetic variation is an approximate offline model.
+        </p>
+      </div>
       <div class="header-actions">
+        <div class="mode-toggle" role="group" aria-label="Interface mode">
+          <button type="button" class="mode-btn" id="mode-edit-btn" aria-pressed="true">Edit</button>
+          <button type="button" class="mode-btn" id="mode-fly-btn" aria-pressed="false">Fly</button>
+        </div>
         <button type="button" class="icon-btn" id="verify-flow-btn" aria-label="Verify">Verify</button>
         <button type="button" class="icon-btn" id="settings-btn" aria-label="SETREF">SETREF</button>
       </div>
     </header>
 
     <main class="main">
-      <section class="panel">
+      <section class="panel" id="route-panel">
         <h2>Route</h2>
         <div class="panel-body">
           <div class="entry-row">
@@ -135,7 +144,7 @@
           </div>
         </section>
 
-        <section class="panel">
+        <section class="panel" id="legs-panel">
           <h2>Legs</h2>
           <div class="panel-body">
             <table class="legs">
@@ -157,10 +166,6 @@
         </section>
       </div>
     </main>
-
-    <footer class="disclaimer">
-      Educational and Simulator use only. Not certified for navigation. WGS-84 Vincenty tracks &amp; distances; magnetic variation is an approximate offline model.
-    </footer>
 
     <div class="overlay" id="settings-panel" hidden>
       <div class="sheet" role="dialog" aria-labelledby="settings-title">

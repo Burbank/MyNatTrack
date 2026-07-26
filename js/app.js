@@ -54,6 +54,14 @@ const state = {
   gps: null,
   gpsWatchId: null,
   gpsLastDrawMs: 0,
+  /** edit = route+chart+legs; fly = chart left, legs right */
+  uiMode: "edit",
+  /**
+   * Active leg FROM-index (route[i] → route[i+1]).
+   * Sequenced forward by along-track / capture; hysteresis avoids flip-flop.
+   */
+  activeLegIndex: null,
+  routeSeqKey: "",
 };
 
 const el = {
@@ -96,9 +104,16 @@ const el = {
   themeBtn: document.getElementById("theme-btn"),
   chartFullscreenBtn: document.getElementById("chart-fullscreen-btn"),
   chartPanel: document.getElementById("chart-panel"),
+  modeEditBtn: document.getElementById("mode-edit-btn"),
+  modeFlyBtn: document.getElementById("mode-fly-btn"),
 };
 
 const THEME_KEY = "mynattrack_theme_v1";
+const UI_MODE_KEY = "mynattrack_ui_mode_v1";
+
+let chartRaf = 0;
+let chartLitePending = false;
+let chartIdleTimer = 0;
 
 function loadThemePref() {
   try {
@@ -303,6 +318,214 @@ function fmtLatLon(lat, lon) {
   return `${Math.abs(lat).toFixed(3)}°${latH} ${Math.abs(lon).toFixed(3)}°${lonH}`;
 }
 
+function routeSequenceKey(route) {
+  return (route || [])
+    .map((w) => `${w.name}@${Number(w.lat).toFixed(4)},${Number(w.lon).toFixed(4)}`)
+    .join(">");
+}
+
+function resetLegSequencerIfRouteChanged(route) {
+  const key = routeSequenceKey(route);
+  if (key !== state.routeSeqKey) {
+    state.routeSeqKey = key;
+    state.activeLegIndex = null;
+  }
+}
+
+/** Smallest signed turn from course → bearing, degrees in (−180, 180]. */
+function bearingDeltaDeg(courseDeg, bearingDeg) {
+  return ((bearingDeg - courseDeg + 540) % 360) - 180;
+}
+
+/**
+ * Along-track (from A toward B) and cross-track for GPS relative to leg A→B.
+ * Approximate spherical projection using Vincenty bearings/distances.
+ */
+function scoreLeg(gps, a, b) {
+  const ab = vincentyInverse(a.lat, a.lon, b.lat, b.lon);
+  const ag = vincentyInverse(a.lat, a.lon, gps.lat, gps.lon);
+  const gb = vincentyInverse(gps.lat, gps.lon, b.lat, b.lon);
+  const legNm = ab.distanceNm;
+  if (!Number.isFinite(legNm) || legNm < 0.05) return null;
+  if (!Number.isFinite(ag.distanceNm) || !Number.isFinite(gb.distanceNm)) {
+    return null;
+  }
+  const turn = bearingDeltaDeg(ab.initialBearing, ag.initialBearing);
+  const rad = (turn * Math.PI) / 180;
+  return {
+    legNm,
+    course: ab.initialBearing,
+    /** NM along A→B from A (negative = before A) */
+    atd: ag.distanceNm * Math.cos(rad),
+    xtk: Math.abs(ag.distanceNm * Math.sin(rad)),
+    remToB: gb.distanceNm,
+  };
+}
+
+/**
+ * Next waypoint index = TO of the active leg.
+ * Uses along-track / cross-track lock + capture sequencing (forward-only hysteresis).
+ */
+function findNextWaypointIndex(gps, route) {
+  resetLegSequencerIfRouteChanged(route);
+  if (!gps || !route?.length) return -1;
+  if (route.length === 1) return 0;
+
+  const CAPTURE_NM = 8;
+  const HOLD_XTK_NM = 90;
+  const ACQUIRE_XTK_NM = 120;
+
+  const evaluate = (i) => {
+    if (i < 0 || i >= route.length - 1) return null;
+    const s = scoreLeg(gps, route[i], route[i + 1]);
+    if (!s) return null;
+    return { i, ...s };
+  };
+
+  const shouldSequence = (s) =>
+    s &&
+    (s.remToB <= CAPTURE_NM || s.atd >= s.legNm - CAPTURE_NM);
+
+  // Hold current leg; sequence forward when TO is captured
+  if (state.activeLegIndex != null) {
+    let cur = evaluate(state.activeLegIndex);
+    if (cur && cur.xtk <= HOLD_XTK_NM) {
+      while (shouldSequence(cur) && state.activeLegIndex < route.length - 2) {
+        state.activeLegIndex += 1;
+        cur = evaluate(state.activeLegIndex);
+      }
+      if (cur) return state.activeLegIndex + 1;
+    }
+    // Lost the route corridor — reacquire below
+    state.activeLegIndex = null;
+  }
+
+  // Acquire: prefer legs we're geometrically on, lowest XTK, heading alignment if available
+  let best = null;
+  for (let i = 0; i < route.length - 1; i++) {
+    const s = evaluate(i);
+    if (!s || s.xtk > ACQUIRE_XTK_NM) continue;
+    const onBand = s.atd >= -30 && s.atd <= s.legNm + CAPTURE_NM;
+    if (!onBand) continue;
+    let headingPenalty = 0;
+    if (Number.isFinite(gps.heading)) {
+      headingPenalty = Math.abs(bearingDeltaDeg(s.course, gps.heading)) / 180;
+    }
+    const rank = s.xtk + headingPenalty * 20;
+    if (!best || rank < best.rank) best = { ...s, rank };
+  }
+
+  if (!best) {
+    // Fallback: nearest waypoint, next is the following fix (or itself if last)
+    let nearest = 0;
+    let bestD = Infinity;
+    for (let i = 0; i < route.length; i++) {
+      const d = vincentyInverse(
+        gps.lat,
+        gps.lon,
+        route[i].lat,
+        route[i].lon
+      ).distanceNm;
+      if (d < bestD) {
+        bestD = d;
+        nearest = i;
+      }
+    }
+    if (nearest >= route.length - 1) {
+      state.activeLegIndex = Math.max(0, route.length - 2);
+      return route.length - 1;
+    }
+    // If already inside capture of that fix, treat next as the one after
+    const next = bestD <= CAPTURE_NM ? nearest + 1 : nearest + 1;
+    state.activeLegIndex = Math.min(next - 1, route.length - 2);
+    return Math.min(next, route.length - 1);
+  }
+
+  state.activeLegIndex = best.i;
+  let cur = best;
+  while (shouldSequence(cur) && state.activeLegIndex < route.length - 2) {
+    state.activeLegIndex += 1;
+    cur = evaluate(state.activeLegIndex);
+  }
+  return state.activeLegIndex + 1;
+}
+
+function msToKnots(ms) {
+  if (!Number.isFinite(ms) || ms < 0) return null;
+  return ms * (3600 / 1852);
+}
+
+function formatEteHours(hours) {
+  if (!Number.isFinite(hours) || hours < 0 || hours > 48) return null;
+  const totalMin = Math.round(hours * 60);
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  return `${h}+${String(m).padStart(2, "0")}`;
+}
+
+function formatEtaZulu(date) {
+  const hh = String(date.getUTCHours()).padStart(2, "0");
+  const mm = String(date.getUTCMinutes()).padStart(2, "0");
+  return `${hh}${mm}Z`;
+}
+
+/** GPS GS → remaining time / ETA Zulu to next waypoint (cheap; no chart work). */
+function gpsProgressSuffix() {
+  const gps = state.gps;
+  const route = state.route;
+  if (!gps || !route.length) return "";
+
+  const nextIdx = findNextWaypointIndex(gps, route);
+  if (nextIdx < 0 || nextIdx >= route.length) return "";
+  const next = route[nextIdx];
+  const fromIdx = state.activeLegIndex;
+  const from =
+    fromIdx != null && fromIdx >= 0 && fromIdx < route.length
+      ? route[fromIdx]
+      : null;
+  const remNm = vincentyInverse(gps.lat, gps.lon, next.lat, next.lon).distanceNm;
+  if (!Number.isFinite(remNm)) return "";
+
+  const gsKt = msToKnots(gps.speed);
+  const remTxt = `${formatDistanceNm(remNm)} NM`;
+  const legLbl = from ? `${from.name}→${next.name}` : next.name;
+  // Need a usable ground speed (ignore crawl / null GPS speed)
+  if (gsKt == null || gsKt < 30) {
+    return ` · Next ${legLbl} ${remTxt} · GS —`;
+  }
+
+  const eteH = remNm / gsKt;
+  const ete = formatEteHours(eteH);
+  if (!ete) {
+    return ` · Next ${legLbl} ${remTxt} · GS ${Math.round(gsKt)} kt`;
+  }
+
+  const eta = new Date(Date.now() + eteH * 3600 * 1000);
+  return (
+    ` · Next ${legLbl} ${remTxt}` +
+    ` · ETE ${ete}` +
+    ` · ETA ${formatEtaZulu(eta)}` +
+    ` · GS ${Math.round(gsKt)} kt`
+  );
+}
+
+function updateTotalsLine(legsCount, totalNm) {
+  if (!el.totals) return;
+  if (!state.route.length) {
+    el.totals.textContent = "—";
+    return;
+  }
+  const nLegs =
+    legsCount != null ? legsCount : Math.max(0, state.route.length - 1);
+  const nm =
+    totalNm != null
+      ? totalNm
+      : computeLegs().totalNm;
+  el.totals.textContent =
+    `${state.route.length} waypoints · ${nLegs} legs · ${formatDistanceNm(nm)} NM total` +
+    gpsProgressSuffix();
+}
+
 function renderLegs() {
   const { legs, totalNm } = computeLegs();
   el.legsBody.innerHTML = "";
@@ -325,9 +548,7 @@ function renderLegs() {
     el.legsBody.appendChild(tr);
   });
 
-  el.totals.textContent = state.route.length
-    ? `${state.route.length} waypoints · ${legs.length} legs · ${formatDistanceNm(totalNm)} NM total`
-    : "—";
+  updateTotalsLine(legs.length, totalNm);
 }
 
 function coloredNatTracks() {
@@ -391,7 +612,7 @@ function renderNatPanel() {
     body;
 }
 
-function renderChart() {
+function paintChart(lite = false) {
   if (!el.chart) return;
   const showAny =
     state.settings.showEastTracks !== false ||
@@ -406,7 +627,68 @@ function renderChart() {
     bright: document.documentElement.classList.contains("theme-bright"),
     zoom: state.chartZoom,
     pan: state.chartPan,
+    lite,
   });
+}
+
+/** Coalesce redraws to one per animation frame; lite skips heavy labels during gestures. */
+function scheduleChartRender({ lite = false } = {}) {
+  if (lite) chartLitePending = true;
+  if (chartRaf) return;
+  chartRaf = requestAnimationFrame(() => {
+    chartRaf = 0;
+    const useLite = chartLitePending;
+    chartLitePending = false;
+    paintChart(useLite);
+  });
+}
+
+function renderChart() {
+  chartLitePending = false;
+  scheduleChartRender({ lite: false });
+}
+
+function markChartInteracting() {
+  scheduleChartRender({ lite: true });
+  clearTimeout(chartIdleTimer);
+  chartIdleTimer = window.setTimeout(() => {
+    scheduleChartRender({ lite: false });
+  }, 140);
+}
+
+function applyUiMode(mode) {
+  state.uiMode = mode === "fly" ? "fly" : "edit";
+  document.body.classList.toggle("ui-fly", state.uiMode === "fly");
+  if (el.modeEditBtn) {
+    el.modeEditBtn.setAttribute(
+      "aria-pressed",
+      state.uiMode === "edit" ? "true" : "false"
+    );
+  }
+  if (el.modeFlyBtn) {
+    el.modeFlyBtn.setAttribute(
+      "aria-pressed",
+      state.uiMode === "fly" ? "true" : "false"
+    );
+  }
+  try {
+    localStorage.setItem(UI_MODE_KEY, state.uiMode);
+  } catch {
+    /* ignore */
+  }
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => renderChart());
+  });
+}
+
+function loadUiMode() {
+  try {
+    const m = localStorage.getItem(UI_MODE_KEY);
+    if (m === "fly" || m === "edit") return m;
+  } catch {
+    /* ignore */
+  }
+  return "edit";
 }
 
 function startGpsWatch() {
@@ -421,11 +703,13 @@ function startGpsWatch() {
         heading: Number.isFinite(c.heading) ? c.heading : null,
         speed: Number.isFinite(c.speed) ? c.speed : null,
       };
+      // Totals ETE/ETA is cheap text only — refresh every fix
+      updateTotalsLine();
       const now = performance.now();
-      // Throttle redraws; always allow first fix
+      // Throttle chart redraws; always allow first fix
       if (now - state.gpsLastDrawMs < 800 && state.gpsLastDrawMs > 0) return;
       state.gpsLastDrawMs = now;
-      renderChart();
+      scheduleChartRender({ lite: false });
     },
     () => {
       /* permission denied / unavailable — keep chart without ownship */
@@ -464,7 +748,7 @@ function applyChartPanPixels(dx, dy) {
     dLat: state.chartPan.dLat + dLat,
     dLon: state.chartPan.dLon + dLon,
   });
-  renderChart();
+  markChartInteracting();
 }
 
 function toRadSafe(deg) {
@@ -517,7 +801,7 @@ function bindChartGestures() {
         panning = false;
         const dist = touchDist(e.touches);
         state.chartZoom = clampChartZoom(pinchStartZoom * (dist / pinchStartDist));
-        renderChart();
+        markChartInteracting();
         return;
       }
       if (e.touches.length === 1 && panning) {
@@ -535,7 +819,10 @@ function bindChartGestures() {
     "touchend",
     (e) => {
       if (e.touches.length < 2) pinchStartDist = 0;
-      if (e.touches.length === 0) panning = false;
+      if (e.touches.length === 0) {
+        panning = false;
+        markChartInteracting();
+      }
       if (e.touches.length === 1) {
         panning = true;
         lastX = e.touches[0].clientX;
@@ -551,7 +838,7 @@ function bindChartGestures() {
       e.preventDefault();
       const factor = e.deltaY < 0 ? 1.08 : 1 / 1.08;
       state.chartZoom = clampChartZoom(state.chartZoom * factor);
-      renderChart();
+      markChartInteracting();
     },
     { passive: false }
   );
@@ -575,6 +862,7 @@ function bindChartGestures() {
     if (!panning) return;
     panning = false;
     canvas.style.cursor = "grab";
+    markChartInteracting();
   };
   window.addEventListener("mouseup", endMousePan);
   canvas.addEventListener("mouseleave", () => {
@@ -813,9 +1101,17 @@ async function init() {
   // Load detailed Natural Earth land before first paint of globe
   await loadLandData();
   bindChartGestures();
+  applyUiMode(loadUiMode());
   renderAll();
   renderNatPanel();
   startGpsWatch();
+
+  if (el.modeEditBtn) {
+    el.modeEditBtn.addEventListener("click", () => applyUiMode("edit"));
+  }
+  if (el.modeFlyBtn) {
+    el.modeFlyBtn.addEventListener("click", () => applyUiMode("fly"));
+  }
 
   if (el.themeBtn) {
     el.themeBtn.addEventListener("click", toggleTheme);
@@ -1014,7 +1310,12 @@ async function init() {
     el.showWestTracks.addEventListener("change", syncEastWestFromHeader);
   }
 
-  window.addEventListener("resize", () => renderChart());
+  let resizeTimer = 0;
+  window.addEventListener("resize", () => {
+    clearTimeout(resizeTimer);
+    scheduleChartRender({ lite: true });
+    resizeTimer = window.setTimeout(() => renderChart(), 120);
+  });
 
   if ("serviceWorker" in navigator) {
     try {

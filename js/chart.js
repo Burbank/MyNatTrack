@@ -218,9 +218,11 @@ function drawGlobeBase(ctx, layout, bright, width, height) {
   ctx.stroke();
 }
 
-function drawLand(ctx, layout, bright) {
+function drawLand(ctx, layout, bright, lite = false) {
   if (!landRings || !landRings.length) return;
   const { radius, cx, cy } = layout;
+  // During pan/pinch, subsample coast points for smoother interaction
+  const step = lite ? 3 : 1;
 
   ctx.save();
   ctx.beginPath();
@@ -233,12 +235,29 @@ function drawLand(ctx, layout, bright) {
   ctx.lineJoin = "round";
 
   for (const ring of landRings) {
-    const projected = ring.map(([lon, lat]) => project(lat, lon, 0, 0, layout));
-    const visibleCount = projected.filter((p) => p.visible).length;
+    let visibleCount = 0;
+    let total = 0;
+    /** @type {{x:number,y:number,visible:boolean}[]} */
+    const projected = [];
+    for (let i = 0; i < ring.length; i += step) {
+      const [lon, lat] = ring[i];
+      const p = project(lat, lon, 0, 0, layout);
+      projected.push(p);
+      total++;
+      if (p.visible) visibleCount++;
+    }
+    // Keep ring closed when subsampling
+    if (step > 1 && ring.length) {
+      const [lon, lat] = ring[ring.length - 1];
+      const p = project(lat, lon, 0, 0, layout);
+      projected.push(p);
+      total++;
+      if (p.visible) visibleCount++;
+    }
     if (visibleCount < 3) continue;
 
     // Prefer full fill when most of the ring is on the near side of the globe
-    if (visibleCount / projected.length >= 0.55) {
+    if (visibleCount / total >= 0.55) {
       ctx.beginPath();
       let started = false;
       for (const p of projected) {
@@ -251,9 +270,9 @@ function drawLand(ctx, layout, bright) {
       if (started) {
         ctx.closePath();
         ctx.fill();
-        ctx.stroke();
+        if (!lite) ctx.stroke();
       }
-    } else {
+    } else if (!lite) {
       // Partial coastline stroke only (avoids wild fill across the limb)
       ctx.beginPath();
       let started = false;
@@ -271,21 +290,23 @@ function drawLand(ctx, layout, bright) {
     }
   }
 
-  // Terminator / night-side shade for roundness
-  const shade = ctx.createLinearGradient(cx - radius, cy, cx + radius, cy);
-  if (bright) {
-    shade.addColorStop(0, "rgba(255,255,255,0.08)");
-    shade.addColorStop(0.45, "rgba(0,0,0,0)");
-    shade.addColorStop(1, "rgba(0,0,0,0.18)");
-  } else {
-    shade.addColorStop(0, "rgba(255,255,255,0.06)");
-    shade.addColorStop(0.4, "rgba(0,0,0,0)");
-    shade.addColorStop(1, "rgba(0,0,0,0.35)");
+  if (!lite) {
+    // Terminator / night-side shade for roundness
+    const shade = ctx.createLinearGradient(cx - radius, cy, cx + radius, cy);
+    if (bright) {
+      shade.addColorStop(0, "rgba(255,255,255,0.08)");
+      shade.addColorStop(0.45, "rgba(0,0,0,0)");
+      shade.addColorStop(1, "rgba(0,0,0,0.18)");
+    } else {
+      shade.addColorStop(0, "rgba(255,255,255,0.06)");
+      shade.addColorStop(0.4, "rgba(0,0,0,0)");
+      shade.addColorStop(1, "rgba(0,0,0,0.35)");
+    }
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    ctx.fillStyle = shade;
+    ctx.fill();
   }
-  ctx.beginPath();
-  ctx.arc(cx, cy, radius, 0, Math.PI * 2);
-  ctx.fillStyle = shade;
-  ctx.fill();
 
   ctx.restore();
 }
@@ -377,7 +398,7 @@ function inCanvas(p, width, height, margin = 2) {
   );
 }
 
-function drawGrid(ctx, layout, bright, width, height) {
+function drawGrid(ctx, layout, bright, width, height, lite = false) {
   const { radius, cx, cy } = layout;
   const bounds = estimateVisibleGeo(layout, width, height);
   // Fixed chart lattice: parallels every 5°, meridians every 10°
@@ -385,8 +406,8 @@ function drawGrid(ctx, layout, bright, width, height) {
   const stepLon = 10;
   const lats = tickRange(bounds.minLat, bounds.maxLat, stepLat);
   const lons = tickRange(bounds.minLon, bounds.maxLon, stepLon);
-  const sampleLon = 0.5;
-  const sampleLat = 0.5;
+  const sampleLon = lite ? 1.5 : 0.5;
+  const sampleLat = lite ? 1.5 : 0.5;
 
   const stroke = bright ? "rgba(0, 0, 0, 0.18)" : "rgba(180, 200, 220, 0.16)";
   const labelFill = bright
@@ -435,6 +456,8 @@ function drawGrid(ctx, layout, bright, width, height) {
     ctx.stroke();
   }
   ctx.restore();
+
+  if (lite) return;
 
   // Edge labels (not clipped — sit on panel edges)
   ctx.save();
@@ -497,9 +520,11 @@ function drawPolyline(ctx, layout, points, style) {
   ctx.restore();
 }
 
-function drawNatTracks(ctx, layout, tracks) {
+function drawNatTracks(ctx, layout, tracks, lite = false) {
   if (!tracks || !tracks.length) return;
-  ctx.font = "700 11px ui-monospace, SFMono-Regular, Menlo, monospace";
+  if (!lite) {
+    ctx.font = "700 11px ui-monospace, SFMono-Regular, Menlo, monospace";
+  }
   for (const track of tracks) {
     const pts = track.points || [];
     if (pts.length < 2) continue;
@@ -509,6 +534,7 @@ function drawNatTracks(ctx, layout, tracks) {
       width: 1.7,
       dash: [6, 5],
     });
+    if (lite) continue;
     const mid = pts[Math.floor(pts.length / 2)];
     const mp = project(mid.lat, mid.lon, 0, 0, layout);
     if (mp.visible) {
@@ -579,7 +605,15 @@ function labelBox(anchorX, anchorY, dx, dy, align, lines, metrics) {
  * Place ICAO + multi-line runway labels with collision avoidance.
  * Tries several offsets around each airport symbol.
  */
-function drawDiversionAirports(ctx, layout, bright, width, height, showRwyLabels = true) {
+function drawDiversionAirports(
+  ctx,
+  layout,
+  bright,
+  width,
+  height,
+  showRwyLabels = true,
+  lite = false
+) {
   const color = bright ? "#0057b8" : "rgba(100, 190, 255, 0.95)";
   const labelFill = bright ? "#003d7a" : "rgba(160, 220, 255, 0.95)";
   const rwyFill = bright ? "rgba(0, 61, 122, 0.78)" : "rgba(160, 220, 255, 0.75)";
@@ -588,7 +622,7 @@ function drawDiversionAirports(ctx, layout, bright, width, height, showRwyLabels
 
   const icaoFont = "700 10px ui-monospace, SFMono-Regular, Menlo, monospace";
   const rwyFont = "600 9px ui-monospace, SFMono-Regular, Menlo, monospace";
-  const includeRwys = showRwyLabels !== false;
+  const includeRwys = !lite && showRwyLabels !== false;
 
   const offsets = [
     { dx: 10, dy: -4, align: "left" },
@@ -611,6 +645,17 @@ function drawDiversionAirports(ctx, layout, bright, width, height, showRwyLabels
   ctx.beginPath();
   ctx.arc(layout.cx, layout.cy, layout.radius - 0.5, 0, Math.PI * 2);
   ctx.clip();
+
+  // Interaction frames: symbols only (collision labels are expensive)
+  if (lite) {
+    for (const ap of DIVERSION_AIRPORTS) {
+      const p = project(ap.lat, ap.lon, 0, 0, layout);
+      if (!inCanvas(p, width, height, 4)) continue;
+      drawAirportGear(ctx, p.x, p.y, color, 1);
+    }
+    ctx.restore();
+    return;
+  }
 
   /** @type {{ap:any,x:number,y:number,lines:string[],metrics:number[],nn:number}[]} */
   const visible = [];
@@ -720,7 +765,7 @@ function drawDiversionAirports(ctx, layout, bright, width, height, showRwyLabels
 }
 
 /** Green OAC FIR lines + OTAs + adjacent domestic FIRs (CPDLC codes). */
-function drawOac(ctx, layout, bright) {
+function drawOac(ctx, layout, bright, lite = false) {
   const stroke = bright ? "rgba(20, 110, 50, 0.5)" : "rgba(90, 200, 120, 0.45)";
   const otaStroke = bright ? "#0a7a35" : "rgba(90, 235, 140, 0.95)";
   const domesticStroke = bright ? "rgba(20, 90, 140, 0.45)" : "rgba(120, 200, 230, 0.4)";
@@ -780,59 +825,68 @@ function drawOac(ctx, layout, bright) {
     ctx.setLineDash([]);
   }
 
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
+  if (!lite) {
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
 
-  // Oceanic OAC codes
-  ctx.font = "700 12px ui-monospace, SFMono-Regular, Menlo, monospace";
-  ctx.fillStyle = fill;
-  for (const lab of OAC_LABELS) {
-    const p = project(lab.lat, lab.lon, 0, 0, layout);
-    if (!p.visible) continue;
-    ctx.strokeStyle = bright ? "rgba(255,255,255,0.85)" : "rgba(8,20,30,0.7)";
-    ctx.lineWidth = 3;
-    ctx.strokeText(lab.code, p.x, p.y);
-    ctx.fillText(lab.code, p.x, p.y);
-  }
+    // Oceanic OAC codes
+    ctx.font = "700 12px ui-monospace, SFMono-Regular, Menlo, monospace";
+    ctx.fillStyle = fill;
+    for (const lab of OAC_LABELS) {
+      const p = project(lab.lat, lab.lon, 0, 0, layout);
+      if (!p.visible) continue;
+      ctx.strokeStyle = bright ? "rgba(255,255,255,0.85)" : "rgba(8,20,30,0.7)";
+      ctx.lineWidth = 3;
+      ctx.strokeText(lab.code, p.x, p.y);
+      ctx.fillText(lab.code, p.x, p.y);
+    }
 
-  // OTA labels
-  ctx.font = "800 12px ui-monospace, SFMono-Regular, Menlo, monospace";
-  ctx.fillStyle = otaLabel;
-  for (const area of OTA_AREAS) {
-    const p = project(area.label.lat, area.label.lon, 0, 0, layout);
-    if (!p.visible) continue;
-    ctx.strokeStyle = bright ? "rgba(255,255,255,0.9)" : "rgba(8,20,30,0.75)";
-    ctx.lineWidth = 3.2;
-    ctx.strokeText(area.id, p.x, p.y);
-    ctx.fillText(area.id, p.x, p.y);
-  }
+    // OTA labels
+    ctx.font = "800 12px ui-monospace, SFMono-Regular, Menlo, monospace";
+    ctx.fillStyle = otaLabel;
+    for (const area of OTA_AREAS) {
+      const p = project(area.label.lat, area.label.lon, 0, 0, layout);
+      if (!p.visible) continue;
+      ctx.strokeStyle = bright ? "rgba(255,255,255,0.9)" : "rgba(8,20,30,0.75)";
+      ctx.lineWidth = 3.2;
+      ctx.strokeText(area.id, p.x, p.y);
+      ctx.fillText(area.id, p.x, p.y);
+    }
 
-  // Domestic FIR codes — same subtle style as oceanic OAC labels
-  ctx.font = "700 12px ui-monospace, SFMono-Regular, Menlo, monospace";
-  ctx.fillStyle = fill;
-  for (const lab of DOMESTIC_FIR_LABELS) {
-    const p = project(lab.lat, lab.lon, 0, 0, layout);
-    if (!p.visible) continue;
-    ctx.strokeStyle = bright ? "rgba(255,255,255,0.85)" : "rgba(8,20,30,0.7)";
-    ctx.lineWidth = 3;
-    ctx.strokeText(lab.code, p.x, p.y);
-    ctx.fillText(lab.code, p.x, p.y);
+    // Domestic FIR codes — same subtle style as oceanic OAC labels
+    ctx.font = "700 12px ui-monospace, SFMono-Regular, Menlo, monospace";
+    ctx.fillStyle = fill;
+    for (const lab of DOMESTIC_FIR_LABELS) {
+      const p = project(lab.lat, lab.lon, 0, 0, layout);
+      if (!p.visible) continue;
+      ctx.strokeStyle = bright ? "rgba(255,255,255,0.85)" : "rgba(8,20,30,0.7)";
+      ctx.lineWidth = 3;
+      ctx.strokeText(lab.code, p.x, p.y);
+      ctx.fillText(lab.code, p.x, p.y);
+    }
   }
   ctx.restore();
 }
 
 /**
  * @param {HTMLCanvasElement} canvas
- * @param {{ route: any[], natTracks?: any[], bright?: boolean, showNatTracks?: boolean, zoom?: number, pan?: {dLat?:number,dLon?:number} }} data
+ * @param {{ route: any[], natTracks?: any[], bright?: boolean, showNatTracks?: boolean, zoom?: number, pan?: {dLat?:number,dLon?:number}, lite?: boolean }} data
  */
 export function drawChart(canvas, data) {
-  const dpr = window.devicePixelRatio || 1;
+  const lite = data.lite === true;
+  // Cap DPR for fill-rate; keep stable across lite/full so the buffer is not reallocated mid-gesture
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
   const rect = canvas.getBoundingClientRect();
   const width = Math.max(1, Math.floor(rect.width));
   const height = Math.max(1, Math.floor(rect.height));
-  canvas.width = width * dpr;
-  canvas.height = height * dpr;
-  const ctx = canvas.getContext("2d");
+  const bw = Math.max(1, Math.floor(width * dpr));
+  const bh = Math.max(1, Math.floor(height * dpr));
+  // Avoid clearing/reallocating the buffer when size is unchanged
+  if (canvas.width !== bw || canvas.height !== bh) {
+    canvas.width = bw;
+    canvas.height = bh;
+  }
+  const ctx = canvas.getContext("2d", { alpha: false });
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
   const bright =
@@ -854,10 +908,10 @@ export function drawChart(canvas, data) {
   );
 
   drawGlobeBase(ctx, layout, bright, width, height);
-  drawLand(ctx, layout, bright);
-  drawGrid(ctx, layout, bright, width, height);
+  drawLand(ctx, layout, bright, lite);
+  drawGrid(ctx, layout, bright, width, height, lite);
   if (data.showAirspace !== false) {
-    drawOac(ctx, layout, bright);
+    drawOac(ctx, layout, bright, lite);
   }
   drawDiversionAirports(
     ctx,
@@ -865,11 +919,12 @@ export function drawChart(canvas, data) {
     bright,
     width,
     height,
-    data.showRwyLabels !== false
+    data.showRwyLabels !== false,
+    lite
   );
 
   if (data.showNatTracks !== false) {
-    drawNatTracks(ctx, layout, data.natTracks || []);
+    drawNatTracks(ctx, layout, data.natTracks || [], lite);
   }
 
   const route = data.route || [];
