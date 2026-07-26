@@ -1,0 +1,305 @@
+{
+  "version": "2026-07-26-1158Z",
+  "accuracyVerifiedOn": "2026-07-26",
+  "disclaimer": "Reference compilation only \u2013 NOT for navigation. Always verify with current official AIPs, NOTAMs, and certified FMS/nav database before flight.",
+  "waypoints": [
+    {
+      "id": "SOMAX",
+      "name": "SOMAX",
+      "lat": 50.0,
+      "lon": -15.0,
+      "category": "oceanic_oep",
+      "region": "east",
+      "accuracy": "exact",
+      "notes": "Confirmed OpenNav (IE). Common eastbound exit / landfall."
+    },
+    {
+      "id": "MALOT",
+      "name": "MALOT",
+      "lat": 53.0,
+      "lon": -15.0,
+      "category": "oceanic_oep",
+      "region": "east",
+      "accuracy": "exact",
+      "notes": "Confirmed OpenNav (IE). Frequent OTS point."
+    },
+    {
+      "id": "DOGAL",
+      "name": "DOGAL",
+      "lat": 54.0,
+      "lon": -15.0,
+      "category": "oceanic_oep",
+      "region": "east",
+      "accuracy": "exact",
+      "notes": "Confirmed OpenNav (UK). Frequent OTS point."
+    },
+    {
+      "id": "LIMRI",
+      "name": "LIMRI",
+      "lat": 52.0,
+      "lon": -15.0,
+      "category": "oceanic_oep",
+      "region": "east",
+      "accuracy": "exact",
+      "notes": "Confirmed OpenNav (IE). Common landfall / OEP-related."
+    },
+    {
+      "id": "RESNO",
+      "name": "RESNO",
+      "lat": 56.0,
+      "lon": -15.0,
+      "category": "oceanic_oep",
+      "region": "east",
+      "accuracy": "approximate",
+      "notes": "Frequently appears in westbound track messages (exact minutes vary by cycle; verify AIP)."
+    },
+    {
+      "id": "PIKIL",
+      "name": "PIKIL",
+      "lat": 57.0,
+      "lon": -17.5,
+      "category": "oceanic_oep",
+      "region": "east",
+      "accuracy": "approximate",
+      "notes": "Common OEP in track messages (~015\u2013020W)."
+    },
+    {
+      "id": "SUNOT",
+      "name": "SUNOT",
+      "lat": 58.0,
+      "lon": -17.5,
+      "category": "oceanic_oep",
+      "region": "east",
+      "accuracy": "approximate",
+      "notes": "Common OEP (~015\u2013020W)."
+    },
+    {
+      "id": "ATSUR",
+      "name": "ATSUR",
+      "lat": 50.0,
+      "lon": -14.0,
+      "category": "oceanic_oep",
+      "region": "east",
+      "accuracy": "approximate",
+      "notes": "SOTA-related landfall (UK AIP examples)."
+    },
+    {
+      "id": "BEDRA",
+      "name": "BEDRA",
+      "lat": 49.0,
+      "lon": -15.0,
+      "category": "oceanic_oep",
+      "region": "east",
+      "accuracy": "approximate",
+      "notes": "Appears in southern tracks."
+    },
+    {
+      "id": "NASBA",
+      "name": "NASBA",
+      "lat": 49.0,
+      "lon": -13.0,
+      "category": "oceanic_oep",
+      "region": "east",
+      "accuracy": "approximate",
+      "notes": "Landfall-related."
+    },
+    {
+      "id": "SOORY",
+      "name": "SOORY",
+      "lat": 38.5,
+      "lon": -60.267583333,
+      "category": "oceanic_oep",
+      "region": "west",
+      "accuracy": "exact",
+      "notes": "Confirmed OpenNav (US). Used on southern tracks / random routes."
+    },
+    {
+      "id": "JOOPY",
+      "name": "JOOPY",
+      "lat": 48.5,
+      "lon": -51.0,
+      "category": "oceanic_oep",
+      "region": "west",
+      "accuracy": "approximate",
+      "notes": "Frequent eastbound exit / landfall (~48\u201349N / 050\u2013052W)."
+    },
+    {
+      "id": "HOIST",
+      "name": "HOIST",
+      "lat": 39.0,
+      "lon": -67.0,
+      "category": "oceanic_oep",
+      "region": "west",
+      "accuracy": "approximate",
+      "notes": "Exit point; exact position cycle-dependent \u2013 verify."
+    },
+    {
+      "id": "EVRIN",
+      "name": "EVRIN",
+      "lat": 51.782222222,
+      "lon": -6.563333333,
+      "category": "land_based",
+      "region": "east",
+      "accuracy": "exact",
+      "notes": "Confirmed OpenNav + UK AIP ENR 4.4 + Irish AIP."
+    },
+    {
+      "id": "ELSOX",
+      "name": "ELSOX",
+      "lat": 51.0,
+      "lon": -14.0,
+      "category": "land_based",
+      "region": "east",
+      "accuracy": "exact",
+      "notes": "Confirmed OpenNav (IE) + UK AIP (SOTA landfall point)."
+    },
+    {
+      "id": "DINIM",
+      "name": "DINIM",
+      "lat": 51.0,
+      "lon": -15.0,
+      "category": "land_based",
+      "region": "east",
+      "accuracy": "exact",
+      "notes": "Confirmed OpenNav (UK). Common OEP/landfall."
+    },
+    {
+      "id": "GISTI",
+      "name": "GISTI",
+      "lat": 53.0,
+      "lon": -14.0,
+      "category": "land_based",
+      "region": "east",
+      "accuracy": "exact",
+      "notes": "Confirmed OpenNav (IE). Common in eastbound track messages."
+    },
+    {
+      "id": "NETKI",
+      "name": "NETKI",
+      "lat": 55.0,
+      "lon": -14.0,
+      "category": "land_based",
+      "region": "east",
+      "accuracy": "exact",
+      "notes": "Confirmed OpenNav (UK). Common landfall."
+    },
+    {
+      "id": "KESIX",
+      "name": "KESIX",
+      "lat": 56.95,
+      "lon": -14.0,
+      "category": "land_based",
+      "region": "east",
+      "accuracy": "exact",
+      "notes": "Confirmed OpenNav (UK). Common landfall."
+    },
+    {
+      "id": "OSBOX",
+      "name": "OSBOX",
+      "lat": 56.806388889,
+      "lon": -12.801666667,
+      "category": "land_based",
+      "region": "east",
+      "accuracy": "exact",
+      "notes": "Confirmed Irish AIP ENR 4.4 (Oceanic Landfall Point)."
+    },
+    {
+      "id": "BEGID",
+      "name": "BEGID",
+      "lat": 56.5,
+      "lon": -14.0,
+      "category": "land_based",
+      "region": "east",
+      "accuracy": "exact",
+      "notes": "Confirmed OpenNav + Irish AIP (Oceanic Landfall Point)."
+    },
+    {
+      "id": "SOVED",
+      "name": "SOVED",
+      "lat": 56.0,
+      "lon": -14.0,
+      "category": "land_based",
+      "region": "east",
+      "accuracy": "exact",
+      "notes": "Confirmed OpenNav + Irish AIP (Oceanic Landfall Point)."
+    },
+    {
+      "id": "LPAZ",
+      "name": "LPAZ",
+      "lat": 36.966666667,
+      "lon": -25.166666667,
+      "category": "airport",
+      "region": "mid_atlantic",
+      "accuracy": "approximate",
+      "elevationFt": 308,
+      "notes": "Santa Maria (Azores). Important technical / diversion airport."
+    },
+    {
+      "id": "LPLA",
+      "name": "LPLA",
+      "lat": 38.761666667,
+      "lon": -27.09,
+      "category": "airport",
+      "region": "mid_atlantic",
+      "accuracy": "approximate",
+      "elevationFt": 180,
+      "notes": "Lajes / Terceira (Azores). Joint civil-military."
+    },
+    {
+      "id": "TXKF",
+      "name": "TXKF",
+      "lat": 32.364166667,
+      "lon": -64.678611111,
+      "category": "airport",
+      "region": "mid_atlantic",
+      "accuracy": "exact",
+      "elevationFt": 12,
+      "notes": "L.F. Wade Intl (Bermuda)."
+    },
+    {
+      "id": "BIKF",
+      "name": "BIKF",
+      "lat": 63.983333333,
+      "lon": -22.6,
+      "category": "airport",
+      "region": "mid_atlantic",
+      "accuracy": "approximate",
+      "elevationFt": 171,
+      "notes": "Keflavik (Iceland). Northern diversion / technical."
+    },
+    {
+      "id": "CYYT",
+      "name": "CYYT",
+      "lat": 47.616666667,
+      "lon": -52.75,
+      "category": "airport",
+      "region": "west",
+      "accuracy": "approximate",
+      "elevationFt": 461,
+      "notes": "St. John's (Newfoundland)."
+    },
+    {
+      "id": "CYQX",
+      "name": "CYQX",
+      "lat": 48.933333333,
+      "lon": -54.566666667,
+      "category": "airport",
+      "region": "west",
+      "accuracy": "approximate",
+      "elevationFt": 496,
+      "notes": "Gander (Newfoundland)."
+    },
+    {
+      "id": "EINN",
+      "name": "EINN",
+      "lat": 52.7,
+      "lon": -8.916666667,
+      "category": "airport",
+      "region": "east",
+      "accuracy": "approximate",
+      "elevationFt": 46,
+      "notes": "Shannon (Ireland)."
+    }
+  ],
+  "sourceDoc": "NAT_HLA_Waypoints_Reference_2026-07-26_1158Z.md"
+}

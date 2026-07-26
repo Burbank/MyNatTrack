@@ -1,0 +1,26 @@
+{
+  "name": "MyNatTrack",
+  "short_name": "MyNatTrack",
+  "description": "Private NAT HLA track, bearing, and distance calculator for iPad.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#0b1520",
+  "theme_color": "#0b1520",
+  "lang": "en",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

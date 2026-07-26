@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1"
+    />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="MyNatTrack" />
+    <meta name="theme-color" content="#0b1520" />
+    <meta name="description" content="Private NAT HLA track / distance calculator for iPad (offline PWA)." />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png" />
+    <link rel="shortcut icon" href="icons/favicon.png" />
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
+    <link rel="stylesheet" href="css/styles.css" />
+    <title>MyNatTrack</title>
+    <script>
+      try {
+        if (localStorage.getItem("mynattrack_theme_v1") === "bright") {
+          document.documentElement.classList.add("theme-bright");
+        }
+        var standalone =
+          (window.matchMedia &&
+            (window.matchMedia("(display-mode: standalone)").matches ||
+              window.matchMedia("(display-mode: fullscreen)").matches)) ||
+          window.navigator.standalone === true;
+        var store = standalone ? localStorage : sessionStorage;
+        if (store.getItem("mynattrack_unlock_v1") === "ok") {
+          document.documentElement.classList.add("app-unlocked");
+        } else {
+          document.documentElement.classList.add("app-locked");
+        }
+      } catch (e) {
+        document.documentElement.classList.add("app-locked");
+      }
+    </script>
+  </head>
+  <body>
+    <div class="auth-gate" id="auth-gate" role="dialog" aria-labelledby="auth-title" aria-modal="true">
+      <form class="auth-card" id="auth-form" autocomplete="current-password">
+        <h1 id="auth-title">MyNatTrack</h1>
+        <p class="muted">Private access — enter password to continue</p>
+        <label class="auth-label" for="auth-password">Password</label>
+        <input
+          id="auth-password"
+          name="password"
+          type="password"
+          autocomplete="current-password"
+          required
+          autofocus
+        />
+        <p class="auth-error" id="auth-error" hidden></p>
+        <button type="submit" class="primary auth-submit">Unlock</button>
+        <p class="muted auth-hint">
+          On an iPad Home Screen app, the password is only required the first time.
+        </p>
+      </form>
+    </div>
+
+    <header class="app-header">
+      <div class="brand">
+        <div class="brand-row">
+          <h1>MyNatTrack</h1>
+          <button
+            type="button"
+            id="theme-btn"
+            class="theme-btn"
+            aria-pressed="false"
+            title="Switch to Hi-Contrast Day Theme"
+          >
+            Bright
+          </button>
+        </div>
+        <span class="tag">NAT HLA planning aid</span>
+      </div>
+      <div id="verify-banner">Waypoint accuracy last verified on 2026-07-26</div>
+      <div class="header-actions">
+        <button type="button" class="icon-btn" id="verify-flow-btn" aria-label="Verify">Verify</button>
+        <button type="button" class="icon-btn" id="settings-btn" aria-label="SETREF">SETREF</button>
+      </div>
+    </header>
+
+    <main class="main">
+      <section class="panel">
+        <h2>Route</h2>
+        <div class="panel-body">
+          <div class="entry-row">
+            <input
+              id="wp-input"
+              type="text"
+              autocomplete="off"
+              autocorrect="off"
+              autocapitalize="characters"
+              spellcheck="false"
+              placeholder="Paste route example: SOMAX 5020N 4930N 4740N 43N050W SOORY"
+              aria-label="Waypoint or full route entry"
+            />
+            <button type="button" class="primary" id="add-btn">Add</button>
+            <button type="button" class="secondary" id="cancel-edit-btn" hidden>Cancel</button>
+            <button type="button" class="secondary" id="clear-btn">Clear</button>
+            <div id="suggest" hidden></div>
+          </div>
+          <p id="route-hint" class="route-hint"></p>
+          <p id="error" hidden></p>
+          <ul class="route-list" id="route-list"></ul>
+        </div>
+      </section>
+
+      <div class="right-stack">
+        <section class="panel" id="chart-panel">
+          <div class="panel-head">
+            <h2>Atlantic chart</h2>
+            <div class="chart-toggles">
+              <label class="chart-toggle">
+                <input type="checkbox" id="show-east-tracks" checked />
+                Show East Tracks
+              </label>
+              <label class="chart-toggle">
+                <input type="checkbox" id="show-west-tracks" checked />
+                Show West Tracks
+              </label>
+              <button type="button" class="secondary compact" id="chart-fullscreen-btn" aria-pressed="false" title="Full screen chart">
+                Full screen
+              </button>
+              <button type="button" class="secondary compact" id="nat-tracks-btn">NAT Tracks</button>
+            </div>
+          </div>
+          <div class="chart-wrap">
+            <canvas id="chart" aria-label="North Atlantic route chart"></canvas>
+          </div>
+        </section>
+
+        <section class="panel">
+          <h2>Legs</h2>
+          <div class="panel-body">
+            <table class="legs">
+              <thead>
+                <tr>
+                  <th>From</th>
+                  <th>To</th>
+                  <th title="FMS-style average great-circle track">Avg True</th>
+                  <th id="th-avg-mag" title="Average track converted with mid-leg variation">Avg Mag</th>
+                  <th title="Initial true track leaving the from-waypoint (ND)">Init True</th>
+                  <th id="th-init-mag" title="Initial magnetic track leaving the from-waypoint">Init Mag</th>
+                  <th>Dist NM</th>
+                </tr>
+              </thead>
+              <tbody id="legs-body"></tbody>
+            </table>
+            <div id="totals">—</div>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <footer class="disclaimer">
+      Educational and Simulator use only. Not certified for navigation. WGS-84 Vincenty tracks &amp; distances; magnetic variation is an approximate offline model.
+    </footer>
+
+    <div class="overlay" id="settings-panel" hidden>
+      <div class="sheet" role="dialog" aria-labelledby="settings-title">
+        <header>
+          <h2 id="settings-title">SETREF</h2>
+          <button type="button" class="icon-btn" id="settings-close">Close</button>
+        </header>
+        <p class="verify-line" id="settings-verify">Waypoint accuracy last verified on 2026-07-26</p>
+        <div class="setting-row">
+          <label for="mag-toggle">
+            Show magnetic track
+            <span class="muted magvar-table-date" id="magvar-table-date"></span>
+          </label>
+          <input type="checkbox" id="mag-toggle" checked />
+        </div>
+        <div class="setting-row">
+          <div>
+            <strong>Waypoint reference (Markdown)</strong>
+            <div class="muted">Open the bundled public-source compilation (incl. ARINC 424 coding) for offline reading.</div>
+          </div>
+          <button type="button" class="primary" id="open-md-btn">Open</button>
+        </div>
+
+        <section class="ref-block" aria-labelledby="arinc-lookup-title">
+          <h3 id="arinc-lookup-title">ARINC 424 quick lookup</h3>
+          <p class="muted ref-lead">
+            Type these into the route field. Letter last = longitude &lt; 100°; letter 3rd = longitude ≥ 100°.
+            Letter key: N = N/W · E = N/E · S = S/E · W = S/W.
+          </p>
+          <table class="ref-table">
+            <thead>
+              <tr>
+                <th>Entry</th>
+                <th>Meaning</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>5215N</code></td>
+                <td>52°N 015°W (letter last → lon &lt; 100°)</td>
+              </tr>
+              <tr>
+                <td><code>5050N</code></td>
+                <td>50°N 050°W</td>
+              </tr>
+              <tr>
+                <td><code>50N50</code></td>
+                <td>50°N 150°W (letter 3rd → lon ≥ 100°)</td>
+              </tr>
+              <tr>
+                <td><code>4020S</code></td>
+                <td>40°S 020°E</td>
+              </tr>
+              <tr>
+                <td><code>H5250</code></td>
+                <td>52°30′N 050°W (NAT half-degree)</td>
+              </tr>
+              <tr>
+                <td><code>N5050</code></td>
+                <td>50°30′N 050°W (classic N-prefix; prefer H when possible)</td>
+              </tr>
+              <tr>
+                <td><code>N5000.0W05000.0</code></td>
+                <td>Full FMS lat/lon</td>
+              </tr>
+              <tr>
+                <td colspan="2">
+                  <strong>Paste route example:</strong>
+                  <code class="route-example">SOMAX 5020N 4930N 4740N 43N050W SOORY</code>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <div class="settings-footer">
+          <p class="disclaimer settings-disclaimer">
+            Educational and Simulator use only. Not certified for navigation. WGS-84 Vincenty tracks &amp; distances; magnetic variation is an approximate offline model.
+          </p>
+          <span class="settings-version muted" aria-label="App version">v1.0</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="overlay" id="verify-flow-panel" hidden>
+      <div class="sheet flow-sheet" role="dialog" aria-labelledby="verify-flow-title">
+        <header class="flow-header">
+          <div class="flow-header-main">
+            <h2 id="verify-flow-title">MNPS Route Verification</h2>
+            <p class="flow-ref muted">
+              8.3.2.11.3 · Reference only — follow current company OM / AIP procedures
+            </p>
+          </div>
+          <button type="button" class="icon-btn" id="verify-flow-close">Close</button>
+        </header>
+
+        <div class="flow-chart" aria-label="MNPS route verification flowchart">
+          <div class="flow-col flow-col-a">
+            <div class="flow-section-label">A · Before entering MNPS airspace</div>
+
+            <div class="flow-node step critical">
+              <span class="flow-step-num">1</span>
+              <div>
+                <strong>Dual listening &amp; recording</strong>
+                <ul>
+                  <li>Both PF &amp; PM listen and record every ATC clearance</li>
+                  <li>Agree recording is correct</li>
+                  <li>Independent clearance copy, data entry, crosschecks</li>
+                  <li>Also for enroute changes · <em>Cannot be delegated</em></li>
+                </ul>
+              </div>
+            </div>
+            <div class="flow-arrow" aria-hidden="true"></div>
+
+            <div class="flow-node step">
+              <span class="flow-step-num">2</span>
+              <div>
+                <strong>PM — OFP note &amp; route comparison</strong>
+                <ul>
+                  <li>Enter clearance as Note in OFP</li>
+                  <li>ACARS → reference i.a.w. OM-A 8.1.10.2</li>
+                  <li>Check cleared route vs flight plan</li>
+                </ul>
+              </div>
+            </div>
+
+            <div class="flow-branch">
+              <div class="flow-branch-arm">
+                <div class="flow-decision">Cleared ≠ FPL?</div>
+                <div class="flow-arrow short" aria-hidden="true"></div>
+                <div class="flow-node mini">
+                  (i) Revise WPT name<br />
+                  (ii) Crossload OFP and Notes
+                </div>
+              </div>
+              <div class="flow-branch-arm same">
+                <div class="flow-tag">Same</div>
+                <div class="flow-arrow short dashed" aria-hidden="true"></div>
+                <div class="flow-node mini mute">Continue</div>
+              </div>
+            </div>
+            <div class="flow-arrow" aria-hidden="true"></div>
+
+            <div class="flow-node step">
+              <span class="flow-step-num">3</span>
+              <div>
+                <strong>PF — Clearance vs OFP + FMS</strong>
+                <ul>
+                  <li>Check clearance vs (NAVLOG) OFP</li>
+                  <li>Enter / verify route in FMS</li>
+                  <li>(i) Full Lat/Long (expand coded e.g. 4550N)</li>
+                  <li>(ii) Sequence &amp; number · (iii) Distances</li>
+                </ul>
+              </div>
+            </div>
+            <div class="flow-arrow" aria-hidden="true"></div>
+
+            <div class="flow-node step">
+              <span class="flow-step-num">4</span>
+              <div>
+                <strong>PM — FMS → OFP</strong>
+                <ul>
+                  <li>Verify from FMS to OFP</li>
+                  <li>Waypoint sequence &amp; number</li>
+                </ul>
+              </div>
+            </div>
+            <div class="flow-arrow" aria-hidden="true"></div>
+
+            <div class="flow-node step">
+              <span class="flow-step-num">5</span>
+              <div>
+                <strong>Flight Note</strong>
+                <ul>
+                  <li>Report in FLIGHT NOTE that check in (1) was performed</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <div class="flow-col flow-col-b">
+            <div class="flow-section-label">B · In MNPS airspace</div>
+
+            <div class="flow-node step">
+              <span class="flow-step-num">WPT</span>
+              <div>
+                <strong>Passing waypoints</strong>
+                <ul>
+                  <li>(i) Just prior: present position vs OFP (each FMS)</li>
+                  <li>(ii) Next two WPTs in each FMS vs OFP</li>
+                  <li>(iii) Distance, correct turn, new heading/track</li>
+                  <li>(iv) Before position report: verify coords; read “next” + “next+1” from steering CDU if feasible</li>
+                </ul>
+              </div>
+            </div>
+
+            <div class="flow-branch reclear">
+              <div class="flow-branch-arm">
+                <div class="flow-decision warn">Reclearance?<br /><span>Voice or ACARS</span></div>
+                <div class="flow-arrow short" aria-hidden="true"></div>
+                <div class="flow-node mini critical-soft">
+                  Yes → return to (a) steps 1–4<br />
+                  Full independent verification
+                </div>
+              </div>
+              <div class="flow-branch-arm same">
+                <div class="flow-tag">No</div>
+                <div class="flow-arrow short dashed" aria-hidden="true"></div>
+                <div class="flow-node mini mute">Continue MNPS</div>
+              </div>
+            </div>
+
+            <aside class="flow-notes">
+              <h3>Notes</h3>
+              <ul>
+                <li>All steps in (a) must be performed <strong>independently</strong> and <strong>in sequence</strong>.</li>
+                <li>Coded waypoints (e.g. 4550N) <strong>must</strong> be expanded to full Latitude/Longitude.</li>
+                <li>Dual verification (PF ↔ PM) is mandatory and cannot be delegated.</li>
+                <li>On any reclearance (voice or ACARS) re-apply full pre-entry (a)(1)–(a)(4).</li>
+              </ul>
+              <p class="muted flow-version">Version: 2026-07-26 — Educational / simulator reference only.</p>
+            </aside>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="overlay" id="md-panel" hidden>
+      <div class="sheet wide" role="dialog" aria-labelledby="md-title">
+        <header>
+          <h2 id="md-title">NAT HLA Waypoints Reference</h2>
+          <button type="button" class="icon-btn" id="md-close">Close</button>
+        </header>
+        <div class="md-body" id="md-content"></div>
+      </div>
+    </div>
+
+    <div class="overlay" id="nat-panel" hidden>
+      <div class="sheet wide" role="dialog" aria-labelledby="nat-title">
+        <header>
+          <h2 id="nat-title">Atlantic tracks message</h2>
+          <button type="button" class="icon-btn" id="nat-close">Close</button>
+        </header>
+        <div class="nat-toolbar">
+          <button type="button" class="primary" id="nat-refresh-btn">Refresh</button>
+          <span class="muted" id="nat-status">Not loaded</span>
+        </div>
+        <p class="muted nat-note">
+          When online with the Mac server running, Refresh loads the latest FAA NMS track message.
+          The last successful message is kept for offline viewing. Educational / simulator use only.
+        </p>
+        <pre class="nat-message" id="nat-message" aria-live="polite">No track message loaded yet. Tap Refresh.</pre>
+      </div>
+    </div>
+
+    <script type="module" src="js/app.js"></script>
+  </body>
+</html>
