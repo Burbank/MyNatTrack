@@ -17,7 +17,7 @@
     <link rel="shortcut icon" href="icons/favicon.png" />
     <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
     <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
-    <link rel="stylesheet" href="css/styles.css?v=1.2" />
+    <link rel="stylesheet" href="css/styles.css?v=1.3" />
     <title>MyNatTrack</title>
     <!--
       Critical header: full-width 3-col grid.
@@ -61,6 +61,10 @@
         align-items: center !important;
         gap: 0.5rem !important;
         min-width: 0 !important;
+      }
+      /* Critical header uses display:!important — fullscreen must override it */
+      body.chart-fullscreen .app-header {
+        display: none !important;
       }
     </style>
     <script>
@@ -301,7 +305,7 @@
         </section>
 
         <div class="settings-footer">
-          <span class="settings-version muted" aria-label="App version">v1.2</span>
+          <span class="settings-version muted" aria-label="App version">v1.3</span>
         </div>
       </div>
     </div>
@@ -459,16 +463,19 @@
       </div>
     </div>
 
-    <div class="overlay" id="nat-panel" hidden>
-      <div class="sheet wide" role="dialog" aria-labelledby="nat-title">
-        <header>
-          <h2 id="nat-title">Atlantic tracks message</h2>
-          <button type="button" class="icon-btn" id="nat-close">Close</button>
+    <div class="overlay nat-overlay" id="nat-panel" hidden>
+      <div class="sheet wide nat-sheet" role="dialog" aria-labelledby="nat-title">
+        <header class="nat-header">
+          <div class="nat-heading">
+            <h2 id="nat-title">Atlantic tracks message</h2>
+            <div class="nat-tmi" id="nat-tmi" aria-live="polite">TMI —</div>
+            <span class="muted" id="nat-status">Not loaded</span>
+          </div>
+          <div class="nat-toolbar">
+            <button type="button" class="primary" id="nat-refresh-btn">Refresh</button>
+            <button type="button" class="icon-btn" id="nat-close">Close</button>
+          </div>
         </header>
-        <div class="nat-toolbar">
-          <button type="button" class="primary" id="nat-refresh-btn">Refresh</button>
-          <span class="muted" id="nat-status">Not loaded</span>
-        </div>
         <p class="muted nat-note">
           This information may not be accurate. Educational / simulator use only — not certified for navigation.
           Online Refresh uses VATSIM natTrak.
@@ -478,6 +485,6 @@
       </div>
     </div>
 
-    <script type="module" src="js/app.js?v=1.2"></script>
+    <script type="module" src="js/app.js?v=1.3"></script>
   </body>
 </html>

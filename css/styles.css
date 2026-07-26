@@ -429,17 +429,49 @@ html.theme-bright .panel {
   font-size: 0.82rem;
 }
 
+.nat-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+  margin-bottom: 0.5rem;
+  flex-shrink: 0;
+}
+
+.nat-heading {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.nat-heading h2,
+.nat-tmi {
+  margin: 0;
+  font-size: 1.1rem;
+  line-height: 1.2;
+  font-weight: 650;
+  color: var(--text);
+}
+
+.nat-heading #nat-status {
+  font-size: 0.82rem;
+  line-height: 1.25;
+}
+
 .nat-toolbar {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
-  gap: 0.75rem 1rem;
-  margin-bottom: 0.65rem;
+  gap: 0.5rem;
+  flex-shrink: 0;
+  margin: 0;
 }
 
 .nat-note {
-  margin: 0 0 0.65rem;
+  margin: 0 0 0.5rem;
   font-size: 0.8rem;
+  flex-shrink: 0;
 }
 
 .nat-message {
@@ -456,6 +488,27 @@ html.theme-bright .panel {
   line-height: 1.45;
   white-space: pre-wrap;
   word-break: break-word;
+}
+
+/* NAT overlay: use full display height so more of the track message is visible */
+.nat-overlay {
+  align-items: stretch;
+  justify-content: center;
+}
+
+.nat-sheet {
+  width: min(960px, 100%);
+  height: 100%;
+  max-height: none;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.nat-sheet .nat-message {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
 }
 
 html.theme-bright .nat-message,
@@ -762,20 +815,40 @@ body.chart-fullscreen .right-stack {
 body.chart-fullscreen #chart-panel {
   position: fixed;
   inset: 0;
-  z-index: 15;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
   border-radius: 0;
   border: none;
   height: 100dvh;
   max-height: 100dvh;
+  /* Clear iPad status bar once the app header is hidden */
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+  box-sizing: border-box;
+}
+
+body.chart-fullscreen #chart-panel .chart-toolbar {
+  flex-shrink: 0;
+  position: relative;
+  z-index: 2;
+  background: var(--bg-panel);
+}
+
+body.chart-fullscreen #nat-tracks-btn {
+  display: none;
 }
 
 body.chart-fullscreen #chart-panel .chart-wrap {
   flex: 1;
+  min-height: 0;
   padding: 0.35rem 0.5rem 0.6rem;
 }
 
+/* Must beat critical header `display: grid !important` in index.html */
 body.chart-fullscreen .app-header {
-  display: none;
+  display: none !important;
 }
 
 html.theme-bright body.chart-fullscreen #chart-panel {

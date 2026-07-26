@@ -99,6 +99,7 @@ const el = {
   natRefreshBtn: document.getElementById("nat-refresh-btn"),
   showEastTracks: document.getElementById("show-east-tracks"),
   showWestTracks: document.getElementById("show-west-tracks"),
+  natTmi: document.getElementById("nat-tmi"),
   natStatus: document.getElementById("nat-status"),
   natMessage: document.getElementById("nat-message"),
   themeBtn: document.getElementById("theme-btn"),
@@ -582,35 +583,41 @@ function coloredNatTracks() {
     }));
 }
 
+function formatNatTmi(nat) {
+  if (!nat) return "TMI —";
+  if (nat.tmi) return `TMI ${nat.tmi}`;
+  if (/vatsim/i.test(nat.source || "")) return "VATSIM";
+  return "TMI —";
+}
+
 function formatNatStatus(nat, extra = "") {
   if (!nat) return extra || "Not loaded";
   const when = nat.fetchedAt ? new Date(nat.fetchedAt).toLocaleString() : "unknown time";
-  const src =
-    nat.tmi
-      ? `TMI ${nat.tmi}`
-      : /vatsim/i.test(nat.source || "")
-        ? "VATSIM"
-        : "TMI —";
   const n = (nat.tracks || []).length;
   const cache = nat.fromCache ? " · cached" : "";
   // Keep status short — full fetch errors stay in the panel message when nothing is loaded
   const warn = (nat.warning || state.natFetchError) ? " · refresh failed" : "";
-  return `${src} · ${n} tracks · ${when}${cache}${warn}${extra ? ` · ${extra}` : ""}`;
+  return `${n} tracks · ${when}${cache}${warn}${extra ? ` · ${extra}` : ""}`;
 }
 
 function renderNatPanel() {
-  if (!el.natStatus || !el.natMessage) return;
+  if (!el.natMessage) return;
   if (state.natLoading) {
-    el.natStatus.textContent = "Loading…";
+    if (el.natTmi) el.natTmi.textContent = formatNatTmi(state.nat);
+    if (el.natStatus) el.natStatus.textContent = "Loading…";
     return;
   }
   if (!state.nat) {
-    el.natStatus.textContent = state.natFetchError ? "Fetch failed" : "Not loaded";
+    if (el.natTmi) el.natTmi.textContent = "TMI —";
+    if (el.natStatus) {
+      el.natStatus.textContent = state.natFetchError ? "Fetch failed" : "Not loaded";
+    }
     el.natMessage.textContent =
       state.natFetchError || "No track message loaded yet. Tap Refresh.";
     return;
   }
-  el.natStatus.textContent = formatNatStatus(state.nat);
+  if (el.natTmi) el.natTmi.textContent = formatNatTmi(state.nat);
+  if (el.natStatus) el.natStatus.textContent = formatNatStatus(state.nat);
   const summary = (state.nat.tracks || [])
     .map((t) => {
       const dir = t.direction !== "unknown" ? ` (${t.direction})` : "";
