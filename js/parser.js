@@ -398,7 +398,7 @@ export function suggestWaypoints(query, db, limit = 8) {
   const q = String(query || "")
     .trim()
     .toUpperCase();
-  if (!q) return db.slice(0, limit);
+  if (!q) return [];
   // Don't suggest named fixes while typing an ARINC digit code or a full route paste
   if (/\s/.test(q) || /^\d/.test(q) || /^H\d/.test(q) || /^N\d/.test(q)) return [];
   return db

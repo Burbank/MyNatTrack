@@ -28,7 +28,6 @@ const SETTINGS_KEY = "mynattrack_settings_v1";
 
 const state = {
   db: [],
-  meta: {},
   route: [],
   /** @type {number|null} index being edited, or null when appending */
   editingIndex: null,
@@ -43,6 +42,8 @@ const state = {
   },
   mdText: "",
   nat: null,
+  /** Last NAT fetch failure (shown only in the NAT panel) */
+  natFetchError: "",
   natLoading: false,
   /** Pinch / wheel zoom on top of auto-fit (1 = fitted) */
   chartZoom: 1.35,
@@ -102,9 +103,10 @@ const el = {
   natMessage: document.getElementById("nat-message"),
   themeBtn: document.getElementById("theme-btn"),
   chartFullscreenBtn: document.getElementById("chart-fullscreen-btn"),
-  chartPanel: document.getElementById("chart-panel"),
   modeEditBtn: document.getElementById("mode-edit-btn"),
   modeFlyBtn: document.getElementById("mode-fly-btn"),
+  thAvgMag: document.getElementById("th-avg-mag"),
+  thInitMag: document.getElementById("th-init-mag"),
 };
 
 const THEME_KEY = "mynattrack_theme_v1";
@@ -122,7 +124,7 @@ function loadThemePref() {
   }
 }
 
-function applyTheme(mode) {
+function applyTheme(mode, { paint = true } = {}) {
   const bright = mode === "bright";
   document.documentElement.classList.toggle("theme-bright", bright);
   if (el.themeBtn) {
@@ -139,7 +141,7 @@ function applyTheme(mode) {
   } catch {
     /* ignore */
   }
-  renderChart();
+  if (paint) renderChart();
 }
 
 function toggleTheme() {
@@ -166,6 +168,7 @@ function toggleChartFullscreen() {
 }
 
 function showError(msg) {
+  if (!el.error) return;
   el.error.textContent = msg || "";
   el.error.hidden = !msg;
 }
@@ -250,7 +253,9 @@ function enrichPoint(p) {
 function updateEntryChrome() {
   const editing = state.editingIndex != null;
   const inserting = state.insertAfterIndex != null && !editing;
-  el.addBtn.textContent = editing ? "Update" : inserting ? "Insert" : "Add";
+  if (el.addBtn) {
+    el.addBtn.textContent = editing ? "Update" : inserting ? "Insert" : "Add";
+  }
   if (el.cancelEditBtn) {
     el.cancelEditBtn.hidden = !editing && !inserting;
   }
@@ -272,7 +277,7 @@ function updateEntryChrome() {
 function cancelEditMode() {
   state.editingIndex = null;
   state.insertAfterIndex = null;
-  el.input.value = "";
+  if (el.input) el.input.value = "";
   hideSuggestions();
   showError("");
   updateEntryChrome();
@@ -280,6 +285,10 @@ function cancelEditMode() {
 }
 
 function renderRouteList() {
+  if (!el.routeList) {
+    updateEntryChrome();
+    return;
+  }
   el.routeList.innerHTML = "";
   updateEntryChrome();
   if (!state.route.length) {
@@ -434,8 +443,8 @@ function findNextWaypointIndex(gps, route) {
       state.activeLegIndex = Math.max(0, route.length - 2);
       return route.length - 1;
     }
-    // If already inside capture of that fix, treat next as the one after
-    const next = bestD <= CAPTURE_NM ? nearest + 1 : nearest + 1;
+    // Nearest fix is not yet the destination — fly toward the next one after it
+    const next = nearest + 1;
     state.activeLegIndex = Math.min(next - 1, route.length - 2);
     return Math.min(next, route.length - 1);
   }
@@ -527,11 +536,15 @@ function updateTotalsLine(legsCount, totalNm) {
 
 function renderLegs() {
   const { legs, totalNm } = computeLegs();
+  if (!el.legsBody) {
+    updateTotalsLine(legs.length, totalNm);
+    return;
+  }
   el.legsBody.innerHTML = "";
   const showMag = state.settings.showMagnetic;
 
-  document.getElementById("th-avg-mag").hidden = !showMag;
-  document.getElementById("th-init-mag").hidden = !showMag;
+  if (el.thAvgMag) el.thAvgMag.hidden = !showMag;
+  if (el.thInitMag) el.thInitMag.hidden = !showMag;
 
   legs.forEach((leg) => {
     const tr = document.createElement("tr");
@@ -580,7 +593,8 @@ function formatNatStatus(nat, extra = "") {
         : "TMI —";
   const n = (nat.tracks || []).length;
   const cache = nat.fromCache ? " · cached" : "";
-  const warn = nat.warning ? ` · ${nat.warning}` : "";
+  // Keep status short — full fetch errors stay in the panel message when nothing is loaded
+  const warn = (nat.warning || state.natFetchError) ? " · refresh failed" : "";
   return `${src} · ${n} tracks · ${when}${cache}${warn}${extra ? ` · ${extra}` : ""}`;
 }
 
@@ -591,8 +605,9 @@ function renderNatPanel() {
     return;
   }
   if (!state.nat) {
-    el.natStatus.textContent = "Not loaded";
-    el.natMessage.textContent = "No track message loaded yet. Tap Refresh.";
+    el.natStatus.textContent = state.natFetchError ? "Fetch failed" : "Not loaded";
+    el.natMessage.textContent =
+      state.natFetchError || "No track message loaded yet. Tap Refresh.";
     return;
   }
   el.natStatus.textContent = formatNatStatus(state.nat);
@@ -603,12 +618,10 @@ function renderNatPanel() {
       return `${t.id}${dir}: ${route}`;
     })
     .join("\n");
-  const body =
+  // Disclaimer lives in the static NAT panel note — don't duplicate it here
+  el.natMessage.textContent =
     (summary ? `Parsed tracks:\n${summary}\n\n────────\n\n` : "") +
     (state.nat.text || "");
-  el.natMessage.textContent =
-    "DISCLAIMER: This information may not be accurate. Educational / simulator use only — not certified for navigation.\n\n" +
-    body;
 }
 
 function paintChart(lite = false) {
@@ -655,7 +668,7 @@ function markChartInteracting() {
   }, 140);
 }
 
-function applyUiMode(mode) {
+function applyUiMode(mode, { paint = true } = {}) {
   state.uiMode = mode === "fly" ? "fly" : "edit";
   document.body.classList.toggle("ui-fly", state.uiMode === "fly");
   if (el.modeEditBtn) {
@@ -675,6 +688,7 @@ function applyUiMode(mode) {
   } catch {
     /* ignore */
   }
+  if (!paint) return;
   requestAnimationFrame(() => {
     requestAnimationFrame(() => renderChart());
   });
@@ -711,8 +725,12 @@ function startGpsWatch() {
       scheduleChartRender({ lite: false });
     },
     () => {
-      /* permission denied / unavailable — keep chart without ownship */
-      state.gps = null;
+      /* permission denied / unavailable — clear ownship if it was showing */
+      if (state.gps) {
+        state.gps = null;
+        updateTotalsLine();
+        scheduleChartRender({ lite: false });
+      }
     },
     {
       enableHighAccuracy: true,
@@ -734,6 +752,7 @@ function clampPan(pan) {
 }
 
 function applyChartPanPixels(dx, dy) {
+  if (!el.chart) return;
   const layout = state.lastChartLayout;
   const R =
     layout?.radius ||
@@ -864,9 +883,6 @@ function bindChartGestures() {
     markChartInteracting();
   };
   window.addEventListener("mouseup", endMousePan);
-  canvas.addEventListener("mouseleave", () => {
-    /* keep pan if button still down; mouseup on window clears */
-  });
 }
 
 async function refreshNatTracks({ openPanel = false } = {}) {
@@ -877,18 +893,13 @@ async function refreshNatTracks({ openPanel = false } = {}) {
   try {
     const result = await fetchNatTracks(state.db);
     if (!result.ok) {
-      const cached = loadCachedNatTracks();
-      if (cached) {
-        state.nat = { ...cached, fromCache: true, warning: result.error };
-      } else {
-        state.nat = null;
-        if (el.natMessage) el.natMessage.textContent = result.error;
-        if (el.natStatus) el.natStatus.textContent = "Fetch failed";
-      }
+      state.natFetchError = result.error || "Fetch failed";
+      // fetchNatTracks already attaches cache when available; keep last good tracks
+      if (!state.nat) state.nat = null;
     } else {
+      state.natFetchError = result.warning || "";
       state.nat = result;
     }
-    renderNatPanel();
     renderChart();
   } finally {
     state.natLoading = false;
@@ -906,7 +917,13 @@ function renderAll() {
 }
 
 function addWaypointFromInput() {
+  if (!el.input) return;
   const raw = el.input.value;
+  // Empty Add / Enter is a no-op — the route panel already shows the empty state
+  if (!String(raw || "").trim()) {
+    showError("");
+    return;
+  }
   const result = parseRouteString(raw, state.db);
   if (!result.ok) {
     showError(result.error);
@@ -939,11 +956,13 @@ function addWaypointFromInput() {
 }
 
 function hideSuggestions() {
+  if (!el.suggest) return;
   el.suggest.hidden = true;
   el.suggest.innerHTML = "";
 }
 
 function renderSuggestions() {
+  if (!el.input || !el.suggest) return;
   const q = el.input.value;
   const items = suggestWaypoints(q, state.db, 8);
   if (!q.trim() || !items.length) {
@@ -1076,7 +1095,6 @@ async function init() {
   ]);
   const wpData = await wpRes.json();
   state.db = wpData.waypoints || [];
-  state.meta = wpData;
   state.mdText = await mdRes.text();
 
   const date = wpData.accuracyVerifiedOn || "2026-07-26";
@@ -1096,12 +1114,10 @@ async function init() {
       .join("");
   }
 
-  applyTheme(loadThemePref());
-
-  // Load detailed Natural Earth land before first paint of globe
+  applyTheme(loadThemePref(), { paint: false });
   await loadLandData();
   bindChartGestures();
-  applyUiMode(loadUiMode());
+  applyUiMode(loadUiMode(), { paint: false });
   renderAll();
   renderNatPanel();
   startGpsWatch();
@@ -1125,29 +1141,29 @@ async function init() {
     }
   });
 
-  el.addBtn.addEventListener("click", addWaypointFromInput);
-  el.input.addEventListener("keydown", (e) => {
+  el.addBtn?.addEventListener("click", addWaypointFromInput);
+  el.input?.addEventListener("keydown", (e) => {
     if (e.key === "Enter") {
       e.preventDefault();
       addWaypointFromInput();
     }
   });
-  el.input.addEventListener("input", renderSuggestions);
-  el.suggest.addEventListener("click", (e) => {
+  el.input?.addEventListener("input", renderSuggestions);
+  el.suggest?.addEventListener("click", (e) => {
     const btn = e.target.closest("[data-name]");
-    if (!btn) return;
+    if (!btn || !el.input) return;
     el.input.value = btn.dataset.name;
     hideSuggestions();
     addWaypointFromInput();
   });
-  el.input.addEventListener("blur", () => {
+  el.input?.addEventListener("blur", () => {
     // Allow suggestion button click to fire first
     setTimeout(() => {
-      if (!el.suggest.contains(document.activeElement)) hideSuggestions();
+      if (!el.suggest?.contains(document.activeElement)) hideSuggestions();
     }, 150);
   });
 
-  el.clearBtn.addEventListener("click", () => {
+  el.clearBtn?.addEventListener("click", () => {
     if (state.editingIndex != null || state.insertAfterIndex != null) {
       cancelEditMode();
       return;
@@ -1162,7 +1178,7 @@ async function init() {
     el.cancelEditBtn.addEventListener("click", cancelEditMode);
   }
 
-  el.routeList.addEventListener("click", (e) => {
+  el.routeList?.addEventListener("click", (e) => {
     const btn = e.target.closest("button");
     if (!btn) return;
     if (btn.dataset.edit != null) {
@@ -1224,33 +1240,29 @@ async function init() {
     }
   });
 
-  el.magToggle.addEventListener("change", () => {
+  el.magToggle?.addEventListener("change", () => {
     state.settings.showMagnetic = el.magToggle.checked;
     saveSettings();
     renderLegs();
   });
-  if (el.airspaceToggle) {
-    el.airspaceToggle.addEventListener("change", () => {
-      state.settings.showAirspace = el.airspaceToggle.checked;
-      saveSettings();
-      renderChart();
-    });
-  }
-  if (el.rwyLabelsToggle) {
-    el.rwyLabelsToggle.addEventListener("change", () => {
-      state.settings.showRwyLabels = el.rwyLabelsToggle.checked;
-      saveSettings();
-      renderChart();
-    });
-  }
+  el.airspaceToggle?.addEventListener("change", () => {
+    state.settings.showAirspace = el.airspaceToggle.checked;
+    saveSettings();
+    renderChart();
+  });
+  el.rwyLabelsToggle?.addEventListener("change", () => {
+    state.settings.showRwyLabels = el.rwyLabelsToggle.checked;
+    saveSettings();
+    renderChart();
+  });
 
-  el.settingsBtn.addEventListener("click", () => {
-    el.settingsPanel.hidden = false;
+  el.settingsBtn?.addEventListener("click", () => {
+    if (el.settingsPanel) el.settingsPanel.hidden = false;
   });
-  el.settingsClose.addEventListener("click", () => {
-    el.settingsPanel.hidden = true;
+  el.settingsClose?.addEventListener("click", () => {
+    if (el.settingsPanel) el.settingsPanel.hidden = true;
   });
-  el.settingsPanel.addEventListener("click", (e) => {
+  el.settingsPanel?.addEventListener("click", (e) => {
     if (e.target === el.settingsPanel) el.settingsPanel.hidden = true;
   });
 
@@ -1266,49 +1278,40 @@ async function init() {
     });
   }
 
-  el.openMdBtn.addEventListener("click", () => {
+  el.openMdBtn?.addEventListener("click", () => {
+    if (!el.mdContent || !el.mdPanel) return;
     el.mdContent.innerHTML = simpleMarkdownToHtml(state.mdText);
     el.mdPanel.hidden = false;
   });
-  el.mdClose.addEventListener("click", () => {
-    el.mdPanel.hidden = true;
+  el.mdClose?.addEventListener("click", () => {
+    if (el.mdPanel) el.mdPanel.hidden = true;
   });
-  el.mdPanel.addEventListener("click", (e) => {
+  el.mdPanel?.addEventListener("click", (e) => {
     if (e.target === el.mdPanel) el.mdPanel.hidden = true;
   });
 
-  if (el.natTracksBtn) {
+  if (el.natTracksBtn && el.natPanel) {
     el.natTracksBtn.addEventListener("click", () => {
       el.natPanel.hidden = false;
       renderNatPanel();
     });
   }
-  if (el.natClose) {
-    el.natClose.addEventListener("click", () => {
-      el.natPanel.hidden = true;
-    });
-  }
-  if (el.natPanel) {
-    el.natPanel.addEventListener("click", (e) => {
-      if (e.target === el.natPanel) el.natPanel.hidden = true;
-    });
-  }
-  if (el.natRefreshBtn) {
-    el.natRefreshBtn.addEventListener("click", () => refreshNatTracks());
-  }
-  const syncEastWestFromHeader = () => {
+  el.natClose?.addEventListener("click", () => {
+    if (el.natPanel) el.natPanel.hidden = true;
+  });
+  el.natPanel?.addEventListener("click", (e) => {
+    if (e.target === el.natPanel) el.natPanel.hidden = true;
+  });
+  el.natRefreshBtn?.addEventListener("click", () => refreshNatTracks());
+
+  const syncEastWestTracks = () => {
     state.settings.showEastTracks = !!el.showEastTracks?.checked;
     state.settings.showWestTracks = !!el.showWestTracks?.checked;
     saveSettings();
     renderChart();
   };
-
-  if (el.showEastTracks) {
-    el.showEastTracks.addEventListener("change", syncEastWestFromHeader);
-  }
-  if (el.showWestTracks) {
-    el.showWestTracks.addEventListener("change", syncEastWestFromHeader);
-  }
+  el.showEastTracks?.addEventListener("change", syncEastWestTracks);
+  el.showWestTracks?.addEventListener("change", syncEastWestTracks);
 
   let resizeTimer = 0;
   window.addEventListener("resize", () => {
