@@ -17,7 +17,7 @@
     <link rel="shortcut icon" href="icons/favicon.png" />
     <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
     <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
-    <link rel="stylesheet" href="css/styles.css?v=1.4" />
+    <link rel="stylesheet" href="css/styles.css?v=1.5" />
     <title>MyNatTrack</title>
     <!--
       Critical header: full-width 3-col grid.
@@ -135,7 +135,10 @@
 
     <main class="main">
       <section class="panel" id="route-panel">
-        <h2>Route</h2>
+        <h2 class="route-title">
+          <span class="route-label">Route</span>
+          <span id="route-hint" class="route-hint"></span>
+        </h2>
         <div class="panel-body">
           <div class="entry-row">
             <input
@@ -153,7 +156,6 @@
             <button type="button" class="secondary" id="clear-btn">Clear</button>
             <div id="suggest" hidden></div>
           </div>
-          <p id="route-hint" class="route-hint"></p>
           <p id="error" hidden></p>
           <ul class="route-list" id="route-list"></ul>
         </div>
@@ -162,12 +164,19 @@
       <div class="right-stack">
         <section class="panel" id="chart-panel">
           <div class="panel-head chart-toolbar">
-            <div class="utc-chip" title="Coordinated Universal Time" aria-live="polite">
-              <span class="utc-chip-time mono" id="chart-utc-clock">——:——:——</span>
-              <span class="utc-chip-label">UTC</span>
+            <div class="chart-toolbar-top">
+              <div class="utc-chip" title="Coordinated Universal Time" aria-live="polite">
+                <span class="utc-chip-time mono" id="chart-utc-clock">——:——:——</span>
+                <span class="utc-chip-label">UTC</span>
+              </div>
+              <div class="chart-toolbar-actions">
+                <button type="button" class="secondary compact" id="nat-tracks-btn">NAT Tracks</button>
+                <button type="button" class="secondary compact" id="chart-fullscreen-btn" aria-pressed="false" title="Full screen chart">
+                  Full screen
+                </button>
+              </div>
             </div>
-            <div class="chart-toggles">
-              <button type="button" class="secondary compact" id="nat-tracks-btn">NAT Tracks</button>
+            <div class="chart-toolbar-toggles">
               <label class="chart-toggle" for="valid-only-tracks" title="Hide tracks outside their validity window">
                 <input type="checkbox" id="valid-only-tracks" checked />
                 <span class="toggle-label-full">Valid only</span>
@@ -182,9 +191,6 @@
                 <span class="toggle-label-full">Show West Tracks</span>
                 <span class="toggle-label-short">West</span>
               </label>
-              <button type="button" class="secondary compact" id="chart-fullscreen-btn" aria-pressed="false" title="Full screen chart">
-                Full screen
-              </button>
             </div>
           </div>
           <div class="chart-wrap">
@@ -315,7 +321,23 @@
         </section>
 
         <div class="settings-footer">
-          <span class="settings-version muted" aria-label="App version">v1.4</span>
+          <a
+            class="secondary compact settings-doc007-btn"
+            id="ops-group-btn"
+            href="https://ops.group/blog/tag/nat-hla/"
+            target="_blank"
+            rel="noopener noreferrer"
+            title="OPSGROUP NAT HLA articles"
+          >ops group</a>
+          <a
+            class="secondary compact settings-doc007-btn"
+            id="nat-doc007-btn"
+            href="https://www.icao.int/sites/default/files/EURNAT/Documents/EUR%20and%20Nat%20Docs/NAT%20Documents/NAT%20Documents/NAT%20Doc%20007/NAT-Doc-007-EN-Edition-V.2026-1-Amd-0.pdf"
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Opens ICAO NAT Doc 007 (current edition V.2026-1). ICAO puts the edition in the filename — no permanent “latest.pdf” URL exists; when a new edition is published, this link is updated in the app. Browse all editions via EUR &amp; NAT Documents on icao.int."
+          >Download Latest Nat Doc 007</a>
+          <span class="settings-version muted" aria-label="App version">v1.5</span>
         </div>
       </div>
     </div>
@@ -514,6 +536,6 @@
       </div>
     </div>
 
-    <script type="module" src="js/app.js?v=1.4"></script>
+    <script type="module" src="js/app.js?v=1.5"></script>
   </body>
 </html>

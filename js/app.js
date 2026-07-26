@@ -28,6 +28,11 @@ import {
 
 const STORAGE_KEY = "mynattrack_route_v1";
 const SETTINGS_KEY = "mynattrack_settings_v1";
+/** Waypoints learned silently from NAT track messages (coords already in the message). */
+const LEARNED_WP_KEY = "mynattrack_learned_waypoints_v1";
+const LEARNED_VERIFIED_KEY = "mynattrack_accuracy_verified_v1";
+const LEARNED_MD_START = "<!-- LEARNED-NAT-START -->";
+const LEARNED_MD_END = "<!-- LEARNED-NAT-END -->";
 
 const state = {
   db: [],
@@ -46,6 +51,10 @@ const state = {
     validOnlyTracks: true,
   },
   mdText: "",
+  /** Original bundled markdown before learned-NAT section is merged */
+  mdBaseText: "",
+  /** Bundled waypoints.json accuracy date; may be superseded by learned updates */
+  accuracyVerifiedOn: "",
   nat: null,
   /** Last NAT fetch failure (shown only in the NAT panel) */
   natFetchError: "",
@@ -242,6 +251,216 @@ function saveRoute() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state.route));
 }
 
+function loadLearnedWaypoints() {
+  try {
+    const raw = localStorage.getItem(LEARNED_WP_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveLearnedWaypoints(list) {
+  try {
+    localStorage.setItem(LEARNED_WP_KEY, JSON.stringify(list));
+  } catch {
+    /* quota / private mode — ignore silently */
+  }
+}
+
+function mergeLearnedWaypointsIntoDb() {
+  const learned = loadLearnedWaypoints();
+  if (!learned.length) return;
+  const known = new Set(state.db.map((w) => String(w.name || "").toUpperCase()));
+  for (const w of learned) {
+    const name = String(w?.name || "").toUpperCase();
+    if (!name || !Number.isFinite(w.lat) || !Number.isFinite(w.lon)) continue;
+    if (known.has(name)) continue;
+    state.db.push({
+      id: w.id || name,
+      name,
+      lat: w.lat,
+      lon: w.lon,
+      accuracy: w.accuracy || "approximate",
+      category: w.category || "nat-track",
+      notes: w.notes || "Learned from NAT tracks message",
+    });
+    known.add(name);
+  }
+}
+
+function todayUtcDate() {
+  const d = new Date();
+  const yyyy = d.getUTCFullYear();
+  const mo = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const dd = String(d.getUTCDate()).padStart(2, "0");
+  return `${yyyy}-${mo}-${dd}`;
+}
+
+function loadStoredAccuracyDate() {
+  try {
+    return localStorage.getItem(LEARNED_VERIFIED_KEY) || "";
+  } catch {
+    return "";
+  }
+}
+
+function setAccuracyVerifiedDate(isoDate) {
+  if (!isoDate) return;
+  state.accuracyVerifiedOn = isoDate;
+  try {
+    localStorage.setItem(LEARNED_VERIFIED_KEY, isoDate);
+  } catch {
+    /* ignore */
+  }
+  if (el.settingsVerify) {
+    el.settingsVerify.textContent = `Waypoint accuracy last verified on ${isoDate}`;
+  }
+}
+
+function formatMdLatLon(lat, lon) {
+  const latH = lat >= 0 ? "N" : "S";
+  const lonH = lon >= 0 ? "E" : "W";
+  return {
+    lat: `${Math.abs(lat).toFixed(4)}° ${latH}`,
+    lon: `${Math.abs(lon).toFixed(4)}° ${lonH}`,
+  };
+}
+
+function buildLearnedMarkdownSection(waypoints) {
+  if (!waypoints.length) return "";
+  const rows = waypoints
+    .slice()
+    .sort((a, b) => String(a.name).localeCompare(String(b.name)))
+    .map((w) => {
+      const { lat, lon } = formatMdLatLon(w.lat, w.lon);
+      return `| ${w.name} | ${lat} | ${lon} | Learned from NAT tracks message |`;
+    })
+    .join("\n");
+  return `${LEARNED_MD_START}
+## Learned from NAT track messages
+
+Coordinate fixes absorbed from downloaded OTS track routings (approximate; educational only).
+
+| Waypoint | Latitude | Longitude | Notes |
+|----------|-------------------|-------------------|---------------------------------------------|
+${rows}
+
+${LEARNED_MD_END}
+`;
+}
+
+function mergeLearnedIntoMarkdown(baseMd, learned) {
+  const base = String(baseMd || "").replace(
+    new RegExp(
+      `${LEARNED_MD_START}[\\s\\S]*?${LEARNED_MD_END}\\n?`,
+      "g"
+    ),
+    ""
+  );
+  const section = buildLearnedMarkdownSection(learned);
+  if (!section) return base.trimEnd() + "\n";
+  return `${base.trimEnd()}\n\n${section}`;
+}
+
+function refreshMarkdownWithLearned() {
+  const learned = loadLearnedWaypoints();
+  if (!state.mdText) return;
+  // Keep a clean base once; re-merge learned section each time
+  if (!state.mdBaseText) state.mdBaseText = state.mdText;
+  state.mdText = mergeLearnedIntoMarkdown(state.mdBaseText, learned);
+}
+
+async function persistLearnedWaypointsToServer(newEntries, verifiedOn) {
+  if (!newEntries?.length) return;
+  try {
+    await fetch("./api/learn-waypoints", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        waypoints: newEntries,
+        accuracyVerifiedOn: verifiedOn,
+      }),
+    });
+  } catch {
+    /* GitHub Pages / offline — localStorage + in-app MD still updated */
+  }
+}
+
+/**
+ * Silently add NAT-track fixes (with coordinates) that are missing from the
+ * bundled waypoint DB. No UI messages — runs in the background after refresh.
+ */
+function absorbUnknownTrackWaypoints(tracks) {
+  try {
+    const learned = loadLearnedWaypoints();
+    const known = new Set(state.db.map((w) => String(w.name || "").toUpperCase()));
+    for (const w of learned) {
+      const n = String(w?.name || "").toUpperCase();
+      if (n) known.add(n);
+    }
+    const newly = [];
+    for (const track of tracks || []) {
+      for (const p of track.points || []) {
+        const name = String(p?.name || "").trim().toUpperCase();
+        if (!name || known.has(name)) continue;
+        if (!Number.isFinite(p.lat) || !Number.isFinite(p.lon)) continue;
+        const entry = {
+          id: name,
+          name,
+          lat: p.lat,
+          lon: p.lon,
+          accuracy: "approximate",
+          category: "nat-track",
+          notes: "Learned from NAT tracks message",
+          source: "nat-tracks",
+        };
+        state.db.push(entry);
+        learned.push(entry);
+        newly.push(entry);
+        known.add(name);
+      }
+    }
+    if (!newly.length) return;
+    saveLearnedWaypoints(learned);
+    const verifiedOn = todayUtcDate();
+    setAccuracyVerifiedDate(verifiedOn);
+    refreshMarkdownWithLearned();
+    persistLearnedWaypointsToServer(newly, verifiedOn);
+  } catch {
+    /* never surface to the pilot */
+  }
+}
+
+function scheduleAbsorbTrackWaypoints(tracks) {
+  const run = () => absorbUnknownTrackWaypoints(tracks);
+  if (typeof requestIdleCallback === "function") {
+    requestIdleCallback(run, { timeout: 2500 });
+  } else {
+    setTimeout(run, 0);
+  }
+}
+
+/** A2903 / 11" iPad class — logical screen 820×1180. */
+function syncA2903ViewportClass() {
+  try {
+    const w = window.screen?.width || 0;
+    const h = window.screen?.height || 0;
+    const shortSide = Math.min(w, h);
+    const longSide = Math.max(w, h);
+    const match =
+      shortSide >= 800 &&
+      shortSide <= 840 &&
+      longSide >= 1160 &&
+      longSide <= 1200;
+    document.body.classList.toggle("viewport-a2903", match);
+  } catch {
+    /* ignore */
+  }
+}
+
 function computeLegs() {
   const legs = [];
   let totalNm = 0;
@@ -280,7 +499,40 @@ function enrichPoint(p) {
   return p;
 }
 
+/** Keep instruction text beside ROUTE even if an old SW cached the prior HTML. */
+function ensureRouteHintPlacement() {
+  const hint = el.routeHint || document.getElementById("route-hint");
+  const panel = document.getElementById("route-panel");
+  if (!hint || !panel) return;
+  el.routeHint = hint;
+  let title = panel.querySelector("h2.route-title") || panel.querySelector(":scope > h2");
+  if (!title) {
+    title = document.createElement("h2");
+    title.className = "route-title";
+    title.innerHTML = `<span class="route-label">Route</span>`;
+    panel.insertBefore(title, panel.firstChild);
+  } else {
+    title.classList.add("route-title");
+    if (!title.querySelector(".route-label")) {
+      const label = document.createElement("span");
+      label.className = "route-label";
+      label.textContent = "Route";
+      title.insertBefore(label, title.firstChild);
+      // Drop bare "Route" text nodes left from older markup
+      for (const node of [...title.childNodes]) {
+        if (node.nodeType === Node.TEXT_NODE && node.textContent.trim()) {
+          title.removeChild(node);
+        }
+      }
+    }
+  }
+  if (hint.parentElement !== title) {
+    title.appendChild(hint);
+  }
+}
+
 function updateEntryChrome() {
+  ensureRouteHintPlacement();
   const editing = state.editingIndex != null;
   const inserting = state.insertAfterIndex != null && !editing;
   if (el.addBtn) {
@@ -706,10 +958,23 @@ function formatNatStatus(nat, extra = "") {
   const when = formatUtcStamp(nat.fetchedAt);
   const n = (nat.tracks || []).length;
   const cache = nat.fromCache ? " · cached" : "";
-  // Keep status short — full fetch errors stay in the panel message when nothing is loaded
-  const warn = (nat.warning || state.natFetchError) ? " · refresh failed" : "";
-  const suffix = `${cache}${warn}${extra ? ` · ${extra}` : ""}`;
+  // Never surface refresh/lookup failures once tracks are shown
+  const suffix = `${cache}${extra ? ` · ${extra}` : ""}`;
   return `${n} tracks · Update checked:\n${when}${suffix}`;
+}
+
+/** Transient network failures — keep last tracks; no pilot-facing error. */
+function isSilentNatFetchFailure(message) {
+  const m = String(message || "").toLowerCase();
+  return (
+    m.includes("abort") ||
+    m.includes("timeout") ||
+    m.includes("timed out") ||
+    m.includes("networkerror") ||
+    m.includes("failed to fetch") ||
+    m.includes("load failed") ||
+    m.includes("the operation was aborted")
+  );
 }
 
 function renderNatPanel() {
@@ -723,10 +988,15 @@ function renderNatPanel() {
   if (!state.nat) {
     if (el.natTmi) el.natTmi.textContent = "TMI —";
     if (el.natStatus) {
-      el.natStatus.textContent = state.natFetchError ? "Fetch failed" : "Not loaded";
+      el.natStatus.textContent =
+        state.natFetchError && !isSilentNatFetchFailure(state.natFetchError)
+          ? "Fetch failed"
+          : "Not loaded";
     }
     el.natMessage.textContent =
-      state.natFetchError || "No track message loaded yet. Tap Refresh.";
+      state.natFetchError && !isSilentNatFetchFailure(state.natFetchError)
+        ? state.natFetchError
+        : "No track message loaded yet. Tap Refresh.";
     return;
   }
   if (el.natTmi) el.natTmi.textContent = formatNatTmi(state.nat);
@@ -1014,14 +1284,26 @@ async function refreshNatTracks({ openPanel = false } = {}) {
   try {
     const result = await fetchNatTracks(state.db);
     if (!result.ok) {
-      state.natFetchError = result.error || "Fetch failed";
-      // fetchNatTracks already attaches cache when available; keep last good tracks
-      if (!state.nat) state.nat = null;
+      // Keep last good tracks; only show an error if nothing is loaded yet
+      // and the failure is not a silent timeout/abort/network blip
+      if (state.nat) {
+        state.natFetchError = "";
+      } else if (isSilentNatFetchFailure(result.error)) {
+        state.natFetchError = "";
+      } else {
+        state.natFetchError = result.error || "Fetch failed";
+      }
     } else {
-      state.natFetchError = result.warning || "";
+      // Cache fallback after online miss: keep tracks, never flash a warning
+      if (result.warning) delete result.warning;
+      state.natFetchError = "";
       state.nat = result;
+      scheduleAbsorbTrackWaypoints(result.tracks || []);
     }
     renderChart();
+  } catch {
+    // Interrupted / timed out refresh — keep current tracks, no error UI
+    if (state.nat) state.natFetchError = "";
   } finally {
     state.natLoading = false;
     if (el.natRefreshBtn) el.natRefreshBtn.disabled = false;
@@ -1202,6 +1484,7 @@ function escapeHtml(s) {
 async function init() {
   await ensureUnlocked();
 
+  ensureRouteHintPlacement();
   loadSettings();
   loadRoute();
 
@@ -1216,12 +1499,19 @@ async function init() {
   ]);
   const wpData = await wpRes.json();
   state.db = wpData.waypoints || [];
-  state.mdText = await mdRes.text();
-
-  const date = wpData.accuracyVerifiedOn || "2026-07-26";
-  if (el.settingsVerify) {
-    el.settingsVerify.textContent = `Waypoint accuracy last verified on ${date}`;
+  mergeLearnedWaypointsIntoDb();
+  state.mdBaseText = await mdRes.text();
+  state.mdText = state.mdBaseText;
+  refreshMarkdownWithLearned();
+  if (state.nat?.tracks?.length) {
+    scheduleAbsorbTrackWaypoints(state.nat.tracks);
   }
+
+  const bundledDate = wpData.accuracyVerifiedOn || "2026-07-26";
+  const learnedDate = loadStoredAccuracyDate();
+  const date =
+    learnedDate && learnedDate >= bundledDate ? learnedDate : bundledDate;
+  setAccuracyVerifiedDate(date);
   if (el.magvarTableDate) {
     el.magvarTableDate.textContent = `(magvar tables ${MAGVAR_TABLE_DATE}; ${MAGVAR_DRIFT_REMARK})`;
   }
@@ -1234,6 +1524,12 @@ async function init() {
       })
       .join("");
   }
+
+  syncA2903ViewportClass();
+  window.addEventListener("resize", syncA2903ViewportClass);
+  window.addEventListener("orientationchange", () => {
+    setTimeout(syncA2903ViewportClass, 250);
+  });
 
   applyTheme(loadThemePref(), { paint: false });
   await loadLandData();

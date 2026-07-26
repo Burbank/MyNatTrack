@@ -390,22 +390,92 @@ html.theme-bright .panel {
 }
 
 .chart-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   padding: 0.35rem 0.65rem 0.35rem 0.55rem;
   min-height: 0;
-  gap: 0.65rem;
+  gap: 0.45rem 0.65rem;
 }
 
-.chart-toolbar #nat-tracks-btn {
+.chart-toolbar-top {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.chart-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
   flex-shrink: 0;
+  margin-left: auto;
 }
 
-.chart-toggles {
+.chart-toolbar-toggles {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: flex-end;
-  gap: 0.55rem 0.75rem;
+  gap: 0.45rem 0.75rem;
   margin-left: auto;
+}
+
+.chart-toolbar #nat-tracks-btn,
+.chart-toolbar #chart-fullscreen-btn {
+  flex-shrink: 0;
+}
+
+/*
+ * A2903 / 11" iPad class (logical screen 820×1180).
+ * Chart panel is often half-width, so stack: clock+buttons on top, ticks below.
+ */
+body.viewport-a2903 .chart-toolbar {
+  flex-direction: column;
+  align-items: stretch;
+  flex-wrap: nowrap;
+  gap: 0.35rem;
+}
+
+body.viewport-a2903 .chart-toolbar-top {
+  width: 100%;
+  justify-content: space-between;
+}
+
+body.viewport-a2903 .chart-toolbar-actions {
+  margin-left: 0;
+}
+
+body.viewport-a2903 .chart-toolbar-toggles {
+  width: 100%;
+  justify-content: flex-start;
+  margin-left: 0;
+}
+
+@media only screen and (min-device-width: 800px) and (max-device-width: 1180px) and (-webkit-min-device-pixel-ratio: 2) {
+  body:not(.viewport-a2903-off) .chart-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    flex-wrap: nowrap;
+    gap: 0.35rem;
+  }
+
+  body:not(.viewport-a2903-off) .chart-toolbar-top {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  body:not(.viewport-a2903-off) .chart-toolbar-actions {
+    margin-left: 0;
+  }
+
+  body:not(.viewport-a2903-off) .chart-toolbar-toggles {
+    width: 100%;
+    justify-content: flex-start;
+    margin-left: 0;
+  }
 }
 
 .utc-chip {
@@ -702,11 +772,53 @@ html.theme-bright .chart-toggle {
   align-items: start;
 }
 
-.route-hint {
-  margin: 0.55rem 0 0;
+/* Hint sits beside ROUTE in the same heading row */
+#route-panel > h2.route-title {
+  display: grid !important;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: baseline;
+  column-gap: 0.55rem;
+  margin: 0;
+  padding: 0.45rem 0.75rem 0.45rem 0.85rem;
+  border-bottom: 1px solid var(--line);
+  width: 100%;
+  box-sizing: border-box;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+#route-panel > h2.route-title .route-label {
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
   color: var(--muted);
-  font-size: 0.8rem;
-  line-height: 1.35;
+  font-size: 0.95rem;
+  font-weight: 650;
+  line-height: 1.2;
+}
+
+#route-panel > h2.route-title .route-hint,
+#route-panel .route-hint {
+  display: block !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 400;
+  line-height: 1.25;
+  letter-spacing: 0;
+  text-transform: none !important;
+  text-align: left;
+}
+
+#route-panel > h2.route-title .route-hint[hidden],
+#route-panel .route-hint[hidden] {
+  display: none !important;
+}
+
+/* Kill leftover spacing if an old cached layout left a hint under the entry row */
+#route-panel .panel-body > .route-hint {
+  display: none !important;
 }
 
 .route-item.editing {
@@ -827,19 +939,19 @@ html.theme-bright .icon-btn {
 
 .route-list {
   list-style: none;
-  margin: 0.75rem 0 0;
+  margin: 0.55rem 0 0;
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
+  gap: 0.28rem;
 }
 
 .route-item {
   display: grid;
-  grid-template-columns: 2rem minmax(0, 1fr) auto;
-  gap: 0.45rem;
+  grid-template-columns: 1.6rem minmax(0, 1fr) auto;
+  gap: 0.2rem 0.4rem;
   align-items: center;
-  padding: 0.55rem 0.6rem;
+  padding: 0.32rem 0.45rem;
   background: var(--soft-panel);
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -853,11 +965,15 @@ html.theme-bright .route-item {
 .route-item .idx {
   color: var(--muted);
   font-family: var(--mono);
+  font-size: 0.85rem;
+  line-height: 1.2;
 }
 
 .route-item .name {
   font-weight: 650;
   letter-spacing: 0.04em;
+  font-size: 0.95rem;
+  line-height: 1.2;
 }
 
 .route-item .coords {
@@ -865,29 +981,33 @@ html.theme-bright .route-item {
   grid-row: 2;
   color: var(--muted);
   font-family: var(--mono);
-  font-size: 0.82rem;
+  font-size: 0.75rem;
+  line-height: 1.2;
 }
 
 .route-item .actions {
   grid-column: 3;
   grid-row: 1 / span 2;
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  align-items: center;
   justify-content: flex-end;
-  gap: 0.25rem;
-  max-width: 11rem;
+  gap: 0.2rem;
+  max-width: none;
 }
 
 .route-item .actions button {
-  min-width: 2.2rem;
-  min-height: 2.2rem;
+  flex: 0 0 auto;
+  min-width: 1.85rem;
+  min-height: 1.85rem;
   border-radius: 6px;
   border: 1px solid var(--line);
   background: var(--bg-elevated);
   color: var(--text);
   cursor: pointer;
-  font-size: 0.78rem;
-  padding: 0 0.35rem;
+  font-size: 0.72rem;
+  padding: 0 0.28rem;
+  line-height: 1;
 }
 
 .route-item .actions button.danger {
@@ -981,22 +1101,15 @@ body.chart-fullscreen #chart-panel {
 }
 
 body.chart-fullscreen #chart-panel .chart-toolbar {
-  display: flex;
-  flex-wrap: nowrap;
-  align-items: center;
-  gap: 0.5rem;
   flex-shrink: 0;
   position: relative;
   z-index: 2;
   background: var(--bg-panel);
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
 }
 
-body.chart-fullscreen #chart-panel .chart-toggles {
-  flex-wrap: nowrap;
-  margin-left: auto;
-  gap: 0.45rem 0.65rem;
+body.chart-fullscreen.viewport-a2903 #chart-panel .chart-toolbar {
+  flex-direction: column;
+  align-items: stretch;
 }
 
 /* Same Valid only / East / West controls as normal view — only NAT Tracks is hidden */
@@ -1079,9 +1192,10 @@ table.legs th {
 
 .settings-footer {
   display: flex;
-  align-items: flex-end;
+  flex-wrap: wrap;
+  align-items: center;
   justify-content: flex-end;
-  gap: 1rem;
+  gap: 0.65rem 0.85rem;
   margin-top: 1.25rem;
   padding-top: 0.75rem;
   border-top: 1px solid var(--line);
@@ -1089,6 +1203,19 @@ table.legs th {
 
 .settings-liability .verify-line {
   margin: 0.35rem 0 0;
+}
+
+a.settings-doc007-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  min-height: 2.35rem;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.78rem;
+  font-weight: 650;
+  line-height: 1.2;
+  white-space: nowrap;
 }
 
 .settings-version {

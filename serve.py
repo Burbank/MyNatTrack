@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import socket
 import socketserver
 import urllib.error
@@ -48,6 +49,13 @@ class QuietHandler(SimpleHTTPRequestHandler):
             self._proxy_nat_tracks()
             return
         super().do_GET()
+
+    def do_POST(self) -> None:  # noqa: N802
+        path = self.path.split("?", 1)[0]
+        if path in ("/api/learn-waypoints", "/api/learn-waypoints/"):
+            self._learn_waypoints()
+            return
+        self.send_error(404, "Not found")
 
     def _send_json(self, status: int, payload: dict) -> None:
         out = json.dumps(payload).encode("utf-8")
@@ -123,6 +131,149 @@ class QuietHandler(SimpleHTTPRequestHandler):
         self._send_json(
             502,
             {"error": "; ".join(errors) or "NAT fetch failed", "source": "proxy"},
+        )
+
+    def _learn_waypoints(self) -> None:
+        """Merge learned NAT fixes into waypoints.json + reference markdown (local Mac only)."""
+        try:
+            length = int(self.headers.get("Content-Length", "0") or "0")
+        except ValueError:
+            length = 0
+        raw = self.rfile.read(length) if length > 0 else b"{}"
+        try:
+            payload = json.loads(raw.decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError):
+            self._send_json(400, {"ok": False, "error": "invalid json"})
+            return
+
+        incoming = payload.get("waypoints") or []
+        if not isinstance(incoming, list) or not incoming:
+            self._send_json(200, {"ok": True, "added": 0})
+            return
+
+        verified = str(payload.get("accuracyVerifiedOn") or "").strip()
+        root = os.path.dirname(os.path.abspath(__file__))
+        wp_path = os.path.join(root, "data", "waypoints.json")
+        md_path = os.path.join(root, "docs", "NAT_HLA_Waypoints_Reference.md")
+        marker_start = "<!-- LEARNED-NAT-START -->"
+        marker_end = "<!-- LEARNED-NAT-END -->"
+
+        try:
+            with open(wp_path, "r", encoding="utf-8") as f:
+                wp_data = json.load(f)
+        except (OSError, json.JSONDecodeError) as exc:
+            self._send_json(500, {"ok": False, "error": f"waypoints read: {exc}"})
+            return
+
+        existing = wp_data.get("waypoints") or []
+        by_name = {
+            str(w.get("name") or "").upper(): w
+            for w in existing
+            if isinstance(w, dict)
+        }
+        added = 0
+        for item in incoming:
+            if not isinstance(item, dict):
+                continue
+            name = str(item.get("name") or "").strip().upper()
+            try:
+                lat = float(item.get("lat"))
+                lon = float(item.get("lon"))
+            except (TypeError, ValueError):
+                continue
+            if not name or name in by_name:
+                continue
+            entry = {
+                "id": name,
+                "name": name,
+                "lat": lat,
+                "lon": lon,
+                "category": "nat-track",
+                "region": "learned",
+                "accuracy": "approximate",
+                "notes": "Learned from NAT tracks message",
+            }
+            existing.append(entry)
+            by_name[name] = entry
+            added += 1
+
+        if verified:
+            wp_data["accuracyVerifiedOn"] = verified
+        wp_data["waypoints"] = existing
+        try:
+            with open(wp_path, "w", encoding="utf-8") as f:
+                json.dump(wp_data, f, indent=2, ensure_ascii=False)
+                f.write("\n")
+        except OSError as exc:
+            self._send_json(500, {"ok": False, "error": f"waypoints write: {exc}"})
+            return
+
+        # Rebuild learned markdown section from all learned-category waypoints
+        learned_rows = [
+            w
+            for w in existing
+            if isinstance(w, dict)
+            and (
+                w.get("category") == "nat-track"
+                or str(w.get("notes") or "").startswith("Learned from NAT")
+            )
+        ]
+        learned_rows.sort(key=lambda w: str(w.get("name") or ""))
+        md_rows = []
+        for w in learned_rows:
+            try:
+                lat = float(w["lat"])
+                lon = float(w["lon"])
+            except (KeyError, TypeError, ValueError):
+                continue
+            lat_h = "N" if lat >= 0 else "S"
+            lon_h = "E" if lon >= 0 else "W"
+            md_rows.append(
+                f"| {w.get('name')} | {abs(lat):.4f}° {lat_h} | {abs(lon):.4f}° {lon_h} | "
+                f"Learned from NAT tracks message |"
+            )
+        section = ""
+        if md_rows:
+            section = (
+                f"{marker_start}\n"
+                "## Learned from NAT track messages\n\n"
+                "Coordinate fixes absorbed from downloaded OTS track routings "
+                "(approximate; educational only).\n\n"
+                "| Waypoint | Latitude | Longitude | Notes |\n"
+                "|----------|-------------------|-------------------|---------------------------------------------|\n"
+                + "\n".join(md_rows)
+                + f"\n\n{marker_end}\n"
+            )
+
+        try:
+            with open(md_path, "r", encoding="utf-8") as f:
+                md_text = f.read()
+            md_text = re.sub(
+                rf"{re.escape(marker_start)}[\s\S]*?{re.escape(marker_end)}\n?",
+                "",
+                md_text,
+            ).rstrip()
+            if section:
+                md_text = md_text + "\n\n" + section
+            else:
+                md_text = md_text + "\n"
+            with open(md_path, "w", encoding="utf-8") as f:
+                f.write(md_text)
+        except OSError as exc:
+            self._send_json(
+                200,
+                {
+                    "ok": True,
+                    "added": added,
+                    "markdownError": str(exc),
+                    "accuracyVerifiedOn": verified or None,
+                },
+            )
+            return
+
+        self._send_json(
+            200,
+            {"ok": True, "added": added, "accuracyVerifiedOn": verified or None},
         )
 
 

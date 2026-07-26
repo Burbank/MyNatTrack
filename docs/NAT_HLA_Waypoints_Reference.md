@@ -189,3 +189,62 @@ Always cross-check the resulting track/distance against the Master Document / fi
 - FAA / industry presentations on Skybrary regarding ARINC 424 oceanic waypoint ambiguity
 
 **Operational recommendation for NAT HLA**: Prefer full lat/long entry or confirmed 5-letter named points over ambiguous shorthand whenever possible. Always verify the next waypoint, track, and distance independently.
+
+<!-- LEARNED-NAT-START -->
+## Learned from NAT track messages
+
+Coordinate fixes absorbed from downloaded OTS track routings (approximate; educational only).
+
+| Waypoint | Latitude | Longitude | Notes |
+|----------|-------------------|-------------------|---------------------------------------------|
+| 42/60 | 42.0000° N | 60.0000° W | Learned from NAT tracks message |
+| 44/50 | 44.0000° N | 50.0000° W | Learned from NAT tracks message |
+| 45/40 | 45.0000° N | 40.0000° W | Learned from NAT tracks message |
+| 46/50 | 46.0000° N | 50.0000° W | Learned from NAT tracks message |
+| 47/50 | 47.0000° N | 50.0000° W | Learned from NAT tracks message |
+| 48/30 | 48.0000° N | 30.0000° W | Learned from NAT tracks message |
+| 48/50 | 48.0000° N | 50.0000° W | Learned from NAT tracks message |
+| 49/20 | 49.0000° N | 20.0000° W | Learned from NAT tracks message |
+| 49/40 | 49.0000° N | 40.0000° W | Learned from NAT tracks message |
+| 49/50 | 49.0000° N | 50.0000° W | Learned from NAT tracks message |
+| 50/40 | 50.0000° N | 40.0000° W | Learned from NAT tracks message |
+| 50/50 | 50.0000° N | 50.0000° W | Learned from NAT tracks message |
+| 51/20 | 51.0000° N | 20.0000° W | Learned from NAT tracks message |
+| 51/30 | 51.0000° N | 30.0000° W | Learned from NAT tracks message |
+| 51/40 | 51.0000° N | 40.0000° W | Learned from NAT tracks message |
+| 51/50 | 51.0000° N | 50.0000° W | Learned from NAT tracks message |
+| 5130/50 | 51.5000° N | 50.0000° W | Learned from NAT tracks message |
+| 52/20 | 52.0000° N | 20.0000° W | Learned from NAT tracks message |
+| 52/30 | 52.0000° N | 30.0000° W | Learned from NAT tracks message |
+| 52/40 | 52.0000° N | 40.0000° W | Learned from NAT tracks message |
+| 52/50 | 52.0000° N | 50.0000° W | Learned from NAT tracks message |
+| 5230/20 | 52.5000° N | 20.0000° W | Learned from NAT tracks message |
+| 53/20 | 53.0000° N | 20.0000° W | Learned from NAT tracks message |
+| 53/30 | 53.0000° N | 30.0000° W | Learned from NAT tracks message |
+| 53/40 | 53.0000° N | 40.0000° W | Learned from NAT tracks message |
+| 53/50 | 53.0000° N | 50.0000° W | Learned from NAT tracks message |
+| 5330/30 | 53.5000° N | 30.0000° W | Learned from NAT tracks message |
+| 5330/40 | 53.5000° N | 40.0000° W | Learned from NAT tracks message |
+| 54/20 | 54.0000° N | 20.0000° W | Learned from NAT tracks message |
+| 54/30 | 54.0000° N | 30.0000° W | Learned from NAT tracks message |
+| 54/40 | 54.0000° N | 40.0000° W | Learned from NAT tracks message |
+| 54/50 | 54.0000° N | 50.0000° W | Learned from NAT tracks message |
+| 5430/50 | 54.5000° N | 50.0000° W | Learned from NAT tracks message |
+| 55/20 | 55.0000° N | 20.0000° W | Learned from NAT tracks message |
+| 55/30 | 55.0000° N | 30.0000° W | Learned from NAT tracks message |
+| 55/40 | 55.0000° N | 40.0000° W | Learned from NAT tracks message |
+| 55/50 | 55.0000° N | 50.0000° W | Learned from NAT tracks message |
+| 56/20 | 56.0000° N | 20.0000° W | Learned from NAT tracks message |
+| 56/30 | 56.0000° N | 30.0000° W | Learned from NAT tracks message |
+| 56/40 | 56.0000° N | 40.0000° W | Learned from NAT tracks message |
+| 56/50 | 56.0000° N | 50.0000° W | Learned from NAT tracks message |
+| 5630/20 | 56.5000° N | 20.0000° W | Learned from NAT tracks message |
+| 5630/40 | 56.5000° N | 40.0000° W | Learned from NAT tracks message |
+| 57/20 | 57.0000° N | 20.0000° W | Learned from NAT tracks message |
+| 57/30 | 57.0000° N | 30.0000° W | Learned from NAT tracks message |
+| 57/40 | 57.0000° N | 40.0000° W | Learned from NAT tracks message |
+| 57/50 | 57.0000° N | 50.0000° W | Learned from NAT tracks message |
+| 5730/30 | 57.5000° N | 30.0000° W | Learned from NAT tracks message |
+| 58/30 | 58.0000° N | 30.0000° W | Learned from NAT tracks message |
+
+<!-- LEARNED-NAT-END -->

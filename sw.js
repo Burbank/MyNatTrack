@@ -1,5 +1,5 @@
 /* MyNatTrack service worker — network-first with cache fallback (offline after first load). */
-const CACHE = "mynattrack-v1.4-20260726";
+const CACHE = "mynattrack-v1.5-20260726";
 
 const ASSETS = [
   "./",

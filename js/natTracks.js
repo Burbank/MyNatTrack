@@ -394,18 +394,23 @@ export async function fetchNatTracks(db = []) {
 
   const cached = loadCachedNatTracks();
   if (cached) {
+    // Silent fallback — no pilot-facing warning on timeout / abort / offline
     return {
       ok: true,
       fromCache: true,
       ...cached,
-      warning: `Online fetch failed (${errors.join("; ")}). Showing last saved message.`,
     };
   }
+  const errText = errors.join("; ");
+  const silent =
+    /abort|timeout|timed out|failed to fetch|networkerror|load failed/i.test(
+      errText
+    );
   return {
     ok: false,
-    error:
-      "Could not load NAT tracks from VATSIM natTrak or FAA. " +
-      errors.join("; "),
+    error: silent
+      ? ""
+      : "Could not load NAT tracks from VATSIM natTrak or FAA. " + errText,
   };
 }
 
