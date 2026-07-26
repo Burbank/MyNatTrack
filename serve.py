@@ -226,10 +226,20 @@ class QuietHandler(SimpleHTTPRequestHandler):
                 lon = float(w["lon"])
             except (KeyError, TypeError, ValueError):
                 continue
-            lat_h = "N" if lat >= 0 else "S"
-            lon_h = "E" if lon >= 0 else "W"
+            def _cockpit(abs_deg: float, hemi: str, deg_width: int) -> str:
+                deg = int(abs_deg)
+                minutes = round((abs_deg - deg) * 60 * 10) / 10
+                if minutes >= 60:
+                    deg += 1
+                    minutes = 0.0
+                whole = int(minutes)
+                tenth = int(round((minutes - whole) * 10))
+                return f"{hemi}{deg:0{deg_width}d} {whole:02d}.{tenth}"
+
+            lat_txt = _cockpit(abs(lat), "N" if lat >= 0 else "S", 2)
+            lon_txt = _cockpit(abs(lon), "E" if lon >= 0 else "W", 3)
             md_rows.append(
-                f"| {w.get('name')} | {abs(lat):.4f}° {lat_h} | {abs(lon):.4f}° {lon_h} | "
+                f"| {w.get('name')} | {lat_txt} | {lon_txt} | "
                 f"Learned from NAT tracks message |"
             )
         section = ""

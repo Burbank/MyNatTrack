@@ -4,7 +4,13 @@ import {
   formatTrack,
   formatDistanceNm,
 } from "./geodesy.js";
-import { parseRouteString, suggestWaypoints } from "./parser.js";
+import {
+  formatCockpitLat,
+  formatCockpitLatLon,
+  formatCockpitLon,
+  parseRouteString,
+  suggestWaypoints,
+} from "./parser.js";
 import {
   trueToMagnetic,
   formatVariation,
@@ -321,11 +327,9 @@ function setAccuracyVerifiedDate(isoDate) {
 }
 
 function formatMdLatLon(lat, lon) {
-  const latH = lat >= 0 ? "N" : "S";
-  const lonH = lon >= 0 ? "E" : "W";
   return {
-    lat: `${Math.abs(lat).toFixed(4)}° ${latH}`,
-    lon: `${Math.abs(lon).toFixed(4)}° ${lonH}`,
+    lat: formatCockpitLat(lat),
+    lon: formatCockpitLon(lon),
   };
 }
 
@@ -602,9 +606,7 @@ function renderRouteList() {
 }
 
 function fmtLatLon(lat, lon) {
-  const latH = lat >= 0 ? "N" : "S";
-  const lonH = lon >= 0 ? "E" : "W";
-  return `${Math.abs(lat).toFixed(3)}°${latH} ${Math.abs(lon).toFixed(3)}°${lonH}`;
+  return formatCockpitLatLon(lat, lon);
 }
 
 function routeSequenceKey(route) {
@@ -1377,6 +1379,7 @@ function renderSuggestions() {
       (w) =>
         `<button type="button" class="suggest-item" data-name="${w.name}">
           <strong>${w.name}</strong>
+          <span class="suggest-coords mono">${formatCockpitLatLon(w.lat, w.lon)}</span>
           <span class="${w.accuracy === "approximate" ? "approx" : ""}">${w.accuracy}${w.category ? " · " + w.category : ""}</span>
         </button>`
     )

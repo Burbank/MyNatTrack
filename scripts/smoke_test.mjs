@@ -13,9 +13,12 @@ const root = join(__dirname, "..");
 const { vincentyInverse, averageBearing, formatTrack } = await import(
   pathToFileURL(join(root, "js/geodesy.js")).href
 );
-const { parseWaypointInput, parseRouteString, toArinc424 } = await import(
-  pathToFileURL(join(root, "js/parser.js")).href
-);
+const {
+  parseWaypointInput,
+  parseRouteString,
+  toArinc424,
+  formatCockpitLatLon,
+} = await import(pathToFileURL(join(root, "js/parser.js")).href);
 
 const wp = JSON.parse(readFileSync(join(root, "data/waypoints.json"), "utf8"));
 const db = wp.waypoints;
@@ -93,5 +96,15 @@ console.log(
 if (wp.accuracyVerifiedOn !== "2026-07-26") {
   throw new Error("accuracyVerifiedOn mismatch");
 }
+
+const cockpit = formatCockpitLatLon(50, -15);
+if (cockpit !== "N50 00.0 W015 00.0") {
+  throw new Error(`cockpit format mismatch: ${cockpit}`);
+}
+const half = formatCockpitLatLon(52.5, -50);
+if (half !== "N52 30.0 W050 00.0") {
+  throw new Error(`cockpit half-degree mismatch: ${half}`);
+}
+console.log("OK cockpit", cockpit, half);
 
 console.log("smoke_test OK");

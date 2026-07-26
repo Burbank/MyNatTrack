@@ -307,6 +307,42 @@ export function formatCoordLabel(lat, lon) {
   return `${String(latD).padStart(2, "0")}${String(latM).padStart(2, "0")}${latH}${String(lonD).padStart(3, "0")}${String(lonM).padStart(2, "0")}${lonH}`;
 }
 
+/** Degrees + decimal minutes with rollover (e.g. 59.95' → next degree). */
+function degMinTenths(absDeg) {
+  let deg = Math.floor(absDeg + 1e-12);
+  let min = Math.round((absDeg - deg) * 60 * 10) / 10;
+  if (min >= 60) {
+    deg += 1;
+    min = 0;
+  }
+  return { deg, min };
+}
+
+function formatMinTenths(min) {
+  const whole = Math.floor(min + 1e-9);
+  const tenth = Math.round((min - whole) * 10);
+  return `${String(whole).padStart(2, "0")}.${tenth}`;
+}
+
+/** Cockpit / Jeppesen long-hand: N50 00.0 */
+export function formatCockpitLat(lat) {
+  const hemi = lat >= 0 ? "N" : "S";
+  const { deg, min } = degMinTenths(Math.abs(lat));
+  return `${hemi}${String(deg).padStart(2, "0")} ${formatMinTenths(min)}`;
+}
+
+/** Cockpit / Jeppesen long-hand: W020 00.0 (longitude always 3 digits). */
+export function formatCockpitLon(lon) {
+  const hemi = lon >= 0 ? "E" : "W";
+  const { deg, min } = degMinTenths(Math.abs(lon));
+  return `${hemi}${String(deg).padStart(3, "0")} ${formatMinTenths(min)}`;
+}
+
+/** Full long-hand pair: N50 00.0 W020 00.0 */
+export function formatCockpitLatLon(lat, lon) {
+  return `${formatCockpitLat(lat)} ${formatCockpitLon(lon)}`;
+}
+
 /**
  * Format a whole/half-degree North Atlantic grid point as ARINC 424 identifier when possible.
  */
