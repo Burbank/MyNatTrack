@@ -3,8 +3,18 @@
  * Land contours from Natural Earth 110m (bundled). No external tiles.
  */
 
-import { OAC_LABELS, OAC_SEGMENTS } from "./oac.js";
-import { DIVERSION_AIRPORTS, RWY_LABEL_MIN_M } from "./diversionAirports.js";
+import {
+  OAC_LABELS,
+  OAC_SEGMENTS,
+  OTA_AREAS,
+  DOMESTIC_FIR_SEGMENTS,
+  DOMESTIC_FIR_LABELS,
+} from "./oac.js";
+import {
+  DIVERSION_AIRPORTS,
+  RWY_LABEL_MIN_M,
+  runwayLabels,
+} from "./diversionAirports.js";
 
 /** Default North Atlantic framing (used when no route is programmed). */
 const DEFAULT_VIEW = {
@@ -548,71 +558,263 @@ function drawAirportGear(ctx, x, y, color, scale = 1) {
   ctx.restore();
 }
 
-function drawDiversionAirports(ctx, layout, bright, width, height) {
+function rectsOverlap(a, b, pad = 2) {
+  return !(
+    a.x + a.w + pad <= b.x ||
+    b.x + b.w + pad <= a.x ||
+    a.y + a.h + pad <= b.y ||
+    b.y + b.h + pad <= a.y
+  );
+}
+
+function labelBox(anchorX, anchorY, dx, dy, align, lines, metrics) {
+  const w = Math.max(...lines.map((t, i) => metrics[i]));
+  const h = lines.length * 11;
+  const x = align === "right" ? anchorX + dx - w : anchorX + dx;
+  const y = anchorY + dy;
+  return { x, y, w, h };
+}
+
+/**
+ * Place ICAO + multi-line runway labels with collision avoidance.
+ * Tries several offsets around each airport symbol.
+ */
+function drawDiversionAirports(ctx, layout, bright, width, height, showRwyLabels = true) {
   const color = bright ? "#0057b8" : "rgba(100, 190, 255, 0.95)";
   const labelFill = bright ? "#003d7a" : "rgba(160, 220, 255, 0.95)";
   const rwyFill = bright ? "rgba(0, 61, 122, 0.78)" : "rgba(160, 220, 255, 0.75)";
-  const halo = bright ? "rgba(255,255,255,0.8)" : "rgba(8,20,30,0.7)";
+  const halo = bright ? "rgba(255,255,255,0.85)" : "rgba(8,20,30,0.75)";
+  const leader = bright ? "rgba(0, 61, 122, 0.45)" : "rgba(140, 200, 240, 0.45)";
+
+  const icaoFont = "700 10px ui-monospace, SFMono-Regular, Menlo, monospace";
+  const rwyFont = "600 9px ui-monospace, SFMono-Regular, Menlo, monospace";
+  const includeRwys = showRwyLabels !== false;
+
+  const offsets = [
+    { dx: 10, dy: -4, align: "left" },
+    { dx: -10, dy: -4, align: "right" },
+    { dx: 10, dy: 10, align: "left" },
+    { dx: -10, dy: 10, align: "right" },
+    { dx: 12, dy: -26, align: "left" },
+    { dx: -12, dy: -26, align: "right" },
+    { dx: 12, dy: 22, align: "left" },
+    { dx: -12, dy: 22, align: "right" },
+    { dx: 28, dy: -8, align: "left" },
+    { dx: -28, dy: -8, align: "right" },
+    { dx: 18, dy: -40, align: "left" },
+    { dx: -18, dy: -40, align: "right" },
+    { dx: 18, dy: 34, align: "left" },
+    { dx: -18, dy: 34, align: "right" },
+  ];
 
   ctx.save();
   ctx.beginPath();
   ctx.arc(layout.cx, layout.cy, layout.radius - 0.5, 0, Math.PI * 2);
   ctx.clip();
 
-  ctx.textAlign = "left";
-  ctx.textBaseline = "top";
-
+  /** @type {{ap:any,x:number,y:number,lines:string[],metrics:number[],nn:number}[]} */
+  const visible = [];
   for (const ap of DIVERSION_AIRPORTS) {
     const p = project(ap.lat, ap.lon, 0, 0, layout);
     if (!inCanvas(p, width, height, 4)) continue;
-    drawAirportGear(ctx, p.x, p.y, color, 1);
-
-    const lx = p.x + 9;
-    const ly = p.y + 1;
-    ctx.font = "700 10px ui-monospace, SFMono-Regular, Menlo, monospace";
-    ctx.fillStyle = labelFill;
-    ctx.strokeStyle = halo;
-    ctx.lineWidth = 2.5;
-    ctx.strokeText(ap.icao, lx, ly);
-    ctx.fillText(ap.icao, lx, ly);
-
-    // Largest runway direction when ≥ 2500 m (e.g. LPLA → 15/33)
-    if (ap.rwy && (ap.rwyM || 0) >= RWY_LABEL_MIN_M) {
-      ctx.font = "600 9px ui-monospace, SFMono-Regular, Menlo, monospace";
-      ctx.fillStyle = rwyFill;
-      ctx.strokeText(ap.rwy, lx, ly + 11);
-      ctx.fillText(ap.rwy, lx, ly + 11);
-    }
+    const rwys = includeRwys ? runwayLabels(ap, RWY_LABEL_MIN_M) : [];
+    const lines = [ap.icao, ...rwys];
+    ctx.font = icaoFont;
+    const metrics = lines.map((t, i) => {
+      ctx.font = i === 0 ? icaoFont : rwyFont;
+      return ctx.measureText(t).width;
+    });
+    visible.push({ ap, x: p.x, y: p.y, lines, metrics, nn: 0 });
   }
+
+  // Prefer labeling denser clusters first (harder placements)
+  for (const a of visible) {
+    let best = Infinity;
+    for (const b of visible) {
+      if (a === b) continue;
+      const d = Math.hypot(a.x - b.x, a.y - b.y);
+      if (d < best) best = d;
+    }
+    a.nn = best;
+  }
+  visible.sort((a, b) => a.nn - b.nn);
+
+  /** @type {{x:number,y:number,w:number,h:number}[]} */
+  const occupied = [];
+  // Reserve icon footprints
+  for (const v of visible) {
+    occupied.push({ x: v.x - 9, y: v.y - 9, w: 18, h: 18 });
+  }
+
+  /** @type {{v:any, box:any, off:any}[]} */
+  const placed = [];
+
+  for (const v of visible) {
+    let chosen = null;
+    let bestScore = Infinity;
+    for (const off of offsets) {
+      const box = labelBox(v.x, v.y, off.dx, off.dy, off.align, v.lines, v.metrics);
+      // Keep mostly on canvas
+      if (box.x < 2 || box.y < 2 || box.x + box.w > width - 2 || box.y + box.h > height - 2) {
+        continue;
+      }
+      let hits = 0;
+      for (const o of occupied) {
+        if (rectsOverlap(box, o, 3)) hits += 1;
+      }
+      if (hits === 0) {
+        chosen = { box, off };
+        break;
+      }
+      if (hits < bestScore) {
+        bestScore = hits;
+        chosen = { box, off };
+      }
+    }
+    if (!chosen) {
+      const off = offsets[0];
+      chosen = {
+        box: labelBox(v.x, v.y, off.dx, off.dy, off.align, v.lines, v.metrics),
+        off,
+      };
+    }
+    occupied.push(chosen.box);
+    placed.push({ v, box: chosen.box, off: chosen.off });
+  }
+
+  // Symbols
+  for (const v of visible) {
+    drawAirportGear(ctx, v.x, v.y, color, 1);
+  }
+
+  // Leaders + labels
+  ctx.textBaseline = "top";
+  ctx.lineWidth = 2.4;
+  for (const { v, box, off } of placed) {
+    const attachX = off.align === "right" ? box.x + box.w : box.x;
+    const attachY = box.y + Math.min(6, box.h / 2);
+    if (Math.hypot(off.dx, off.dy) > 14) {
+      ctx.strokeStyle = leader;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(v.x, v.y);
+      ctx.lineTo(attachX, attachY);
+      ctx.stroke();
+      ctx.lineWidth = 2.4;
+    }
+
+    ctx.textAlign = off.align === "right" ? "right" : "left";
+    const tx = off.align === "right" ? box.x + box.w : box.x;
+    let ty = box.y;
+    v.lines.forEach((line, i) => {
+      ctx.font = i === 0 ? icaoFont : rwyFont;
+      ctx.fillStyle = i === 0 ? labelFill : rwyFill;
+      ctx.strokeStyle = halo;
+      ctx.strokeText(line, tx, ty);
+      ctx.fillText(line, tx, ty);
+      ty += 11;
+    });
+  }
+
   ctx.restore();
 }
 
-/** Green OAC FIR shared boundaries + CPDLC codes (CZQX, EGGX, LPPO, …). */
+/** Green OAC FIR lines + OTAs + adjacent domestic FIRs (CPDLC codes). */
 function drawOac(ctx, layout, bright) {
-  const stroke = bright ? "rgba(20, 110, 50, 0.45)" : "rgba(90, 200, 120, 0.4)";
-  const fill = bright ? "rgba(16, 90, 40, 0.55)" : "rgba(130, 220, 150, 0.55)";
+  const stroke = bright ? "rgba(20, 110, 50, 0.5)" : "rgba(90, 200, 120, 0.45)";
+  const otaStroke = bright ? "#0a7a35" : "rgba(90, 235, 140, 0.95)";
+  const domesticStroke = bright ? "rgba(20, 90, 140, 0.45)" : "rgba(120, 200, 230, 0.4)";
+  const fill = bright ? "rgba(16, 90, 40, 0.7)" : "rgba(140, 230, 160, 0.9)";
+  const otaFill = bright ? "rgba(10, 120, 50, 0.16)" : "rgba(70, 200, 110, 0.16)";
+  const otaLabel = bright ? "#0a6e30" : "rgba(160, 255, 180, 0.95)";
 
   for (const seg of OAC_SEGMENTS) {
     drawPolyline(ctx, layout, seg, {
       stroke,
-      width: bright ? 1.5 : 1.4,
+      width: bright ? 1.6 : 1.5,
       dash: [],
     });
   }
 
+  // Domestic / oceanic interface — dashed, same weight family as OAC
+  for (const seg of DOMESTIC_FIR_SEGMENTS) {
+    drawPolyline(ctx, layout, seg, {
+      stroke: domesticStroke,
+      width: bright ? 1.5 : 1.4,
+      dash: [6, 5],
+    });
+  }
+
+  // Transition areas — stronger dashed outline + fill
   ctx.save();
   ctx.beginPath();
   ctx.arc(layout.cx, layout.cy, layout.radius - 0.5, 0, Math.PI * 2);
   ctx.clip();
-  ctx.fillStyle = fill;
-  ctx.font = "600 11px ui-monospace, SFMono-Regular, Menlo, monospace";
+
+  for (const area of OTA_AREAS) {
+    const ring = area.ring || [];
+    if (ring.length < 3) continue;
+    ctx.beginPath();
+    let started = false;
+    for (const w of ring) {
+      const p = project(w.lat, w.lon, 0, 0, layout);
+      if (!p.visible) {
+        started = false;
+        continue;
+      }
+      if (!started) {
+        ctx.moveTo(p.x, p.y);
+        started = true;
+      } else ctx.lineTo(p.x, p.y);
+    }
+    ctx.closePath();
+    ctx.fillStyle = otaFill;
+    ctx.fill();
+    ctx.strokeStyle = bright ? "rgba(255,255,255,0.7)" : "rgba(8,20,30,0.5)";
+    ctx.lineWidth = bright ? 3 : 2.8;
+    ctx.setLineDash([8, 5]);
+    ctx.stroke();
+    ctx.strokeStyle = otaStroke;
+    ctx.lineWidth = bright ? 2 : 1.9;
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
+
+  // Oceanic OAC codes
+  ctx.font = "700 12px ui-monospace, SFMono-Regular, Menlo, monospace";
+  ctx.fillStyle = fill;
   for (const lab of OAC_LABELS) {
     const p = project(lab.lat, lab.lon, 0, 0, layout);
     if (!p.visible) continue;
-    ctx.strokeStyle = bright ? "rgba(255,255,255,0.55)" : "rgba(8,20,30,0.45)";
-    ctx.lineWidth = 2.2;
+    ctx.strokeStyle = bright ? "rgba(255,255,255,0.85)" : "rgba(8,20,30,0.7)";
+    ctx.lineWidth = 3;
+    ctx.strokeText(lab.code, p.x, p.y);
+    ctx.fillText(lab.code, p.x, p.y);
+  }
+
+  // OTA labels
+  ctx.font = "800 12px ui-monospace, SFMono-Regular, Menlo, monospace";
+  ctx.fillStyle = otaLabel;
+  for (const area of OTA_AREAS) {
+    const p = project(area.label.lat, area.label.lon, 0, 0, layout);
+    if (!p.visible) continue;
+    ctx.strokeStyle = bright ? "rgba(255,255,255,0.9)" : "rgba(8,20,30,0.75)";
+    ctx.lineWidth = 3.2;
+    ctx.strokeText(area.id, p.x, p.y);
+    ctx.fillText(area.id, p.x, p.y);
+  }
+
+  // Domestic FIR codes — same subtle style as oceanic OAC labels
+  ctx.font = "700 12px ui-monospace, SFMono-Regular, Menlo, monospace";
+  ctx.fillStyle = fill;
+  for (const lab of DOMESTIC_FIR_LABELS) {
+    const p = project(lab.lat, lab.lon, 0, 0, layout);
+    if (!p.visible) continue;
+    ctx.strokeStyle = bright ? "rgba(255,255,255,0.85)" : "rgba(8,20,30,0.7)";
+    ctx.lineWidth = 3;
     ctx.strokeText(lab.code, p.x, p.y);
     ctx.fillText(lab.code, p.x, p.y);
   }
@@ -654,8 +856,17 @@ export function drawChart(canvas, data) {
   drawGlobeBase(ctx, layout, bright, width, height);
   drawLand(ctx, layout, bright);
   drawGrid(ctx, layout, bright, width, height);
-  drawOac(ctx, layout, bright);
-  drawDiversionAirports(ctx, layout, bright, width, height);
+  if (data.showAirspace !== false) {
+    drawOac(ctx, layout, bright);
+  }
+  drawDiversionAirports(
+    ctx,
+    layout,
+    bright,
+    width,
+    height,
+    data.showRwyLabels !== false
+  );
 
   if (data.showNatTracks !== false) {
     drawNatTracks(ctx, layout, data.natTracks || []);
@@ -692,5 +903,83 @@ export function drawChart(canvas, data) {
     ctx.fillText(w.name, p.x + 7, p.y - 7);
   });
 
+  drawOwnship(ctx, layout, data.ownship, bright, width, height);
+
   return layout;
+}
+
+/**
+ * Device GPS position: accuracy ring + heading arrow (or dot if no heading).
+ * @param {{ lat:number, lon:number, accuracy?:number, heading?:number|null }|null|undefined} ownship
+ */
+function drawOwnship(ctx, layout, ownship, bright, width, height) {
+  if (!ownship || !Number.isFinite(ownship.lat) || !Number.isFinite(ownship.lon)) {
+    return;
+  }
+  const p = project(ownship.lat, ownship.lon, 0, 0, layout);
+  if (!inCanvas(p, width, height, 2)) return;
+
+  const fill = bright ? "#c45a00" : "#ffb040";
+  const stroke = bright ? "#ffffff" : "#0d1b2a";
+  const ring = bright ? "rgba(196, 90, 0, 0.22)" : "rgba(255, 176, 64, 0.28)";
+
+  // Approximate accuracy circle (metres → screen px via 1° latitude)
+  const accM = Number(ownship.accuracy);
+  if (Number.isFinite(accM) && accM > 0 && accM < 500000) {
+    const dLat = accM / 111320;
+    const pEdge = project(ownship.lat + dLat, ownship.lon, 0, 0, layout);
+    if (pEdge.visible) {
+      const rPx = Math.max(8, Math.min(120, Math.hypot(pEdge.x - p.x, pEdge.y - p.y)));
+      ctx.beginPath();
+      ctx.fillStyle = ring;
+      ctx.strokeStyle = bright
+        ? "rgba(196, 90, 0, 0.45)"
+        : "rgba(255, 176, 64, 0.5)";
+      ctx.lineWidth = 1;
+      ctx.arc(p.x, p.y, rPx, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    }
+  }
+
+  const heading = ownship.heading;
+  const hasHdg =
+    Number.isFinite(heading) && heading >= 0 && heading < 360;
+
+  ctx.save();
+  if (hasHdg) {
+    // Screen: +x right, +y down; GPS heading 0° = true north ≈ −y
+    const rad = (heading * Math.PI) / 180;
+    const len = 12;
+    const tipX = p.x + Math.sin(rad) * len;
+    const tipY = p.y - Math.cos(rad) * len;
+    const leftX = p.x + Math.sin(rad + 2.5) * 7;
+    const leftY = p.y - Math.cos(rad + 2.5) * 7;
+    const rightX = p.x + Math.sin(rad - 2.5) * 7;
+    const rightY = p.y - Math.cos(rad - 2.5) * 7;
+    ctx.beginPath();
+    ctx.moveTo(tipX, tipY);
+    ctx.lineTo(leftX, leftY);
+    ctx.lineTo(p.x, p.y);
+    ctx.lineTo(rightX, rightY);
+    ctx.closePath();
+    ctx.fillStyle = fill;
+    ctx.strokeStyle = stroke;
+    ctx.lineWidth = 1.6;
+    ctx.fill();
+    ctx.stroke();
+  } else {
+    ctx.beginPath();
+    ctx.fillStyle = fill;
+    ctx.strokeStyle = stroke;
+    ctx.lineWidth = 2;
+    ctx.arc(p.x, p.y, 6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.fillStyle = stroke;
+    ctx.arc(p.x, p.y, 2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
 }

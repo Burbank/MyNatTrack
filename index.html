@@ -177,6 +177,25 @@
           <input type="checkbox" id="mag-toggle" checked />
         </div>
         <div class="setting-row">
+          <label for="airspace-toggle">Show Airspace lines and labels</label>
+          <input type="checkbox" id="airspace-toggle" checked />
+        </div>
+
+        <section class="ref-block diversion-block" aria-labelledby="diversion-list-title">
+          <div class="diversion-head">
+            <h3 id="diversion-list-title">Diversion airports on chart</h3>
+            <label class="diversion-rwy-toggle" for="rwy-labels-toggle">
+              Show rwy labels on chart
+              <input type="checkbox" id="rwy-labels-toggle" checked />
+            </label>
+          </div>
+          <p class="muted ref-lead">
+            Always plotted. Runways listed are ≥ 2500&nbsp;m (longest first). Alphabetical by ICAO.
+          </p>
+          <ul class="diversion-icao-list" id="diversion-icao-list"></ul>
+        </section>
+
+        <div class="setting-row">
           <div>
             <strong>Waypoint reference (Markdown)</strong>
             <div class="muted">Open the bundled public-source compilation (incl. ARINC 424 coding) for offline reading.</div>
@@ -409,8 +428,9 @@
           <span class="muted" id="nat-status">Not loaded</span>
         </div>
         <p class="muted nat-note">
-          When online with the Mac server running, Refresh loads the latest FAA NMS track message.
-          The last successful message is kept for offline viewing. Educational / simulator use only.
+          This information may not be accurate. Educational / simulator use only — not certified for navigation.
+          Online Refresh uses VATSIM natTrak.
+          The last successful message is kept for offline viewing.
         </p>
         <pre class="nat-message" id="nat-message" aria-live="polite">No track message loaded yet. Tap Refresh.</pre>
       </div>

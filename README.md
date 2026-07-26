@@ -17,6 +17,7 @@ Repo: https://github.com/Burbank/MyNatTrack
 - WGS-84 Vincenty initial track + distance (NM)
 - Optional magnetic track (offline approximate magvar grid)
 - Offline North Atlantic chart
+- NAT OTS overlay: online via VATSIM natTrak (CORS); Mac `serve.py` prefers FAA NMS
 - Settings: verification date, open Markdown reference, toggles
 - Service worker: full offline after Home Screen install
 

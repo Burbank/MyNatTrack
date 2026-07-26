@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Local static server for MyNatTrack install / update on the LAN.
 
-Also proxies FAA NAT track JSON at /api/nat-tracks (browser CORS workaround).
+Proxies NAT track JSON at /api/nat-tracks:
+  1) FAA NMS (preferred — full NOTAM text + TMI)
+  2) VATSIM natTrak (fallback when FAA is unreachable)
 """
 from __future__ import annotations
 
@@ -15,6 +17,14 @@ import urllib.request
 from http.server import SimpleHTTPRequestHandler
 
 FAA_NAT_JSON = "https://nms.aim.faa.gov/datanat/nat.json"
+VATSIM_TRACKS = "https://nattrak.vatsim.net/api/tracks"
+
+
+def _http_get_json(url: str, headers: dict[str, str], timeout: float = 30) -> object:
+    req = urllib.request.Request(url, headers=headers, method="GET")
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
+        body = resp.read()
+    return json.loads(body.decode("utf-8"))
 
 
 class QuietHandler(SimpleHTTPRequestHandler):
@@ -39,41 +49,81 @@ class QuietHandler(SimpleHTTPRequestHandler):
             return
         super().do_GET()
 
+    def _send_json(self, status: int, payload: dict) -> None:
+        out = json.dumps(payload).encode("utf-8")
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Content-Length", str(len(out)))
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        self.wfile.write(out)
+
     def _proxy_nat_tracks(self) -> None:
-        req = urllib.request.Request(
-            FAA_NAT_JSON,
-            headers={
-                "Accept": "application/json,text/plain,*/*",
-                "User-Agent": "MyNatTrack/1.0 (private educational; local proxy)",
-                "Referer": "https://nms.aim.faa.gov/nat",
-            },
-            method="GET",
-        )
+        errors: list[str] = []
+
+        # 1) FAA NMS
         try:
-            with urllib.request.urlopen(req, timeout=30) as resp:
-                body = resp.read()
-                data = json.loads(body.decode("utf-8"))
+            data = _http_get_json(
+                FAA_NAT_JSON,
+                {
+                    "Accept": "application/json,text/plain,*/*",
+                    "User-Agent": "MyNatTrack/1.0 (private educational; local proxy)",
+                    "Referer": "https://nms.aim.faa.gov/nat",
+                },
+            )
             if not isinstance(data, list):
                 raise ValueError("FAA NAT JSON was not a list")
-            payload = {
-                "source": "FAA NMS (https://nms.aim.faa.gov/datanat/nat.json)",
-                "parts": data,
-            }
-            out = json.dumps(payload).encode("utf-8")
-            self.send_response(200)
-            self.send_header("Content-Type", "application/json; charset=utf-8")
-            self.send_header("Content-Length", str(len(out)))
-            self.send_header("Cache-Control", "no-store")
-            self.end_headers()
-            self.wfile.write(out)
-        except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, ValueError, json.JSONDecodeError) as exc:
-            msg = json.dumps({"error": str(exc), "source": "FAA NMS"}).encode("utf-8")
-            self.send_response(502)
-            self.send_header("Content-Type", "application/json; charset=utf-8")
-            self.send_header("Content-Length", str(len(msg)))
-            self.send_header("Cache-Control", "no-store")
-            self.end_headers()
-            self.wfile.write(msg)
+            self._send_json(
+                200,
+                {
+                    "format": "faa",
+                    "source": "FAA NMS (https://nms.aim.faa.gov/datanat/nat.json)",
+                    "parts": data,
+                },
+            )
+            return
+        except (
+            urllib.error.URLError,
+            urllib.error.HTTPError,
+            TimeoutError,
+            ValueError,
+            json.JSONDecodeError,
+        ) as exc:
+            errors.append(f"FAA: {exc}")
+
+        # 2) VATSIM natTrak fallback
+        try:
+            data = _http_get_json(
+                VATSIM_TRACKS,
+                {
+                    "Accept": "application/json",
+                    "User-Agent": "MyNatTrack/1.0 (private educational; local proxy)",
+                },
+            )
+            if not isinstance(data, list):
+                raise ValueError("VATSIM tracks JSON was not a list")
+            self._send_json(
+                200,
+                {
+                    "format": "vatsim",
+                    "source": "VATSIM natTrak (https://nattrak.vatsim.net/api/tracks)",
+                    "vatsimTracks": data,
+                },
+            )
+            return
+        except (
+            urllib.error.URLError,
+            urllib.error.HTTPError,
+            TimeoutError,
+            ValueError,
+            json.JSONDecodeError,
+        ) as exc:
+            errors.append(f"VATSIM: {exc}")
+
+        self._send_json(
+            502,
+            {"error": "; ".join(errors) or "NAT fetch failed", "source": "proxy"},
+        )
 
 
 def lan_ip() -> str:

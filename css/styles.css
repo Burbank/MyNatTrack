@@ -1098,6 +1098,77 @@ html.theme-bright .sheet {
   white-space: nowrap;
 }
 
+.diversion-block {
+  margin-top: 0.35rem;
+}
+
+.diversion-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+  flex-wrap: wrap;
+}
+
+.diversion-head h3 {
+  margin: 0;
+}
+
+.diversion-rwy-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.88rem;
+  font-weight: 550;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.diversion-rwy-toggle input {
+  width: 1.1rem;
+  height: 1.1rem;
+  accent-color: var(--accent);
+}
+
+.diversion-icao-list {
+  list-style: none;
+  margin: 0.35rem 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.25rem 0.85rem;
+  font-size: 0.84rem;
+  max-height: 14rem;
+  overflow: auto;
+}
+
+.diversion-icao-list li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.4rem;
+  align-items: baseline;
+  padding: 0.2rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.diversion-icao-list code {
+  font-family: var(--mono);
+  font-weight: 700;
+  min-width: 3.2rem;
+}
+
+.diversion-icao-list .div-rwy {
+  font-family: var(--mono);
+  font-size: 0.8em;
+  opacity: 0.9;
+}
+
+@media (max-width: 640px) {
+  .diversion-icao-list {
+    grid-template-columns: 1fr;
+  }
+}
+
 .verify-line {
   margin: 0.9rem 0;
   color: var(--accent);

@@ -1,6 +1,11 @@
 /**
  * Fetch / parse North Atlantic Organised Track System (OTS) messages.
- * Source: FAA NMS JSON (via local /api/nat-tracks proxy when online).
+ *
+ * Sources (in order):
+ *  1) Same-origin /api/nat-tracks proxy (serve.py → FAA NMS, or VATSIM fallback)
+ *  2) VATSIM natTrak JSON (CORS open — works from GitHub Pages)
+ *  3) Direct FAA NMS JSON (usually CORS-blocked in browsers)
+ *
  * Educational / simulator use only — not certified.
  */
 
@@ -8,6 +13,8 @@ import { parseWaypointInput } from "./parser.js";
 
 const STORAGE_KEY = "mynattrack_nat_tracks_v1";
 const FAA_JSON = "https://nms.aim.faa.gov/datanat/nat.json";
+/** Public CORS-enabled OTS mirror used by VATSIM oceanic (mirrors daily NAT tracks). */
+const VATSIM_TRACKS = "https://nattrak.vatsim.net/api/tracks";
 
 /**
  * Parse a single NAT fix token from a track line.
@@ -64,6 +71,23 @@ function extractTmi(text) {
   return m ? m[1].toUpperCase() : null;
 }
 
+function formatIsoValidity(from, to) {
+  const a = from ? String(from).replace(/\.\d+Z$/, "Z") : "";
+  const b = to ? String(to).replace(/\.\d+Z$/, "Z") : "";
+  if (a && b) return `${a} TO ${b}`;
+  return a || b || "";
+}
+
+function feetToFl(list) {
+  return (list || [])
+    .map((f) => {
+      const n = Number(f);
+      if (!Number.isFinite(n)) return null;
+      return n >= 1000 ? Math.round(n / 100) : Math.round(n);
+    })
+    .filter((n) => n != null && n > 0);
+}
+
 /**
  * Parse FAA condition_message blocks into structured tracks.
  */
@@ -71,7 +95,6 @@ export function parseNatMessages(parts, db = []) {
   const tracks = [];
   const texts = [];
   let tmi = null;
-  const groups = [];
 
   for (const part of parts || []) {
     const msg = (part.condition_message || part.message || "").replace(/\r/g, "");
@@ -91,12 +114,10 @@ export function parseNatMessages(parts, db = []) {
       if (/^(NAT|PART|REMARKS|EAST|WEST|EUR|NAR|END|TMI|SEND|PBCS|OPERATORS)/i.test(line)) {
         continue;
       }
-      // Skip remark-like single letters without route tokens
       const rest = tm[2];
       if (/^(LVLS|RTS)/i.test(rest)) continue;
 
       const id = tm[1];
-      // Stop at EAST/WEST LVLS if glued somehow; normally next lines
       const tokens = [];
       for (const tok of rest.split(/\s+/)) {
         if (/^(EAST|WEST)$/i.test(tok)) break;
@@ -123,7 +144,6 @@ export function parseNatMessages(parts, db = []) {
         westLevels: [],
         direction: "unknown",
       });
-      groups.push({ id, icao, start, end });
     }
 
     // Second pass: attach FLs from following lines per track id (simple scan)
@@ -163,6 +183,72 @@ export function parseNatMessages(parts, db = []) {
   };
 }
 
+/**
+ * Parse VATSIM natTrak /api/tracks rows into the same track shape as FAA parse.
+ */
+export function parseVatsimTracks(rows, db = []) {
+  const tracks = [];
+  const textLines = [
+    "Source: VATSIM natTrak (https://nattrak.vatsim.net/api/tracks)",
+    "",
+  ];
+
+  for (const row of rows || []) {
+    if (!row || row.active === false) continue;
+    if (Number(row.concorde) > 0) continue;
+
+    const id = String(row.identifier || "")
+      .trim()
+      .toUpperCase();
+    const route = String(row.last_routeing || "").trim();
+    if (!/^[A-Z]$/.test(id) || !route) continue;
+
+    const points = [];
+    for (const tok of route.split(/\s+/)) {
+      const fix = parseNatFix(tok, db);
+      if (fix) points.push(fix);
+    }
+    if (points.length < 2) continue;
+
+    const fls = feetToFl(row.flight_levels);
+    const dirRaw = String(row.direction || "").toLowerCase();
+    const direction =
+      dirRaw === "east" || dirRaw === "west" ? dirRaw : "unknown";
+    const validityLabel = formatIsoValidity(row.valid_from, row.valid_to);
+
+    tracks.push({
+      id,
+      points,
+      icao: "VATSIM",
+      validFrom: row.valid_from || null,
+      validTo: row.valid_to || null,
+      validityLabel,
+      eastLevels: direction === "east" ? fls : [],
+      westLevels: direction === "west" ? fls : [],
+      direction,
+    });
+
+    textLines.push(`${id} ${route}`);
+    if (validityLabel) textLines.push(`  VALID ${validityLabel}`);
+    if (direction === "east" && fls.length) {
+      textLines.push(`  EAST LVLS ${fls.join(" ")}`);
+    } else if (direction === "west" && fls.length) {
+      textLines.push(`  WEST LVLS ${fls.join(" ")}`);
+    } else if (fls.length) {
+      textLines.push(`  LVLS ${fls.join(" ")}`);
+    }
+    textLines.push("");
+  }
+
+  tracks.sort((a, b) => a.id.localeCompare(b.id));
+  return {
+    tmi: null,
+    tracks,
+    text: textLines.join("\n").trim(),
+    parts: [],
+  };
+}
+
 export function loadCachedNatTracks() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -177,78 +263,101 @@ export function saveCachedNatTracks(payload) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
 }
 
-/**
- * Fetch latest NAT tracks. Prefers same-origin proxy (serve.py), then direct FAA (often CORS-blocked).
- */
-export async function fetchNatTracks(db = []) {
-  const errors = [];
-  let parts = null;
-  let source = null;
-
-  // 1) Local Mac proxy (works for iPad on LAN when serve.py is running)
-  try {
-    const res = await fetch("./api/nat-tracks", {
-      cache: "no-store",
-      headers: { Accept: "application/json" },
-    });
-    if (res.ok) {
-      const data = await res.json();
-      parts = data.parts || data;
-      source = data.source || "FAA NMS (proxy)";
-    } else {
-      errors.push(`proxy HTTP ${res.status}`);
-    }
-  } catch (e) {
-    errors.push(`proxy: ${e.message}`);
-  }
-
-  // 2) Direct FAA (usually fails CORS in Safari; ok if headers ever allow it)
-  if (!parts) {
-    try {
-      const res = await fetch(FAA_JSON, {
-        cache: "no-store",
-        headers: { Accept: "application/json" },
-      });
-      if (res.ok) {
-        parts = await res.json();
-        source = "FAA NMS (direct)";
-      } else {
-        errors.push(`FAA HTTP ${res.status}`);
-      }
-    } catch (e) {
-      errors.push(`FAA: ${e.message}`);
-    }
-  }
-
-  if (!parts || !Array.isArray(parts)) {
-    const cached = loadCachedNatTracks();
-    if (cached) {
-      return {
-        ok: true,
-        fromCache: true,
-        ...cached,
-        warning: `Online fetch failed (${errors.join("; ")}). Showing last saved message.`,
-      };
-    }
-    return {
-      ok: false,
-      error:
-        "Could not load NAT tracks. When the Mac server is running, Refresh uses the FAA feed via a local proxy. " +
-        errors.join("; "),
-    };
-  }
-
-  const parsed = parseNatMessages(parts, db);
+function buildPayload(parsed, source) {
   const payload = {
     fetchedAt: new Date().toISOString(),
     source,
     tmi: parsed.tmi,
     text: parsed.text,
     tracks: parsed.tracks,
-    parts,
+    parts: parsed.parts || [],
   };
   saveCachedNatTracks(payload);
   return { ok: true, fromCache: false, ...payload };
+}
+
+async function tryFetchJson(url, label) {
+  const res = await fetch(url, {
+    cache: "no-store",
+    headers: { Accept: "application/json" },
+  });
+  if (!res.ok) throw new Error(`${label} HTTP ${res.status}`);
+  return res.json();
+}
+
+/**
+ * Fetch latest NAT tracks. Prefers local FAA proxy, then VATSIM (CORS-open), then direct FAA.
+ */
+export async function fetchNatTracks(db = []) {
+  const errors = [];
+
+  // 1) Local Mac proxy (FAA when available; may also return VATSIM-shaped payload)
+  try {
+    const data = await tryFetchJson("./api/nat-tracks", "proxy");
+    if (data.format === "vatsim" || Array.isArray(data.vatsimTracks)) {
+      const parsed = parseVatsimTracks(data.vatsimTracks || data.tracks || [], db);
+      if (parsed.tracks.length) {
+        return buildPayload(
+          parsed,
+          data.source || "VATSIM natTrak (proxy)"
+        );
+      }
+    }
+    const parts = data.parts || data;
+    if (Array.isArray(parts) && parts.length) {
+      const parsed = parseNatMessages(parts, db);
+      if (parsed.tracks.length || parsed.text) {
+        return buildPayload(parsed, data.source || "FAA NMS (proxy)");
+      }
+    }
+    errors.push("proxy: empty payload");
+  } catch (e) {
+    errors.push(`proxy: ${e.message}`);
+  }
+
+  // 2) VATSIM natTrak — works from GitHub Pages (Access-Control-Allow-Origin: *)
+  try {
+    const rows = await tryFetchJson(VATSIM_TRACKS, "VATSIM");
+    if (Array.isArray(rows) && rows.length) {
+      const parsed = parseVatsimTracks(rows, db);
+      if (parsed.tracks.length) {
+        return buildPayload(parsed, "VATSIM natTrak");
+      }
+      errors.push("VATSIM: no parseable active tracks");
+    } else {
+      errors.push("VATSIM: empty list");
+    }
+  } catch (e) {
+    errors.push(`VATSIM: ${e.message}`);
+  }
+
+  // 3) Direct FAA (usually fails CORS in Safari / GitHub Pages)
+  try {
+    const parts = await tryFetchJson(FAA_JSON, "FAA");
+    if (Array.isArray(parts) && parts.length) {
+      const parsed = parseNatMessages(parts, db);
+      return buildPayload(parsed, "FAA NMS (direct)");
+    }
+    errors.push("FAA: empty list");
+  } catch (e) {
+    errors.push(`FAA: ${e.message}`);
+  }
+
+  const cached = loadCachedNatTracks();
+  if (cached) {
+    return {
+      ok: true,
+      fromCache: true,
+      ...cached,
+      warning: `Online fetch failed (${errors.join("; ")}). Showing last saved message.`,
+    };
+  }
+  return {
+    ok: false,
+    error:
+      "Could not load NAT tracks from VATSIM natTrak or FAA. " +
+      errors.join("; "),
+  };
 }
 
 /** Distinct color per track letter */

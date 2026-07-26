@@ -1,5 +1,5 @@
-/* MyNatTrack service worker — cache-first for full offline use after install. */
-const CACHE = "mynattrack-v31-20260726-tagline";
+/* MyNatTrack service worker — network-first with cache fallback (offline after first load). */
+const CACHE = "mynattrack-v41-20260726-nat-disclaimer";
 
 const ASSETS = [
   "./",
@@ -29,7 +29,13 @@ const ASSETS = [
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE).then((cache) => cache.addAll(ASSETS)).then(() => self.skipWaiting())
+    caches
+      .open(CACHE)
+      .then((cache) =>
+        // cache: 'reload' bypasses any older controlling SW so precache is not stale
+        cache.addAll(ASSETS.map((url) => new Request(url, { cache: "reload" })))
+      )
+      .then(() => self.skipWaiting())
   );
 });
 
@@ -60,19 +66,19 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
+  // Network-first so JS/CSS updates are not stuck behind an old cache-first SW.
+  // Falls back to cache when offline (airplane mode after a prior visit).
   event.respondWith(
-    caches.match(request).then((cached) => {
-      if (cached) return cached;
-      return fetch(request)
-        .then((response) => {
-          if (!response || response.status !== 200 || response.type === "opaque") {
-            return response;
-          }
+    fetch(request)
+      .then((response) => {
+        if (response && response.status === 200 && response.type === "basic") {
           const copy = response.clone();
           caches.open(CACHE).then((cache) => cache.put(request, copy));
-          return response;
-        })
-        .catch(() => caches.match("./index.html"));
-    })
+        }
+        return response;
+      })
+      .catch(() =>
+        caches.match(request).then((cached) => cached || caches.match("./index.html"))
+      )
   );
 });

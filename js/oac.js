@@ -1,7 +1,7 @@
 /**
- * NAT Oceanic Area Control (OAC) shared boundaries for chart overlay.
- * Coordinates from ICAO NAT eANP Vol I (Doc 9634) FIR tables — stable lateral limits.
- * Labels use CPDLC / FIR location indicators only (no long names).
+ * NAT Oceanic Area Control (OAC) + adjacent domestic FIRs for chart overlay.
+ * OAC limits: ICAO NAT eANP Vol I. OTAs: AIP / NAT manuals / TC AIM (simplified).
+ * Labels use CPDLC / FIR location indicators (four-letter codes) only.
  */
 
 function alongLat(lat, lonA, lonB, step = 0.5) {
@@ -83,4 +83,129 @@ export const OAC_LABELS = [
   { code: "BIRD", lat: 63.5, lon: -18 },
   { code: "KZWY", lat: 42, lon: -46 },
   { code: "ENOB", lat: 70, lon: 5 },
+];
+
+/**
+ * Oceanic Transition Areas (closed rings) — AIP / NAT Doc limits (simplified for chart).
+ * SOTA / NOTA: AIP Ireland ENR 2.2 · BOTA: NAT ops manuals · GOTA: TC AIM (simplified).
+ */
+export const OTA_AREAS = [
+  {
+    id: "SOTA",
+    label: { lat: 49.75, lon: -11.5 },
+    ring: densifyPath(
+      [
+        { lat: 51, lon: -15 },
+        { lat: 51, lon: -8 },
+        { lat: 48.5, lon: -8 },
+        { lat: 49, lon: -15 },
+        { lat: 51, lon: -15 },
+      ],
+      0.35
+    ),
+  },
+  {
+    id: "NOTA",
+    label: { lat: 55.5, lon: -12.5 },
+    ring: densifyPath(
+      [
+        { lat: 54, lon: -15 },
+        { lat: 57, lon: -15 },
+        { lat: 57, lon: -10 },
+        { lat: 54.5667, lon: -10 }, // 5434N
+        { lat: 54, lon: -15 },
+      ],
+      0.35
+    ),
+  },
+  {
+    id: "BOTA",
+    label: { lat: 46.7, lon: -8.35 },
+    ring: densifyPath(
+      [
+        { lat: 48.5667, lon: -8.75 }, // 4834N 00845W
+        { lat: 48.5, lon: -8 },
+        { lat: 45, lon: -8 },
+        { lat: 45, lon: -8.75 },
+        { lat: 48.5667, lon: -8.75 },
+      ],
+      0.3
+    ),
+  },
+  {
+    // Simplified GOTA footprint (TC AIM): 6530N060W → Reykjavik boundary →
+    // 6330N055W → south along 055W toward domestic FIR.
+    id: "GOTA",
+    label: { lat: 58, lon: -57 },
+    ring: densifyPath(
+      [
+        { lat: 65.5, lon: -60 },
+        { lat: 65.5, lon: -55 },
+        { lat: 63.5, lon: -55 },
+        { lat: 50, lon: -55 },
+        { lat: 50, lon: -60 },
+        { lat: 65.5, lon: -60 },
+      ],
+      0.5
+    ),
+  },
+];
+
+/**
+ * Simplified domestic / oceanic interface segments (landfall side).
+ * Drawn lighter than OAC FIR lines so oceanic structure stays primary.
+ */
+export const DOMESTIC_FIR_SEGMENTS = [
+  // EISN ↔ EGGX — 015°W (SOTA / NOTA oceanic entry)
+  alongLon(-15, 49, 57),
+  // EGPX ↔ EGGX — 010°W (north of NOTA to Reykjavik boundary)
+  alongLon(-10, 54.5667, 61),
+  // LFRR / EISN ↔ EGGX — 008°W (BOTA / SOTA east edge)
+  alongLon(-8, 45, 54.5667),
+  // LECM / LPPC ↔ EGGX–LPPO corner — 008°W south of 45N stub
+  alongLon(-8, 42, 45),
+  // LPPC ↔ LPPO — ~013°W (Santa Maria east)
+  alongLon(-13, 39, 45),
+  // CZQM / CZQX domestic interface — ~055°W Labrador / NL approaches
+  alongLon(-55, 45, 55),
+  // KZNY / KZBW ↔ KZWY — ~067°W approximate western oceanic / domestic join
+  densifyPath(
+    [
+      { lat: 38, lon: -67 },
+      { lat: 42, lon: -67 },
+      { lat: 44.5, lon: -67 },
+      { lat: 44.5, lon: -60 },
+    ],
+    0.5
+  ),
+  // BGGL ↔ CZQX / BIRD — ~040°W Greenland approaches (simplified)
+  densifyPath(
+    [
+      { lat: 58.5, lon: -43 },
+      { lat: 63.5, lon: -39 },
+      { lat: 65, lon: -40 },
+    ],
+    0.5
+  ),
+];
+
+/**
+ * Adjacent domestic FIRs — CPDLC / FIR indicators near the oceanic interface
+ * (kept close to landfall so they stay in a typical NAT route frame).
+ * Oceanic CZQX / KZWY labels remain mid-ocean in OAC_LABELS.
+ */
+export const DOMESTIC_FIR_LABELS = [
+  // UK / Ireland / France / Iberia — west of airport clutter, near 008–015°W
+  { code: "EGPX", lat: 56.8, lon: -6.5 }, // Scottish
+  { code: "EISN", lat: 52.5, lon: -9.5 }, // Shannon
+  { code: "EGTT", lat: 51.4, lon: -4.5 }, // London (western approaches)
+  { code: "LFRR", lat: 48.2, lon: -5.0 }, // Brest
+  { code: "LECM", lat: 43.2, lon: -7.2 }, // Madrid (NW corner)
+  { code: "LPPC", lat: 40.2, lon: -9.5 }, // Lisboa
+  // Canada / Greenland / US northeast — near 055–067°W interfaces
+  { code: "CZQM", lat: 46.8, lon: -60.5 }, // Moncton
+  { code: "CZUL", lat: 48.5, lon: -68.0 }, // Montreal (eastern approaches)
+  { code: "BGGL", lat: 63.2, lon: -48.0 }, // Nuuk approaches
+  { code: "KZBW", lat: 42.8, lon: -68.5 }, // Boston ARTCC
+  { code: "KZNY", lat: 40.5, lon: -71.5 }, // New York ARTCC (domestic; oceanic = KZWY)
 ];

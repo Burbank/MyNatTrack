@@ -18,6 +18,10 @@ import {
   trackColor,
 } from "./natTracks.js";
 import { ensureUnlocked } from "./auth.js";
+import {
+  diversionAirportsAlpha,
+  runwayLabels,
+} from "./diversionAirports.js";
 
 const STORAGE_KEY = "mynattrack_route_v1";
 const SETTINGS_KEY = "mynattrack_settings_v1";
@@ -32,6 +36,8 @@ const state = {
   insertAfterIndex: null,
   settings: {
     showMagnetic: true,
+    showAirspace: true,
+    showRwyLabels: true,
     showEastTracks: true,
     showWestTracks: true,
   },
@@ -44,6 +50,10 @@ const state = {
   chartPan: { dLat: 0, dLon: 0 },
   /** Last drawn layout (for pan sensitivity) */
   lastChartLayout: null,
+  /** Device GPS for ownship marker on chart */
+  gps: null,
+  gpsWatchId: null,
+  gpsLastDrawMs: 0,
 };
 
 const el = {
@@ -66,7 +76,10 @@ const el = {
   verifyFlowPanel: document.getElementById("verify-flow-panel"),
   verifyFlowClose: document.getElementById("verify-flow-close"),
   magToggle: document.getElementById("mag-toggle"),
+  airspaceToggle: document.getElementById("airspace-toggle"),
   magvarTableDate: document.getElementById("magvar-table-date"),
+  rwyLabelsToggle: document.getElementById("rwy-labels-toggle"),
+  diversionIcaoList: document.getElementById("diversion-icao-list"),
   openMdBtn: document.getElementById("open-md-btn"),
   mdPanel: document.getElementById("md-panel"),
   mdClose: document.getElementById("md-close"),
@@ -154,6 +167,10 @@ function loadSettings() {
   if (state.settings.showEastTracks !== false) state.settings.showEastTracks = true;
   if (state.settings.showWestTracks !== false) state.settings.showWestTracks = true;
   if (el.magToggle) el.magToggle.checked = state.settings.showMagnetic;
+  if (state.settings.showAirspace !== false) state.settings.showAirspace = true;
+  if (el.airspaceToggle) el.airspaceToggle.checked = state.settings.showAirspace !== false;
+  if (state.settings.showRwyLabels !== false) state.settings.showRwyLabels = true;
+  if (el.rwyLabelsToggle) el.rwyLabelsToggle.checked = state.settings.showRwyLabels !== false;
   if (el.showEastTracks) el.showEastTracks.checked = state.settings.showEastTracks;
   if (el.showWestTracks) el.showWestTracks.checked = state.settings.showWestTracks;
 }
@@ -335,11 +352,16 @@ function coloredNatTracks() {
 function formatNatStatus(nat, extra = "") {
   if (!nat) return extra || "Not loaded";
   const when = nat.fetchedAt ? new Date(nat.fetchedAt).toLocaleString() : "unknown time";
-  const tmi = nat.tmi ? `TMI ${nat.tmi}` : "TMI —";
+  const src =
+    nat.tmi
+      ? `TMI ${nat.tmi}`
+      : /vatsim/i.test(nat.source || "")
+        ? "VATSIM"
+        : "TMI —";
   const n = (nat.tracks || []).length;
   const cache = nat.fromCache ? " · cached" : "";
   const warn = nat.warning ? ` · ${nat.warning}` : "";
-  return `${tmi} · ${n} tracks · ${when}${cache}${warn}${extra ? ` · ${extra}` : ""}`;
+  return `${src} · ${n} tracks · ${when}${cache}${warn}${extra ? ` · ${extra}` : ""}`;
 }
 
 function renderNatPanel() {
@@ -361,9 +383,12 @@ function renderNatPanel() {
       return `${t.id}${dir}: ${route}`;
     })
     .join("\n");
-  el.natMessage.textContent =
+  const body =
     (summary ? `Parsed tracks:\n${summary}\n\n────────\n\n` : "") +
     (state.nat.text || "");
+  el.natMessage.textContent =
+    "DISCLAIMER: This information may not be accurate. Educational / simulator use only — not certified for navigation.\n\n" +
+    body;
 }
 
 function renderChart() {
@@ -375,10 +400,43 @@ function renderChart() {
     route: state.route,
     natTracks: coloredNatTracks(),
     showNatTracks: showAny,
+    showRwyLabels: state.settings.showRwyLabels !== false,
+    showAirspace: state.settings.showAirspace !== false,
+    ownship: state.gps,
     bright: document.documentElement.classList.contains("theme-bright"),
     zoom: state.chartZoom,
     pan: state.chartPan,
   });
+}
+
+function startGpsWatch() {
+  if (!navigator.geolocation || state.gpsWatchId != null) return;
+  state.gpsWatchId = navigator.geolocation.watchPosition(
+    (pos) => {
+      const c = pos.coords;
+      state.gps = {
+        lat: c.latitude,
+        lon: c.longitude,
+        accuracy: c.accuracy,
+        heading: Number.isFinite(c.heading) ? c.heading : null,
+        speed: Number.isFinite(c.speed) ? c.speed : null,
+      };
+      const now = performance.now();
+      // Throttle redraws; always allow first fix
+      if (now - state.gpsLastDrawMs < 800 && state.gpsLastDrawMs > 0) return;
+      state.gpsLastDrawMs = now;
+      renderChart();
+    },
+    () => {
+      /* permission denied / unavailable — keep chart without ownship */
+      state.gps = null;
+    },
+    {
+      enableHighAccuracy: true,
+      maximumAge: 5000,
+      timeout: 20000,
+    }
+  );
 }
 
 function clampChartZoom(z) {
@@ -740,6 +798,15 @@ async function init() {
   if (el.magvarTableDate) {
     el.magvarTableDate.textContent = `(magvar tables ${MAGVAR_TABLE_DATE}; ${MAGVAR_DRIFT_REMARK})`;
   }
+  if (el.diversionIcaoList) {
+    el.diversionIcaoList.innerHTML = diversionAirportsAlpha()
+      .map((ap) => {
+        const rwys = runwayLabels(ap);
+        const rwyTxt = rwys.length ? rwys.join(" · ") : "—";
+        return `<li><code>${escapeHtml(ap.icao)}</code> <span class="muted">${escapeHtml(ap.name)}</span> <span class="div-rwy">${escapeHtml(rwyTxt)}</span></li>`;
+      })
+      .join("");
+  }
 
   applyTheme(loadThemePref());
 
@@ -748,6 +815,7 @@ async function init() {
   bindChartGestures();
   renderAll();
   renderNatPanel();
+  startGpsWatch();
 
   if (el.themeBtn) {
     el.themeBtn.addEventListener("click", toggleTheme);
@@ -865,6 +933,20 @@ async function init() {
     saveSettings();
     renderLegs();
   });
+  if (el.airspaceToggle) {
+    el.airspaceToggle.addEventListener("change", () => {
+      state.settings.showAirspace = el.airspaceToggle.checked;
+      saveSettings();
+      renderChart();
+    });
+  }
+  if (el.rwyLabelsToggle) {
+    el.rwyLabelsToggle.addEventListener("change", () => {
+      state.settings.showRwyLabels = el.rwyLabelsToggle.checked;
+      saveSettings();
+      renderChart();
+    });
+  }
 
   el.settingsBtn.addEventListener("click", () => {
     el.settingsPanel.hidden = false;
