@@ -6,9 +6,9 @@ iPad-landscape PWA for NAT HLA track / bearing / distance planning.
 
 ## Live site
 
-GitHub Pages: after first push, open  
-`https://burbank.github.io/MyNatTrack/`  
-(password-gated; Home Screen install remembers unlock).
+**https://burbank.github.io/MyNatTrack/**  
+(password-gated; Home Screen install remembers unlock)  
+Repo: https://github.com/Burbank/MyNatTrack
 
 ## Features
 
