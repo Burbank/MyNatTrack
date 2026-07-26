@@ -75,7 +75,6 @@ const el = {
   legsBody: document.getElementById("legs-body"),
   totals: document.getElementById("totals"),
   chart: document.getElementById("chart"),
-  banner: document.getElementById("verify-banner"),
   error: document.getElementById("error"),
   settingsBtn: document.getElementById("settings-btn"),
   settingsPanel: document.getElementById("settings-panel"),
@@ -1081,8 +1080,9 @@ async function init() {
   state.mdText = await mdRes.text();
 
   const date = wpData.accuracyVerifiedOn || "2026-07-26";
-  el.banner.textContent = `Waypoint accuracy last verified on ${date}`;
-  el.settingsVerify.textContent = `Waypoint accuracy last verified on ${date}`;
+  if (el.settingsVerify) {
+    el.settingsVerify.textContent = `Waypoint accuracy last verified on ${date}`;
+  }
   if (el.magvarTableDate) {
     el.magvarTableDate.textContent = `(magvar tables ${MAGVAR_TABLE_DATE}; ${MAGVAR_DRIFT_REMARK})`;
   }
@@ -1319,7 +1319,15 @@ async function init() {
 
   if ("serviceWorker" in navigator) {
     try {
-      await navigator.serviceWorker.register("./sw.js");
+      // When a new SW takes control, reload once so HTML/CSS/JS stay in sync
+      let swRefreshing = false;
+      navigator.serviceWorker.addEventListener("controllerchange", () => {
+        if (swRefreshing) return;
+        swRefreshing = true;
+        window.location.reload();
+      });
+      const reg = await navigator.serviceWorker.register("./sw.js");
+      reg.update?.().catch(() => {});
     } catch (err) {
       console.warn("SW register failed", err);
     }

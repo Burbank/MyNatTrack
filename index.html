@@ -17,8 +17,52 @@
     <link rel="shortcut icon" href="icons/favicon.png" />
     <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
     <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
-    <link rel="stylesheet" href="css/styles.css" />
+    <link rel="stylesheet" href="css/styles.css?v=1.1" />
     <title>MyNatTrack</title>
+    <!--
+      Critical header: full-width 3-col grid.
+      Title in the center track; Bright+Edit/Fly pack against its left;
+      Verify+SETREF pack against its right — keeps controls off iPad status corners.
+    -->
+    <style id="header-layout-critical">
+      .app-header {
+        display: grid !important;
+        grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) !important;
+        align-items: center !important;
+        column-gap: 0.5rem !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+        padding-top: max(0.55rem, env(safe-area-inset-top, 0px)) !important;
+        padding-right: max(0.75rem, env(safe-area-inset-right, 0px)) !important;
+        padding-bottom: 0.45rem !important;
+        padding-left: max(0.75rem, env(safe-area-inset-left, 0px)) !important;
+        min-height: calc(
+          2.75rem + max(0.55rem, env(safe-area-inset-top, 0px)) + 0.45rem
+        ) !important;
+      }
+      .header-left-cluster {
+        grid-column: 1 !important;
+        justify-self: end !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 0.5rem !important;
+        min-width: 0 !important;
+      }
+      .app-title {
+        grid-column: 2 !important;
+        justify-self: center !important;
+        margin: 0 !important;
+        white-space: nowrap !important;
+      }
+      .header-right-cluster {
+        grid-column: 3 !important;
+        justify-self: start !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 0.5rem !important;
+        min-width: 0 !important;
+      }
+    </style>
     <script>
       try {
         if (localStorage.getItem("mynattrack_theme_v1") === "bright") {
@@ -62,33 +106,24 @@
       </form>
     </div>
 
-    <header class="app-header">
-      <div class="brand">
-        <div class="brand-row">
-          <h1>MyNatTrack</h1>
-          <button
-            type="button"
-            id="theme-btn"
-            class="theme-btn"
-            aria-pressed="false"
-            title="Switch to Hi-Contrast Day Theme"
-          >
-            Bright
-          </button>
-        </div>
-      </div>
-      <div class="header-center">
-        <div id="verify-banner">Waypoint accuracy last verified on 2026-07-26</div>
-        <p class="header-disclaimer">
-          Educational and Simulator use only. Not certified for navigation.<br />
-          WGS-84 Vincenty tracks &amp; distances; magnetic variation is an approximate offline model.
-        </p>
-      </div>
-      <div class="header-actions">
+    <header class="app-header" data-header-layout="center-title-clusters">
+      <div class="header-left-cluster">
+        <button
+          type="button"
+          id="theme-btn"
+          class="theme-btn"
+          aria-pressed="false"
+          title="Switch to Hi-Contrast Day Theme"
+        >
+          Bright
+        </button>
         <div class="mode-toggle" role="group" aria-label="Interface mode">
           <button type="button" class="mode-btn" id="mode-edit-btn" aria-pressed="true">Edit</button>
           <button type="button" class="mode-btn" id="mode-fly-btn" aria-pressed="false">Fly</button>
         </div>
+      </div>
+      <h1 class="app-title">MyNatTrack</h1>
+      <div class="header-right-cluster">
         <button type="button" class="icon-btn" id="verify-flow-btn" aria-label="Verify">Verify</button>
         <button type="button" class="icon-btn" id="settings-btn" aria-label="SETREF">SETREF</button>
       </div>
@@ -122,8 +157,8 @@
 
       <div class="right-stack">
         <section class="panel" id="chart-panel">
-          <div class="panel-head">
-            <h2>Atlantic chart</h2>
+          <div class="panel-head chart-toolbar">
+            <button type="button" class="secondary compact" id="nat-tracks-btn">NAT Tracks</button>
             <div class="chart-toggles">
               <label class="chart-toggle">
                 <input type="checkbox" id="show-east-tracks" checked />
@@ -136,7 +171,6 @@
               <button type="button" class="secondary compact" id="chart-fullscreen-btn" aria-pressed="false" title="Full screen chart">
                 Full screen
               </button>
-              <button type="button" class="secondary compact" id="nat-tracks-btn">NAT Tracks</button>
             </div>
           </div>
           <div class="chart-wrap">
@@ -173,7 +207,13 @@
           <h2 id="settings-title">SETREF</h2>
           <button type="button" class="icon-btn" id="settings-close">Close</button>
         </header>
-        <p class="verify-line" id="settings-verify">Waypoint accuracy last verified on 2026-07-26</p>
+        <div class="settings-liability">
+          <p class="verify-line" id="settings-verify">Waypoint accuracy last verified on 2026-07-26</p>
+          <p class="muted settings-disclaimer">
+            Educational and Simulator use only. Not certified for navigation.<br />
+            WGS-84 Vincenty tracks &amp; distances; magnetic variation is an approximate offline model.
+          </p>
+        </div>
         <div class="setting-row">
           <label for="mag-toggle">
             Show magnetic track
@@ -261,10 +301,7 @@
         </section>
 
         <div class="settings-footer">
-          <p class="disclaimer settings-disclaimer">
-            Educational and Simulator use only. Not certified for navigation. WGS-84 Vincenty tracks &amp; distances; magnetic variation is an approximate offline model.
-          </p>
-          <span class="settings-version muted" aria-label="App version">v1.0</span>
+          <span class="settings-version muted" aria-label="App version">v1.1</span>
         </div>
       </div>
     </div>
