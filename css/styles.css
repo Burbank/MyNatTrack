@@ -375,6 +375,35 @@ html.theme-bright .panel {
   border-bottom: 1px solid var(--line);
 }
 
+#legs-panel > h2.legs-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.45rem 0.75rem;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+#legs-panel > h2.legs-title .legs-label {
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+#legs-panel > h2.legs-title .legs-mod-diff {
+  font-family: var(--mono);
+  font-size: 0.88rem;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  /* Same tone as LEGS title in both themes (inherits --muted) */
+  color: var(--muted);
+}
+
+#legs-panel > h2.legs-title .legs-mod-diff[hidden] {
+  display: none !important;
+}
+
 .panel-head {
   display: flex;
   align-items: center;

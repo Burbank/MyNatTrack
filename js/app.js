@@ -101,6 +101,7 @@ const el = {
   legsBody: document.getElementById("legs-body"),
   totals: document.getElementById("totals"),
   totalsCompare: document.getElementById("totals-compare"),
+  legsModDiff: document.getElementById("legs-mod-diff"),
   chart: document.getElementById("chart"),
   error: document.getElementById("error"),
   settingsBtn: document.getElementById("settings-btn"),
@@ -865,41 +866,77 @@ function formatNmDelta(deltaNm) {
   return { text: `Difference: +${abs} NM`, kind: "longer" };
 }
 
+/** Compact title form: "mod diff 240.0nm" (signed). */
+function formatModDiffTitle(deltaNm) {
+  const abs = formatDistanceNm(Math.abs(deltaNm));
+  if (Math.abs(deltaNm) < 0.05) return `mod diff ${abs}nm`;
+  if (deltaNm < 0) return `mod diff −${abs}nm`;
+  return `mod diff +${abs}nm`;
+}
+
+function clearLegsModDiff() {
+  if (!el.legsModDiff) return;
+  el.legsModDiff.hidden = true;
+  el.legsModDiff.textContent = "";
+}
+
+function updateLegsModDiff(deltaNm) {
+  if (!el.legsModDiff) return;
+  if (deltaNm == null || !Number.isFinite(deltaNm)) {
+    clearLegsModDiff();
+    return;
+  }
+  el.legsModDiff.textContent = formatModDiffTitle(deltaNm);
+  el.legsModDiff.hidden = false;
+}
+
 function updateTotalsCompare(currentNm) {
-  if (!el.totalsCompare) return;
+  const hideAll = () => {
+    if (el.totalsCompare) {
+      el.totalsCompare.hidden = true;
+      el.totalsCompare.textContent = "";
+    }
+    clearLegsModDiff();
+  };
+  if (!el.totalsCompare && !el.legsModDiff) return;
   const prev = state.previousRouteStats;
   if (!prev || !Number.isFinite(prev.totalNm) || !Number.isFinite(prev.waypoints)) {
-    el.totalsCompare.hidden = true;
-    el.totalsCompare.textContent = "";
+    hideAll();
     return;
   }
   const curKey = routeSequenceKey(state.route);
   // Hide when we have nothing useful yet, or still on the same route as the snapshot
   if (prev.key && curKey && prev.key === curKey) {
-    el.totalsCompare.hidden = true;
-    el.totalsCompare.textContent = "";
+    hideAll();
     return;
   }
   if (!state.route.length) {
-    el.totalsCompare.innerHTML =
-      `Your last loaded route was ${prev.waypoints} waypoints · ` +
-      `${formatDistanceNm(prev.totalNm)} NM total`;
-    el.totalsCompare.hidden = false;
+    if (el.totalsCompare) {
+      el.totalsCompare.innerHTML =
+        `Your last loaded route was ${prev.waypoints} waypoints · ` +
+        `${formatDistanceNm(prev.totalNm)} NM total`;
+      el.totalsCompare.hidden = false;
+    }
+    clearLegsModDiff();
     return;
   }
   const nm = currentNm != null ? currentNm : computeLegs().totalNm;
-  const diff = formatNmDelta(nm - prev.totalNm);
+  const delta = nm - prev.totalNm;
+  const diff = formatNmDelta(delta);
   const diffClass =
     diff.kind === "shorter"
       ? "diff-shorter"
       : diff.kind === "longer"
         ? "diff-longer"
         : "";
-  el.totalsCompare.innerHTML =
-    `Your last loaded route was ${prev.waypoints} waypoints · ` +
-    `${formatDistanceNm(prev.totalNm)} NM total · ` +
-    `<span class="${diffClass}">${diff.text}</span>`;
-  el.totalsCompare.hidden = false;
+  if (el.totalsCompare) {
+    el.totalsCompare.innerHTML =
+      `Your last loaded route was ${prev.waypoints} waypoints · ` +
+      `${formatDistanceNm(prev.totalNm)} NM total · ` +
+      `<span class="${diffClass}">${diff.text}</span>`;
+    el.totalsCompare.hidden = false;
+  }
+  updateLegsModDiff(delta);
 }
 
 function updateTotalsLine(legsCount, totalNm) {

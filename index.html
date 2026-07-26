@@ -17,7 +17,7 @@
     <link rel="shortcut icon" href="icons/favicon.png" />
     <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
     <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
-    <link rel="stylesheet" href="css/styles.css?v=1.6" />
+    <link rel="stylesheet" href="css/styles.css?v=1.7" />
     <title>MyNatTrack</title>
     <!--
       Critical header: full-width 3-col grid.
@@ -199,7 +199,10 @@
         </section>
 
         <section class="panel" id="legs-panel">
-          <h2>Legs</h2>
+          <h2 class="legs-title">
+            <span class="legs-label">Legs</span>
+            <span id="legs-mod-diff" class="legs-mod-diff" hidden></span>
+          </h2>
           <div class="panel-body">
             <table class="legs">
               <thead>
@@ -338,7 +341,7 @@
             rel="noopener noreferrer"
             title="Opens ICAO NAT Doc 007 (current edition V.2026-1). ICAO puts the edition in the filename — no permanent “latest.pdf” URL exists; when a new edition is published, this link is updated in the app. Browse all editions via EUR &amp; NAT Documents on icao.int."
           >Download Latest Nat Doc 007</a>
-          <span class="settings-version muted" aria-label="App version">v1.6</span>
+          <span class="settings-version muted" aria-label="App version">v1.7</span>
         </div>
       </div>
     </div>
@@ -537,6 +540,6 @@
       </div>
     </div>
 
-    <script type="module" src="js/app.js?v=1.6"></script>
+    <script type="module" src="js/app.js?v=1.7"></script>
   </body>
 </html>
