@@ -13,7 +13,6 @@ export const DIVERSION_AIRPORTS = [
   { icao: "CYQX", name: "Gander", lat: 48.9369, lon: -54.5681, runways: [{ rwy: "03/21", rwyFt: 10200, rwyM: 3109 }, { rwy: "13/31", rwyFt: 8900, rwyM: 2713 }] },
   { icao: "CYJT", name: "Stephenville", lat: 48.5442, lon: -58.55, runways: [{ rwy: "09/27", rwyFt: 10000, rwyM: 3048 }] },
   { icao: "CYYT", name: "St. John's", lat: 47.6186, lon: -52.7519, runways: [{ rwy: "10/28", rwyFt: 8502, rwyM: 2591 }] },
-  { icao: "CYDF", name: "Deer Lake", lat: 49.2108, lon: -57.3914, runways: [] },
   { icao: "CYHZ", name: "Halifax", lat: 44.8808, lon: -63.5086, runways: [{ rwy: "05/23", rwyFt: 10500, rwyM: 3200 }] },
   { icao: "CYQM", name: "Moncton", lat: 46.1122, lon: -64.6786, runways: [{ rwy: "06/24", rwyFt: 10001, rwyM: 3048 }] },
   { icao: "CYFB", name: "Iqaluit", lat: 63.7564, lon: -68.5558, runways: [{ rwy: "16/34", rwyFt: 8605, rwyM: 2623 }] },
@@ -27,7 +26,6 @@ export const DIVERSION_AIRPORTS = [
   { icao: "BIKF", name: "Keflavik", lat: 63.985, lon: -22.6056, runways: [{ rwy: "10/28", rwyFt: 10056, rwyM: 3065 }, { rwy: "01/19", rwyFt: 10020, rwyM: 3054 }] },
   { icao: "LPLA", name: "Lajes", lat: 38.7618, lon: -27.0908, runways: [{ rwy: "15/33", rwyFt: 10870, rwyM: 3313 }] },
   { icao: "LPAZ", name: "Santa Maria", lat: 36.9714, lon: -25.1706, runways: [{ rwy: "18/36", rwyFt: 10000, rwyM: 3048 }] },
-  { icao: "LPPD", name: "Ponta Delgada", lat: 37.7412, lon: -25.6979, runways: [] },
   { icao: "TXKF", name: "Bermuda", lat: 32.364, lon: -64.6787, runways: [{ rwy: "12/30", rwyFt: 9705, rwyM: 2958 }] },
   { icao: "EINN", name: "Shannon", lat: 52.702, lon: -8.9248, runways: [{ rwy: "06/24", rwyFt: 10495, rwyM: 3199 }] },
   { icao: "EIDW", name: "Dublin", lat: 53.4213, lon: -6.2701, runways: [{ rwy: "10L/28R", rwyFt: 10203, rwyM: 3110 }, { rwy: "10R/28L", rwyFt: 8652, rwyM: 2637 }] },
@@ -45,12 +43,23 @@ export const DIVERSION_AIRPORTS = [
   { icao: "EKCH", name: "Copenhagen", lat: 55.618, lon: 12.656, runways: [{ rwy: "04L/22R", rwyFt: 11811, rwyM: 3600 }, { rwy: "04R/22L", rwyFt: 10827, rwyM: 3300 }, { rwy: "12/30", rwyFt: 9186, rwyM: 2800 }] },
 ];
 
-/** Minimum runway length (m) to list under the ICAO chart label. */
+/** Minimum runway length (m) for chart plot / SETREF listing. */
 export const RWY_LABEL_MIN_M = 2500;
 
-/** Airports sorted A–Z by ICAO for SETREF listing. */
-export function diversionAirportsAlpha() {
-  return [...DIVERSION_AIRPORTS].sort((a, b) => a.icao.localeCompare(b.icao));
+function hasRunwayAtLeast(ap, minM = RWY_LABEL_MIN_M) {
+  return (ap.runways || []).some((r) => (r.rwyM || 0) >= minM);
+}
+
+/** Airports with at least one runway ≥ minM (chart + SETREF). */
+export function diversionAirportsPlottable(minM = RWY_LABEL_MIN_M) {
+  return DIVERSION_AIRPORTS.filter((ap) => hasRunwayAtLeast(ap, minM));
+}
+
+/** Airports with at least one runway ≥ minM, sorted A–Z by ICAO. */
+export function diversionAirportsAlpha(minM = RWY_LABEL_MIN_M) {
+  return diversionAirportsPlottable(minM).sort((a, b) =>
+    a.icao.localeCompare(b.icao)
+  );
 }
 
 /** Runway designations ≥ minM, longest first. */

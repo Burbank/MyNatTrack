@@ -11,7 +11,7 @@ import {
   DOMESTIC_FIR_LABELS,
 } from "./oac.js";
 import {
-  DIVERSION_AIRPORTS,
+  diversionAirportsPlottable,
   RWY_LABEL_MIN_M,
   runwayLabels,
 } from "./diversionAirports.js";
@@ -648,7 +648,7 @@ function drawDiversionAirports(
 
   // Interaction frames: symbols only (collision labels are expensive)
   if (lite) {
-    for (const ap of DIVERSION_AIRPORTS) {
+    for (const ap of diversionAirportsPlottable(RWY_LABEL_MIN_M)) {
       const p = project(ap.lat, ap.lon, 0, 0, layout);
       if (!inCanvas(p, width, height, 4)) continue;
       drawAirportGear(ctx, p.x, p.y, color, 1);
@@ -659,7 +659,7 @@ function drawDiversionAirports(
 
   /** @type {{ap:any,x:number,y:number,lines:string[],metrics:number[],nn:number}[]} */
   const visible = [];
-  for (const ap of DIVERSION_AIRPORTS) {
+  for (const ap of diversionAirportsPlottable(RWY_LABEL_MIN_M)) {
     const p = project(ap.lat, ap.lon, 0, 0, layout);
     if (!inCanvas(p, width, height, 4)) continue;
     const rwys = includeRwys ? runwayLabels(ap, RWY_LABEL_MIN_M) : [];

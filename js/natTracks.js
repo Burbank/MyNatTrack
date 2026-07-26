@@ -16,6 +16,38 @@ const FAA_JSON = "https://nms.aim.faa.gov/datanat/nat.json";
 /** Public CORS-enabled OTS mirror used by VATSIM oceanic (mirrors daily NAT tracks). */
 const VATSIM_TRACKS = "https://nattrak.vatsim.net/api/tracks";
 
+function parseTimeMs(value) {
+  if (value == null || value === "") return NaN;
+  if (typeof value === "number") return Number.isFinite(value) ? value : NaN;
+  let s = String(value).trim();
+  // Safari is picky: trim >3 fractional digits; allow space separator
+  s = s.replace(/(\.\d{3})\d+/g, "$1").replace(" ", "T");
+  const ms = Date.parse(s);
+  return Number.isFinite(ms) ? ms : NaN;
+}
+
+function looksLikeTmi(value) {
+  return /^[0-9]{1,3}[A-Z]?$/i.test(String(value || "").trim());
+}
+
+/** Infer TMI from payload / message / validity day-of-year — never a source name. */
+export function inferTmi(nat) {
+  if (!nat) return null;
+  if (looksLikeTmi(nat.tmi)) return String(nat.tmi).trim().toUpperCase();
+  const fromText = String(nat.text || "").match(/TMI\s+IS\s+([0-9]{1,3}[A-Z]?)/i);
+  if (fromText) return fromText[1].toUpperCase();
+  // OTS TMI is commonly the UTC day-of-year of the track scheme
+  for (const t of nat.tracks || []) {
+    const ms = parseTimeMs(t.validFrom) || parseTimeMs(t.validTo);
+    if (!Number.isFinite(ms)) continue;
+    const d = new Date(ms);
+    const start = Date.UTC(d.getUTCFullYear(), 0, 0);
+    const day = Math.floor((ms - start) / 86400000);
+    if (day >= 1 && day <= 366) return String(day);
+  }
+  return null;
+}
+
 /**
  * Parse a single NAT fix token from a track line.
  * Supports named fixes, 57/50, 5130/30, and ARINC/expanded forms.
@@ -193,8 +225,9 @@ export function parseVatsimTracks(rows, db = []) {
     "",
   ];
 
+  const nowMs = Date.now();
   for (const row of rows || []) {
-    if (!row || row.active === false) continue;
+    if (!row) continue;
     if (Number(row.concorde) > 0) continue;
 
     const id = String(row.identifier || "")
@@ -202,6 +235,20 @@ export function parseVatsimTracks(rows, db = []) {
       .toUpperCase();
     const route = String(row.last_routeing || "").trim();
     if (!/^[A-Z]$/.test(id) || !route) continue;
+
+    const validFrom = row.valid_from || null;
+    const validTo = row.valid_to || null;
+    const fromMs = parseTimeMs(validFrom);
+    const toMs = parseTimeMs(validTo);
+
+    // Keep inactive/expired rows briefly so west/east clocks can show "Expired"
+    // instead of empty placeholders when VATSIM flips active=false after valid_to.
+    if (row.active === false) {
+      const pending = Number.isFinite(fromMs) && fromMs > nowMs;
+      const recentlyEnded =
+        Number.isFinite(toMs) && toMs > nowMs - 18 * 3600 * 1000;
+      if (!pending && !recentlyEnded) continue;
+    }
 
     const points = [];
     for (const tok of route.split(/\s+/)) {
@@ -214,14 +261,14 @@ export function parseVatsimTracks(rows, db = []) {
     const dirRaw = String(row.direction || "").toLowerCase();
     const direction =
       dirRaw === "east" || dirRaw === "west" ? dirRaw : "unknown";
-    const validityLabel = formatIsoValidity(row.valid_from, row.valid_to);
+    const validityLabel = formatIsoValidity(validFrom, validTo);
 
     tracks.push({
       id,
       points,
       icao: "VATSIM",
-      validFrom: row.valid_from || null,
-      validTo: row.valid_to || null,
+      validFrom,
+      validTo,
       validityLabel,
       eastLevels: direction === "east" ? fls : [],
       westLevels: direction === "west" ? fls : [],
@@ -241,12 +288,14 @@ export function parseVatsimTracks(rows, db = []) {
   }
 
   tracks.sort((a, b) => a.id.localeCompare(b.id));
-  return {
+  const parsed = {
     tmi: null,
     tracks,
     text: textLines.join("\n").trim(),
     parts: [],
   };
+  parsed.tmi = inferTmi(parsed);
+  return parsed;
 }
 
 export function loadCachedNatTracks() {
@@ -267,7 +316,7 @@ function buildPayload(parsed, source) {
   const payload = {
     fetchedAt: new Date().toISOString(),
     source,
-    tmi: parsed.tmi,
+    tmi: parsed.tmi || inferTmi(parsed),
     text: parsed.text,
     tracks: parsed.tracks,
     parts: parsed.parts || [],
@@ -367,4 +416,141 @@ export function trackColor(id, direction) {
   const hue =
     direction === "east" ? 12 + i * 8 : direction === "west" ? 200 + i * 6 : 140 + i * 7;
   return `hsla(${hue % 360}, 70%, 62%, 0.9)`;
+}
+
+/** True when track is inside its validity window (unknown times count as valid). */
+export function isTrackValidAt(track, nowMs = Date.now()) {
+  if (!track) return false;
+  const fromMs = parseTimeMs(track.validFrom);
+  const toMs = parseTimeMs(track.validTo);
+  if (!Number.isFinite(fromMs) && !Number.isFinite(toMs)) return true;
+  if (Number.isFinite(fromMs) && nowMs < fromMs) return false;
+  if (Number.isFinite(toMs) && nowMs > toMs) return false;
+  return true;
+}
+
+export function formatHhmmZ(ms) {
+  if (!Number.isFinite(ms)) return "————Z";
+  const d = new Date(ms);
+  const hh = String(d.getUTCHours()).padStart(2, "0");
+  const mm = String(d.getUTCMinutes()).padStart(2, "0");
+  return `${hh}${mm}Z`;
+}
+
+/** ETE-style countdown: H+MM */
+export function formatCountdownHmm(ms) {
+  if (!Number.isFinite(ms) || ms < 0) return null;
+  const totalMin = Math.floor(ms / 60000);
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  return `${h}+${String(m).padStart(2, "0")}`;
+}
+
+/**
+ * Live clock card model for one direction.
+ * Prefers the currently active window, else next pending, else last expired.
+ * @returns {{
+ *   phase: 'unknown'|'pending'|'active'|'expired',
+ *   title: string,
+ *   windowLabel: string,
+ *   countdown: string,
+ *   tone: 'muted'|'active'|'urgent'|'expired'
+ * }}
+ */
+export function directionClockModel(tracks, direction, nowMs = Date.now()) {
+  const defaultTitle =
+    direction === "east" ? "Eastbound Tracks" : "Westbound Tracks";
+
+  const windows = [];
+  for (const t of tracks || []) {
+    const dir = t.direction || "unknown";
+    if (dir !== direction && dir !== "both") continue;
+    const fromMs = parseTimeMs(t.validFrom);
+    const toMs = parseTimeMs(t.validTo);
+    if (!Number.isFinite(fromMs) && !Number.isFinite(toMs)) continue;
+    windows.push({ fromMs, toMs });
+  }
+
+  if (!windows.length) {
+    return {
+      phase: "unknown",
+      title: defaultTitle,
+      windowLabel: "No time data",
+      countdown: "—",
+      tone: "muted",
+    };
+  }
+
+  const active = windows.filter(
+    (w) =>
+      (!Number.isFinite(w.fromMs) || nowMs >= w.fromMs) &&
+      (!Number.isFinite(w.toMs) || nowMs <= w.toMs)
+  );
+  const pending = windows
+    .filter((w) => Number.isFinite(w.fromMs) && nowMs < w.fromMs)
+    .sort((a, b) => a.fromMs - b.fromMs);
+  const expired = windows
+    .filter((w) => Number.isFinite(w.toMs) && nowMs > w.toMs)
+    .sort((a, b) => b.toMs - a.toMs);
+
+  /** @type {{ fromMs: number, toMs: number } | null} */
+  let chosen = null;
+  /** @type {'pending'|'active'|'expired'} */
+  let phase = "expired";
+
+  if (active.length) {
+    phase = "active";
+    const froms = active.map((w) => w.fromMs).filter(Number.isFinite);
+    const tos = active.map((w) => w.toMs).filter(Number.isFinite);
+    chosen = {
+      fromMs: froms.length ? Math.min(...froms) : NaN,
+      toMs: tos.length ? Math.max(...tos) : NaN,
+    };
+  } else if (pending.length) {
+    phase = "pending";
+    chosen = pending[0];
+  } else {
+    phase = "expired";
+    chosen = expired[0] || windows[0];
+  }
+
+  const fromMs = chosen?.fromMs;
+  const toMs = chosen?.toMs;
+  const windowLabel =
+    Number.isFinite(fromMs) && Number.isFinite(toMs)
+      ? `${formatHhmmZ(fromMs)} to ${formatHhmmZ(toMs)}`
+      : Number.isFinite(fromMs)
+        ? `from ${formatHhmmZ(fromMs)}`
+        : `until ${formatHhmmZ(toMs)}`;
+
+  if (phase === "pending") {
+    const left = fromMs - nowMs;
+    const dirWord = direction === "east" ? "Eastbound" : "Westbound";
+    return {
+      phase,
+      title: `${dirWord} · Will Become Active in`,
+      windowLabel,
+      countdown: formatCountdownHmm(left) || "0+00",
+      tone: left < 3600000 ? "urgent" : "muted",
+    };
+  }
+
+  if (phase === "expired") {
+    return {
+      phase,
+      title: defaultTitle,
+      windowLabel,
+      countdown: "Expired",
+      tone: "expired",
+    };
+  }
+
+  const left = Number.isFinite(toMs) ? toMs - nowMs : NaN;
+  return {
+    phase,
+    title: defaultTitle,
+    windowLabel,
+    countdown: formatCountdownHmm(left) || "0+00",
+    tone: Number.isFinite(left) && left < 3600000 ? "urgent" : "active",
+  };
 }

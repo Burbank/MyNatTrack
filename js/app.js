@@ -16,6 +16,9 @@ import {
   fetchNatTracks,
   loadCachedNatTracks,
   trackColor,
+  isTrackValidAt,
+  directionClockModel,
+  inferTmi,
 } from "./natTracks.js";
 import { ensureUnlocked } from "./auth.js";
 import {
@@ -39,12 +42,16 @@ const state = {
     showRwyLabels: true,
     showEastTracks: true,
     showWestTracks: true,
+    /** Remember Valid-only checkbox across reloads (same as East/West) */
+    validOnlyTracks: true,
   },
   mdText: "",
   nat: null,
   /** Last NAT fetch failure (shown only in the NAT panel) */
   natFetchError: "",
   natLoading: false,
+  /** Signature of currently-valid track ids (for chart refresh on expiry) */
+  natValidityKey: "",
   /** Pinch / wheel zoom on top of auto-fit (1 = fitted) */
   chartZoom: 1.35,
   /** Pan offsets from fitted center (degrees) */
@@ -99,9 +106,14 @@ const el = {
   natRefreshBtn: document.getElementById("nat-refresh-btn"),
   showEastTracks: document.getElementById("show-east-tracks"),
   showWestTracks: document.getElementById("show-west-tracks"),
+  validOnlyTracks: document.getElementById("valid-only-tracks"),
   natTmi: document.getElementById("nat-tmi"),
   natStatus: document.getElementById("nat-status"),
   natMessage: document.getElementById("nat-message"),
+  natClockEast: document.getElementById("nat-clock-east"),
+  natClockWest: document.getElementById("nat-clock-west"),
+  chartUtcClock: document.getElementById("chart-utc-clock"),
+  natUtcClock: document.getElementById("nat-utc-clock"),
   themeBtn: document.getElementById("theme-btn"),
   chartFullscreenBtn: document.getElementById("chart-fullscreen-btn"),
   modeEditBtn: document.getElementById("mode-edit-btn"),
@@ -116,6 +128,7 @@ const UI_MODE_KEY = "mynattrack_ui_mode_v1";
 let chartRaf = 0;
 let chartLitePending = false;
 let chartIdleTimer = 0;
+let natClockTimer = 0;
 
 function loadThemePref() {
   try {
@@ -151,6 +164,19 @@ function toggleTheme() {
   );
 }
 
+function syncTrackToggleUi() {
+  // One shared set of checkboxes for normal + fullscreen — keep UI aligned with settings
+  if (el.validOnlyTracks) {
+    el.validOnlyTracks.checked = state.settings.validOnlyTracks !== false;
+  }
+  if (el.showEastTracks) {
+    el.showEastTracks.checked = state.settings.showEastTracks !== false;
+  }
+  if (el.showWestTracks) {
+    el.showWestTracks.checked = state.settings.showWestTracks !== false;
+  }
+}
+
 function setChartFullscreen(on) {
   document.body.classList.toggle("chart-fullscreen", on);
   if (el.chartFullscreenBtn) {
@@ -158,6 +184,7 @@ function setChartFullscreen(on) {
     el.chartFullscreenBtn.setAttribute("aria-pressed", on ? "true" : "false");
     el.chartFullscreenBtn.title = on ? "Exit full screen chart" : "Full screen chart";
   }
+  syncTrackToggleUi();
   // Allow layout to settle before redraw
   requestAnimationFrame(() => {
     requestAnimationFrame(() => renderChart());
@@ -184,6 +211,7 @@ function loadSettings() {
   // East/West chart toggles default ON
   if (state.settings.showEastTracks !== false) state.settings.showEastTracks = true;
   if (state.settings.showWestTracks !== false) state.settings.showWestTracks = true;
+  if (state.settings.validOnlyTracks !== false) state.settings.validOnlyTracks = true;
   if (el.magToggle) el.magToggle.checked = state.settings.showMagnetic;
   if (state.settings.showAirspace !== false) state.settings.showAirspace = true;
   if (el.airspaceToggle) el.airspaceToggle.checked = state.settings.showAirspace !== false;
@@ -191,6 +219,7 @@ function loadSettings() {
   if (el.rwyLabelsToggle) el.rwyLabelsToggle.checked = state.settings.showRwyLabels !== false;
   if (el.showEastTracks) el.showEastTracks.checked = state.settings.showEastTracks;
   if (el.showWestTracks) el.showWestTracks.checked = state.settings.showWestTracks;
+  if (el.validOnlyTracks) el.validOnlyTracks.checked = state.settings.validOnlyTracks;
 }
 
 function saveSettings() {
@@ -293,7 +322,6 @@ function renderRouteList() {
   el.routeList.innerHTML = "";
   updateEntryChrome();
   if (!state.route.length) {
-    el.routeList.innerHTML = `<li class="empty">No waypoints yet. Paste route example: SOMAX 5020N 4930N 4740N 43N050W SOORY — then tap Add.</li>`;
     return;
   }
   state.route.forEach((wp, index) => {
@@ -567,15 +595,20 @@ function renderLegs() {
 function coloredNatTracks() {
   const showEast = state.settings.showEastTracks !== false;
   const showWest = state.settings.showWestTracks !== false;
+  const validOnly = state.settings.validOnlyTracks !== false;
+  const nowMs = Date.now();
   const tracks = state.nat?.tracks || [];
   return tracks
     .filter((t) => {
       const dir = t.direction || "unknown";
-      if (dir === "east") return showEast;
-      if (dir === "west") return showWest;
-      if (dir === "both") return showEast || showWest;
-      // Unknown direction: show if either toggle is on
-      return showEast || showWest;
+      let dirOk = false;
+      if (dir === "east") dirOk = showEast;
+      else if (dir === "west") dirOk = showWest;
+      else if (dir === "both") dirOk = showEast || showWest;
+      else dirOk = showEast || showWest;
+      if (!dirOk) return false;
+      if (validOnly && !isTrackValidAt(t, nowMs)) return false;
+      return true;
     })
     .map((t) => ({
       ...t,
@@ -583,25 +616,105 @@ function coloredNatTracks() {
     }));
 }
 
+function natValidityKey(nowMs = Date.now()) {
+  return (state.nat?.tracks || [])
+    .filter((t) => isTrackValidAt(t, nowMs))
+    .map((t) => t.id)
+    .sort()
+    .join(",");
+}
+
+function paintNatClock(card, model) {
+  if (!card || !model) return;
+  const title = card.querySelector(".nat-clock-title");
+  const windowEl = card.querySelector(".nat-clock-window");
+  const count = card.querySelector(".nat-clock-count");
+  if (title) title.textContent = model.title;
+  if (windowEl) windowEl.textContent = model.windowLabel;
+  if (count) count.textContent = model.countdown;
+  card.dataset.tone = model.tone;
+  card.dataset.phase = model.phase;
+}
+
+function updateNatClocks(nowMs = Date.now()) {
+  const tracks = state.nat?.tracks || [];
+  paintNatClock(el.natClockEast, directionClockModel(tracks, "east", nowMs));
+  paintNatClock(el.natClockWest, directionClockModel(tracks, "west", nowMs));
+}
+
+function tickNatValidity() {
+  const now = new Date();
+  const nowMs = now.getTime();
+  updateUtcClocks(now);
+  if (el.natPanel && !el.natPanel.hidden) {
+    updateNatClocks(nowMs);
+  }
+  if (state.settings.validOnlyTracks !== false && state.nat?.tracks?.length) {
+    const key = natValidityKey(nowMs);
+    if (key !== state.natValidityKey) {
+      state.natValidityKey = key;
+      renderChart();
+    }
+  }
+}
+
+function startNatClockTimer() {
+  if (natClockTimer) return;
+  updateUtcClocks();
+  natClockTimer = window.setInterval(tickNatValidity, 1000);
+}
+
 function formatNatTmi(nat) {
-  if (!nat) return "TMI —";
-  if (nat.tmi) return `TMI ${nat.tmi}`;
-  if (/vatsim/i.test(nat.source || "")) return "VATSIM";
-  return "TMI —";
+  const tmi = inferTmi(nat);
+  return tmi ? `TMI ${tmi}` : "TMI —";
+}
+
+function formatUtcHms(date = new Date()) {
+  const hh = String(date.getUTCHours()).padStart(2, "0");
+  const mm = String(date.getUTCMinutes()).padStart(2, "0");
+  const ss = String(date.getUTCSeconds()).padStart(2, "0");
+  return `${hh}:${mm}:${ss}`;
+}
+
+/** UTC day-of-year + time: DDD:HH:MM:SS (same day basis as TMI). */
+function formatUtcJulianClock(date = new Date()) {
+  const start = Date.UTC(date.getUTCFullYear(), 0, 0);
+  const day = Math.floor((date.getTime() - start) / 86400000);
+  const ddd = String(day).padStart(3, "0");
+  return `${ddd}:${formatUtcHms(date)}`;
+}
+
+function updateUtcClocks(now = new Date()) {
+  if (el.chartUtcClock) el.chartUtcClock.textContent = formatUtcHms(now);
+  if (el.natUtcClock) el.natUtcClock.textContent = formatUtcJulianClock(now);
+}
+
+function formatUtcStamp(iso) {
+  const d = iso ? new Date(iso) : null;
+  if (!d || Number.isNaN(d.getTime())) return "unknown time";
+  const yyyy = d.getUTCFullYear();
+  const mo = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const dd = String(d.getUTCDate()).padStart(2, "0");
+  const hh = String(d.getUTCHours()).padStart(2, "0");
+  const mm = String(d.getUTCMinutes()).padStart(2, "0");
+  const ss = String(d.getUTCSeconds()).padStart(2, "0");
+  return `${yyyy}-${mo}-${dd} ${hh}:${mm}:${ss} UTC`;
 }
 
 function formatNatStatus(nat, extra = "") {
   if (!nat) return extra || "Not loaded";
-  const when = nat.fetchedAt ? new Date(nat.fetchedAt).toLocaleString() : "unknown time";
+  const when = formatUtcStamp(nat.fetchedAt);
   const n = (nat.tracks || []).length;
   const cache = nat.fromCache ? " · cached" : "";
   // Keep status short — full fetch errors stay in the panel message when nothing is loaded
   const warn = (nat.warning || state.natFetchError) ? " · refresh failed" : "";
-  return `${n} tracks · ${when}${cache}${warn}${extra ? ` · ${extra}` : ""}`;
+  const suffix = `${cache}${warn}${extra ? ` · ${extra}` : ""}`;
+  return `${n} tracks · Update checked:\n${when}${suffix}`;
 }
 
 function renderNatPanel() {
   if (!el.natMessage) return;
+  updateNatClocks();
   if (state.natLoading) {
     if (el.natTmi) el.natTmi.textContent = formatNatTmi(state.nat);
     if (el.natStatus) el.natStatus.textContent = "Loading…";
@@ -618,6 +731,7 @@ function renderNatPanel() {
   }
   if (el.natTmi) el.natTmi.textContent = formatNatTmi(state.nat);
   if (el.natStatus) el.natStatus.textContent = formatNatStatus(state.nat);
+  state.natValidityKey = natValidityKey();
   const summary = (state.nat.tracks || [])
     .map((t) => {
       const dir = t.direction !== "unknown" ? ` (${t.direction})` : "";
@@ -1127,6 +1241,7 @@ async function init() {
   applyUiMode(loadUiMode(), { paint: false });
   renderAll();
   renderNatPanel();
+  startNatClockTimer();
   startGpsWatch();
 
   if (el.modeEditBtn) {
@@ -1311,14 +1426,17 @@ async function init() {
   });
   el.natRefreshBtn?.addEventListener("click", () => refreshNatTracks());
 
-  const syncEastWestTracks = () => {
+  const syncTrackToggles = () => {
     state.settings.showEastTracks = !!el.showEastTracks?.checked;
     state.settings.showWestTracks = !!el.showWestTracks?.checked;
+    state.settings.validOnlyTracks = !!el.validOnlyTracks?.checked;
     saveSettings();
+    state.natValidityKey = natValidityKey();
     renderChart();
   };
-  el.showEastTracks?.addEventListener("change", syncEastWestTracks);
-  el.showWestTracks?.addEventListener("change", syncEastWestTracks);
+  el.showEastTracks?.addEventListener("change", syncTrackToggles);
+  el.showWestTracks?.addEventListener("change", syncTrackToggles);
+  el.validOnlyTracks?.addEventListener("change", syncTrackToggles);
 
   let resizeTimer = 0;
   window.addEventListener("resize", () => {

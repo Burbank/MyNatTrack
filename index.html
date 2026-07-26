@@ -17,7 +17,7 @@
     <link rel="shortcut icon" href="icons/favicon.png" />
     <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
     <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
-    <link rel="stylesheet" href="css/styles.css?v=1.3" />
+    <link rel="stylesheet" href="css/styles.css?v=1.4" />
     <title>MyNatTrack</title>
     <!--
       Critical header: full-width 3-col grid.
@@ -162,15 +162,25 @@
       <div class="right-stack">
         <section class="panel" id="chart-panel">
           <div class="panel-head chart-toolbar">
-            <button type="button" class="secondary compact" id="nat-tracks-btn">NAT Tracks</button>
+            <div class="utc-chip" title="Coordinated Universal Time" aria-live="polite">
+              <span class="utc-chip-time mono" id="chart-utc-clock">——:——:——</span>
+              <span class="utc-chip-label">UTC</span>
+            </div>
             <div class="chart-toggles">
-              <label class="chart-toggle">
-                <input type="checkbox" id="show-east-tracks" checked />
-                Show East Tracks
+              <button type="button" class="secondary compact" id="nat-tracks-btn">NAT Tracks</button>
+              <label class="chart-toggle" for="valid-only-tracks" title="Hide tracks outside their validity window">
+                <input type="checkbox" id="valid-only-tracks" checked />
+                <span class="toggle-label-full">Valid only</span>
               </label>
-              <label class="chart-toggle">
+              <label class="chart-toggle" for="show-east-tracks">
+                <input type="checkbox" id="show-east-tracks" checked />
+                <span class="toggle-label-full">Show East Tracks</span>
+                <span class="toggle-label-short">East</span>
+              </label>
+              <label class="chart-toggle" for="show-west-tracks">
                 <input type="checkbox" id="show-west-tracks" checked />
-                Show West Tracks
+                <span class="toggle-label-full">Show West Tracks</span>
+                <span class="toggle-label-short">West</span>
               </label>
               <button type="button" class="secondary compact" id="chart-fullscreen-btn" aria-pressed="false" title="Full screen chart">
                 Full screen
@@ -305,7 +315,7 @@
         </section>
 
         <div class="settings-footer">
-          <span class="settings-version muted" aria-label="App version">v1.3</span>
+          <span class="settings-version muted" aria-label="App version">v1.4</span>
         </div>
       </div>
     </div>
@@ -468,8 +478,26 @@
         <header class="nat-header">
           <div class="nat-heading">
             <h2 id="nat-title">Atlantic tracks message</h2>
-            <div class="nat-tmi" id="nat-tmi" aria-live="polite">TMI —</div>
+            <div class="nat-tmi-row">
+              <div class="nat-tmi" id="nat-tmi" aria-live="polite">TMI —</div>
+              <div class="utc-chip utc-chip-inline" title="Coordinated Universal Time" aria-live="polite">
+                <span class="utc-chip-time mono" id="nat-utc-clock">———:——:——:——</span>
+                <span class="utc-chip-label">UTC</span>
+              </div>
+            </div>
             <span class="muted" id="nat-status">Not loaded</span>
+          </div>
+          <div class="nat-clocks" aria-label="Track validity countdowns">
+            <div class="nat-clock" id="nat-clock-east" data-tone="muted">
+              <div class="nat-clock-title">Eastbound Tracks</div>
+              <div class="nat-clock-count mono">—</div>
+              <div class="nat-clock-window mono">No time data</div>
+            </div>
+            <div class="nat-clock" id="nat-clock-west" data-tone="muted">
+              <div class="nat-clock-title">Westbound Tracks</div>
+              <div class="nat-clock-count mono">—</div>
+              <div class="nat-clock-window mono">No time data</div>
+            </div>
           </div>
           <div class="nat-toolbar">
             <button type="button" class="primary" id="nat-refresh-btn">Refresh</button>
@@ -477,6 +505,7 @@
           </div>
         </header>
         <p class="muted nat-note">
+          Track validity is referenced to 30°W for oceanic planning (UTC / Zulu times).
           This information may not be accurate. Educational / simulator use only — not certified for navigation.
           Online Refresh uses VATSIM natTrak.
           The last successful message is kept for offline viewing.
@@ -485,6 +514,6 @@
       </div>
     </div>
 
-    <script type="module" src="js/app.js?v=1.3"></script>
+    <script type="module" src="js/app.js?v=1.4"></script>
   </body>
 </html>
