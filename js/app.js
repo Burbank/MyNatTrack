@@ -30,6 +30,7 @@ import {
 } from "./natTracks.js";
 import { ensureUnlocked } from "./auth.js";
 import {
+  DIVERSION_AIRPORTS,
   diversionAirportsAlpha,
   runwayLabels,
 } from "./diversionAirports.js";
@@ -509,6 +510,40 @@ function mergeLearnedWaypointsIntoDb() {
       notes: w.notes || "Learned from NAT tracks message",
     });
     known.add(name);
+  }
+}
+
+/**
+ * Chart enroute alternates (diversion airports) are route-selectable by ICAO.
+ * Skip names already present in the bundled / learned DB (e.g. TXKF, LPLA).
+ */
+function mergeDiversionAirportsIntoDb() {
+  const known = new Set(
+    state.db.flatMap((w) =>
+      [w.name, w.id]
+        .filter(Boolean)
+        .map((s) => String(s).toUpperCase())
+    )
+  );
+  for (const ap of DIVERSION_AIRPORTS) {
+    const icao = String(ap?.icao || "").trim().toUpperCase();
+    if (!icao || !Number.isFinite(ap.lat) || !Number.isFinite(ap.lon)) continue;
+    if (known.has(icao)) continue;
+    const longest = (ap.runways || [])[0];
+    const rwyNote = longest
+      ? `Longest ${longest.rwy} ${longest.rwyM} m`
+      : "Enroute alternate";
+    state.db.push({
+      id: icao,
+      name: icao,
+      lat: ap.lat,
+      lon: ap.lon,
+      accuracy: "exact",
+      category: "airport",
+      region: "diversion",
+      notes: `${ap.name || icao}. ${rwyNote}`,
+    });
+    known.add(icao);
   }
 }
 
@@ -2220,6 +2255,7 @@ async function init() {
   ]);
   const wpData = await wpRes.json();
   state.db = wpData.waypoints || [];
+  mergeDiversionAirportsIntoDb();
   mergeLearnedWaypointsIntoDb();
   state.mdBaseText = await mdRes.text();
   state.mdText = state.mdBaseText;
