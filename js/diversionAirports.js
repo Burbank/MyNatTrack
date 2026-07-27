@@ -1,6 +1,6 @@
 /**
  * Common NAT / North Atlantic diversion airports suitable for heavy jets.
- * `runways` = all published runways ≥ 2500 m (longest first).
+ * `runways` = published runways ≥ ~2400 m (longest first); lat/lon = ARP.
  * Educational reference only — not a dispatch suitability list.
  */
 
@@ -22,6 +22,20 @@ export const DIVERSION_AIRPORTS = [
   { icao: "KJFK", name: "New York JFK", lat: 40.6399, lon: -73.7787, runways: [{ rwy: "13R/31L", rwyFt: 14511, rwyM: 4423 }, { rwy: "04L/22R", rwyFt: 12079, rwyM: 3682 }, { rwy: "13L/31R", rwyFt: 10000, rwyM: 3048 }, { rwy: "04R/22L", rwyFt: 8400, rwyM: 2560 }] },
   { icao: "KEWR", name: "Newark", lat: 40.6925, lon: -74.1687, runways: [{ rwy: "04L/22R", rwyFt: 11000, rwyM: 3353 }, { rwy: "04R/22L", rwyFt: 9999, rwyM: 3048 }] },
   { icao: "KIAD", name: "Washington Dulles", lat: 38.9445, lon: -77.4558, runways: [{ rwy: "01C/19C", rwyFt: 11500, rwyM: 3505 }, { rwy: "01R/19L", rwyFt: 11500, rwyM: 3505 }, { rwy: "12/30", rwyFt: 10501, rwyM: 3201 }, { rwy: "01L/19R", rwyFt: 9400, rwyM: 2865 }] },
+  { icao: "KORF", name: "Norfolk", lat: 36.8956, lon: -76.1989, runways: [{ rwy: "05/23", rwyFt: 9001, rwyM: 2744 }] },
+  { icao: "KILM", name: "Wilmington", lat: 34.2712, lon: -77.9029, runways: [{ rwy: "06/24", rwyFt: 8016, rwyM: 2443 }] },
+  { icao: "KCLT", name: "Charlotte", lat: 35.2132, lon: -80.9514, runways: [{ rwy: "01R/19L", rwyFt: 10000, rwyM: 3048 }, { rwy: "01L/19R", rwyFt: 9000, rwyM: 2743 }, { rwy: "18L/36R", rwyFt: 8676, rwyM: 2644 }] },
+  { icao: "KATL", name: "Atlanta", lat: 33.6367, lon: -84.4279, runways: [{ rwy: "09L/27R", rwyFt: 12390, rwyM: 3776 }, { rwy: "08R/26L", rwyFt: 9999, rwyM: 3048 }, { rwy: "08L/26R", rwyFt: 9000, rwyM: 2743 }, { rwy: "09R/27L", rwyFt: 9000, rwyM: 2743 }, { rwy: "10/28", rwyFt: 9000, rwyM: 2743 }] },
+  { icao: "KJAX", name: "Jacksonville", lat: 30.494, lon: -81.6878, runways: [{ rwy: "08/26", rwyFt: 10000, rwyM: 3048 }] },
+  { icao: "KMCO", name: "Orlando", lat: 28.4294, lon: -81.309, runways: [{ rwy: "18L/36R", rwyFt: 12005, rwyM: 3659 }, { rwy: "18R/36L", rwyFt: 12004, rwyM: 3659 }, { rwy: "17R/35L", rwyFt: 10000, rwyM: 3048 }, { rwy: "17L/35R", rwyFt: 9001, rwyM: 2744 }] },
+  { icao: "KDJT", name: "West Palm Beach", lat: 26.6832, lon: -80.0956, runways: [{ rwy: "10L/28R", rwyFt: 10001, rwyM: 3048 }] },
+  { icao: "KMIA", name: "Miami", lat: 25.7954, lon: -80.2901, runways: [{ rwy: "09/27", rwyFt: 13016, rwyM: 3967 }, { rwy: "08R/26L", rwyFt: 10506, rwyM: 3202 }, { rwy: "12/30", rwyFt: 9360, rwyM: 2853 }, { rwy: "08L/26R", rwyFt: 8600, rwyM: 2621 }] },
+  { icao: "MYGF", name: "Freeport", lat: 26.5587, lon: -78.6956, runways: [{ rwy: "06/24", rwyFt: 11000, rwyM: 3353 }] },
+  { icao: "MYNN", name: "Nassau", lat: 25.039, lon: -77.4662, runways: [{ rwy: "14/32", rwyFt: 11013, rwyM: 3357 }, { rwy: "09/27", rwyFt: 8353, rwyM: 2546 }] },
+  { icao: "TJBQ", name: "Aguadilla", lat: 18.4949, lon: -67.1294, runways: [{ rwy: "08/26", rwyFt: 11702, rwyM: 3567 }] },
+  { icao: "TJSJ", name: "San Juan", lat: 18.4394, lon: -66.0018, runways: [{ rwy: "08/26", rwyFt: 10002, rwyM: 3049 }, { rwy: "10/28", rwyFt: 8016, rwyM: 2443 }] },
+  { icao: "MDPC", name: "Punta Cana", lat: 18.5674, lon: -68.3634, runways: [{ rwy: "09/27", rwyFt: 10171, rwyM: 3100 }] },
+  { icao: "MDPP", name: "Puerto Plata", lat: 19.7579, lon: -70.5701, runways: [{ rwy: "08/26", rwyFt: 10105, rwyM: 3080 }] },
   { icao: "BGSF", name: "Kangerlussuaq", lat: 67.0122, lon: -50.7116, runways: [{ rwy: "09/27", rwyFt: 9219, rwyM: 2810 }] },
   { icao: "BIKF", name: "Keflavik", lat: 63.985, lon: -22.6056, runways: [{ rwy: "10/28", rwyFt: 10056, rwyM: 3065 }, { rwy: "01/19", rwyFt: 10020, rwyM: 3054 }] },
   { icao: "LPLA", name: "Lajes", lat: 38.7618, lon: -27.0908, runways: [{ rwy: "15/33", rwyFt: 10870, rwyM: 3313 }] },
@@ -44,7 +58,7 @@ export const DIVERSION_AIRPORTS = [
 ];
 
 /** Minimum runway length (m) for chart plot / SETREF listing. */
-export const RWY_LABEL_MIN_M = 2500;
+export const RWY_LABEL_MIN_M = 2400;
 
 function hasRunwayAtLeast(ap, minM = RWY_LABEL_MIN_M) {
   return (ap.runways || []).some((r) => (r.rwyM || 0) >= minM);

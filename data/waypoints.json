@@ -1,77 +1,17 @@
 {
-  "version": "2026-07-26-1158Z",
-  "accuracyVerifiedOn": "2026-07-26",
+  "version": "2026-07-26-2200Z",
+  "accuracyVerifiedOn": "2026-07-27",
   "disclaimer": "Reference compilation only – NOT for navigation. Always verify with current official AIPs, NOTAMs, and certified FMS/nav database before flight.",
   "waypoints": [
     {
-      "id": "SOMAX",
-      "name": "SOMAX",
-      "lat": 50.0,
-      "lon": -15.0,
+      "id": "ALLRY",
+      "name": "ALLRY",
+      "lat": 51.0,
+      "lon": -50.0,
       "category": "oceanic_oep",
-      "region": "east",
+      "region": "west",
       "accuracy": "exact",
-      "notes": "Confirmed OpenNav (IE). Common eastbound exit / landfall."
-    },
-    {
-      "id": "MALOT",
-      "name": "MALOT",
-      "lat": 53.0,
-      "lon": -15.0,
-      "category": "oceanic_oep",
-      "region": "east",
-      "accuracy": "exact",
-      "notes": "Confirmed OpenNav (IE). Frequent OTS point."
-    },
-    {
-      "id": "DOGAL",
-      "name": "DOGAL",
-      "lat": 54.0,
-      "lon": -15.0,
-      "category": "oceanic_oep",
-      "region": "east",
-      "accuracy": "exact",
-      "notes": "Confirmed OpenNav (UK). Frequent OTS point."
-    },
-    {
-      "id": "LIMRI",
-      "name": "LIMRI",
-      "lat": 52.0,
-      "lon": -15.0,
-      "category": "oceanic_oep",
-      "region": "east",
-      "accuracy": "exact",
-      "notes": "Confirmed OpenNav (IE). Common landfall / OEP-related."
-    },
-    {
-      "id": "RESNO",
-      "name": "RESNO",
-      "lat": 56.0,
-      "lon": -15.0,
-      "category": "oceanic_oep",
-      "region": "east",
-      "accuracy": "approximate",
-      "notes": "Frequently appears in westbound track messages (exact minutes vary by cycle; verify AIP)."
-    },
-    {
-      "id": "PIKIL",
-      "name": "PIKIL",
-      "lat": 57.0,
-      "lon": -17.5,
-      "category": "oceanic_oep",
-      "region": "east",
-      "accuracy": "approximate",
-      "notes": "Common OEP in track messages (~015–020W)."
-    },
-    {
-      "id": "SUNOT",
-      "name": "SUNOT",
-      "lat": 58.0,
-      "lon": -17.5,
-      "category": "oceanic_oep",
-      "region": "east",
-      "accuracy": "approximate",
-      "notes": "Common OEP (~015–020W)."
+      "notes": "Transport Canada AIM NAT Table 1.1 / OEP association (5100… / 050W family). Educational — verify current AIM/AIP."
     },
     {
       "id": "ATSUR",
@@ -94,6 +34,196 @@
       "notes": "Appears in southern tracks."
     },
     {
+      "id": "BUDAR",
+      "name": "BUDAR",
+      "lat": 50.5,
+      "lon": -50.0,
+      "category": "oceanic_oep",
+      "region": "west",
+      "accuracy": "exact",
+      "notes": "Transport Canada AIM NAT Table 1.1 / OEP association (5030… / 050W family). Educational — verify current AIM/AIP."
+    },
+    {
+      "id": "CUDDY",
+      "name": "CUDDY",
+      "lat": 58.0,
+      "lon": -50.0,
+      "category": "oceanic_oep",
+      "region": "west",
+      "accuracy": "exact",
+      "notes": "Transport Canada AIM NAT Table 1.1 / OEP association (5800… / 050W family). Educational — verify current AIM/AIP."
+    },
+    {
+      "id": "DOGAL",
+      "name": "DOGAL",
+      "lat": 54.0,
+      "lon": -15.0,
+      "category": "oceanic_oep",
+      "region": "east",
+      "accuracy": "exact",
+      "notes": "Confirmed OpenNav (UK). Frequent OTS point."
+    },
+    {
+      "id": "DORYY",
+      "name": "DORYY",
+      "lat": 58.0,
+      "lon": -50.0,
+      "category": "oceanic_oep",
+      "region": "west",
+      "accuracy": "exact",
+      "notes": "Transport Canada AIM NAT Table 1.1 / OEP association (5800… / 050W family). Educational — verify current AIM/AIP."
+    },
+    {
+      "id": "ELSIR",
+      "name": "ELSIR",
+      "lat": 50.0,
+      "lon": -50.0,
+      "category": "oceanic_oep",
+      "region": "west",
+      "accuracy": "exact",
+      "notes": "Transport Canada AIM NAT Table 1.1 / OEP association (5000… / 050W family). Educational — verify current AIM/AIP."
+    },
+    {
+      "id": "ENNSO",
+      "name": "ENNSO",
+      "lat": 57.5,
+      "lon": -50.0,
+      "category": "oceanic_oep",
+      "region": "west",
+      "accuracy": "exact",
+      "notes": "Transport Canada AIM NAT Table 1.1 / OEP association (5730… / 050W family). Educational — verify current AIM/AIP."
+    },
+    {
+      "id": "ETIKI",
+      "name": "ETIKI",
+      "lat": 48.0,
+      "lon": -8.75,
+      "category": "oceanic_oep",
+      "region": "east",
+      "accuracy": "approximate",
+      "notes": "OpenNav/UK lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+    },
+    {
+      "id": "HOIST",
+      "name": "HOIST",
+      "lat": 57.0,
+      "lon": -50.0,
+      "category": "oceanic_oep",
+      "region": "west",
+      "accuracy": "exact",
+      "notes": "Transport Canada AIM NAT Table 1.1 / OEP association (5700… / 050W family). Educational — verify current AIM/AIP."
+    },
+    {
+      "id": "IBERG",
+      "name": "IBERG",
+      "lat": 49.5,
+      "lon": -50.0,
+      "category": "oceanic_oep",
+      "region": "west",
+      "accuracy": "exact",
+      "notes": "Transport Canada AIM NAT Table 1.1 / OEP association (4930… / 050W family). Educational — verify current AIM/AIP."
+    },
+    {
+      "id": "IRLOK",
+      "name": "IRLOK",
+      "lat": 56.5,
+      "lon": -50.0,
+      "category": "oceanic_oep",
+      "region": "west",
+      "accuracy": "exact",
+      "notes": "Transport Canada AIM NAT Table 1.1 / OEP association (5630… / 050W family). Educational — verify current AIM/AIP."
+    },
+    {
+      "id": "JANJO",
+      "name": "JANJO",
+      "lat": 56.0,
+      "lon": -50.0,
+      "category": "oceanic_oep",
+      "region": "west",
+      "accuracy": "exact",
+      "notes": "Transport Canada AIM NAT Table 1.1 / OEP association (5600… / 050W family). Educational — verify current AIM/AIP."
+    },
+    {
+      "id": "JOOPY",
+      "name": "JOOPY",
+      "lat": 49.0,
+      "lon": -50.0,
+      "category": "oceanic_oep",
+      "region": "west",
+      "accuracy": "exact",
+      "notes": "Transport Canada AIM NAT Table 1.1 / OEP association (4900… / 050W family). Educational — verify current AIM/AIP."
+    },
+    {
+      "id": "KODIK",
+      "name": "KODIK",
+      "lat": 55.5,
+      "lon": -50.0,
+      "category": "oceanic_oep",
+      "region": "west",
+      "accuracy": "exact",
+      "notes": "Transport Canada AIM NAT Table 1.1 / OEP association (5530… / 050W family). Educational — verify current AIM/AIP."
+    },
+    {
+      "id": "LIBOR",
+      "name": "LIBOR",
+      "lat": 61.016667,
+      "lon": -62.683333,
+      "category": "oceanic_oep",
+      "region": "west",
+      "accuracy": "exact",
+      "notes": "Transport Canada AIM NAT Table 1.1 / OEP association (6101… / 050W family). Educational — verify current AIM/AIP."
+    },
+    {
+      "id": "LIMRI",
+      "name": "LIMRI",
+      "lat": 52.0,
+      "lon": -15.0,
+      "category": "oceanic_oep",
+      "region": "east",
+      "accuracy": "exact",
+      "notes": "Confirmed OpenNav (IE). Common landfall / OEP-related."
+    },
+    {
+      "id": "LOMSI",
+      "name": "LOMSI",
+      "lat": 55.0,
+      "lon": -50.0,
+      "category": "oceanic_oep",
+      "region": "west",
+      "accuracy": "exact",
+      "notes": "Transport Canada AIM NAT Table 1.1 / OEP association (5500… / 050W family). Educational — verify current AIM/AIP."
+    },
+    {
+      "id": "MALOT",
+      "name": "MALOT",
+      "lat": 53.0,
+      "lon": -15.0,
+      "category": "oceanic_oep",
+      "region": "east",
+      "accuracy": "exact",
+      "notes": "Confirmed OpenNav (IE). Frequent OTS point."
+    },
+    {
+      "id": "MELDI",
+      "name": "MELDI",
+      "lat": 54.5,
+      "lon": -50.0,
+      "category": "oceanic_oep",
+      "region": "west",
+      "accuracy": "exact",
+      "notes": "Transport Canada AIM NAT Table 1.1 / OEP association (5430… / 050W family). Educational — verify current AIM/AIP."
+    },
+    {
+      "id": "MUSAK",
+      "name": "MUSAK",
+      "lat": 48.5,
+      "lon": -50.0,
+      "category": "oceanic_oep",
+      "region": "west",
+      "accuracy": "exact",
+      "notes": "Transport Canada AIM NAT Table 1.1 / OEP association (4830… / 050W family). Educational — verify current AIM/AIP."
+    },
+    {
       "id": "NASBA",
       "name": "NASBA",
       "lat": 49.0,
@@ -102,6 +232,146 @@
       "region": "east",
       "accuracy": "approximate",
       "notes": "Landfall-related."
+    },
+    {
+      "id": "NEEKO",
+      "name": "NEEKO",
+      "lat": 54.0,
+      "lon": -50.0,
+      "category": "oceanic_oep",
+      "region": "west",
+      "accuracy": "exact",
+      "notes": "Transport Canada AIM NAT Table 1.1 / OEP association (5400… / 050W family). Educational — verify current AIM/AIP."
+    },
+    {
+      "id": "NICSO",
+      "name": "NICSO",
+      "lat": 48.0,
+      "lon": -50.0,
+      "category": "oceanic_oep",
+      "region": "west",
+      "accuracy": "exact",
+      "notes": "Transport Canada AIM NAT Table 1.1 / OEP association (4800… / 050W family). Educational — verify current AIM/AIP."
+    },
+    {
+      "id": "NIFTY",
+      "name": "NIFTY",
+      "lat": 60.966667,
+      "lon": -58.0,
+      "category": "oceanic_oep",
+      "region": "west",
+      "accuracy": "approximate",
+      "notes": "OpenNav CA (605800N/0580000W). Northern Gander-related OEP — verify AIM/AIP."
+    },
+    {
+      "id": "OMSAT",
+      "name": "OMSAT",
+      "lat": 47.5,
+      "lon": -50.0,
+      "category": "oceanic_oep",
+      "region": "west",
+      "accuracy": "exact",
+      "notes": "Transport Canada AIM NAT Table 1.1 / OEP association (4730… / 050W family). Educational — verify current AIM/AIP."
+    },
+    {
+      "id": "PELTU",
+      "name": "PELTU",
+      "lat": 53.5,
+      "lon": -50.0,
+      "category": "oceanic_oep",
+      "region": "west",
+      "accuracy": "exact",
+      "notes": "Transport Canada AIM NAT Table 1.1 / OEP association (5330… / 050W family). Educational — verify current AIM/AIP."
+    },
+    {
+      "id": "PIKIL",
+      "name": "PIKIL",
+      "lat": 57.0,
+      "lon": -17.5,
+      "category": "oceanic_oep",
+      "region": "east",
+      "accuracy": "approximate",
+      "notes": "Common OEP in track messages (~015–020W)."
+    },
+    {
+      "id": "PORTI",
+      "name": "PORTI",
+      "lat": 47.0,
+      "lon": -50.0,
+      "category": "oceanic_oep",
+      "region": "west",
+      "accuracy": "exact",
+      "notes": "Transport Canada AIM NAT Table 1.1 / OEP association (4700… / 050W family). Educational — verify current AIM/AIP."
+    },
+    {
+      "id": "RAFIN",
+      "name": "RAFIN",
+      "lat": 45.0,
+      "lon": -50.0,
+      "category": "oceanic_oep",
+      "region": "west",
+      "accuracy": "exact",
+      "notes": "Transport Canada AIM NAT Table 1.1 / OEP association (4500… / 050W family). Educational — verify current AIM/AIP."
+    },
+    {
+      "id": "RELIC",
+      "name": "RELIC",
+      "lat": 46.5,
+      "lon": -50.0,
+      "category": "oceanic_oep",
+      "region": "west",
+      "accuracy": "exact",
+      "notes": "Transport Canada AIM NAT Table 1.1 / OEP association (4630… / 050W family). Educational — verify current AIM/AIP."
+    },
+    {
+      "id": "RESNO",
+      "name": "RESNO",
+      "lat": 56.0,
+      "lon": -15.0,
+      "category": "oceanic_oep",
+      "region": "east",
+      "accuracy": "approximate",
+      "notes": "Frequently appears in westbound track messages (exact minutes vary by cycle; verify AIP)."
+    },
+    {
+      "id": "RIKAL",
+      "name": "RIKAL",
+      "lat": 53.0,
+      "lon": -50.0,
+      "category": "oceanic_oep",
+      "region": "west",
+      "accuracy": "exact",
+      "notes": "Transport Canada AIM NAT Table 1.1 / OEP association (5300… / 050W family). Educational — verify current AIM/AIP."
+    },
+    {
+      "id": "SAXAN",
+      "name": "SAXAN",
+      "lat": 52.5,
+      "lon": -50.0,
+      "category": "oceanic_oep",
+      "region": "west",
+      "accuracy": "exact",
+      "notes": "Transport Canada AIM NAT Table 1.1 / OEP association (5230… / 050W family). Educational — verify current AIM/AIP."
+    },
+    {
+      "id": "SEPAL",
+      "name": "SEPAL",
+      "lat": 47.0,
+      "lon": -8.75,
+      "category": "oceanic_oep",
+      "region": "east",
+      "accuracy": "approximate",
+      "notes": "OpenNav/UK lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+    },
+    {
+      "id": "SOMAX",
+      "name": "SOMAX",
+      "lat": 50.0,
+      "lon": -15.0,
+      "category": "oceanic_oep",
+      "region": "east",
+      "accuracy": "exact",
+      "notes": "Confirmed OpenNav (IE). Common eastbound exit / landfall."
     },
     {
       "id": "SOORY",
@@ -114,44 +384,1274 @@
       "notes": "Confirmed OpenNav (US). Used on southern tracks / random routes."
     },
     {
-      "id": "JOOPY",
-      "name": "JOOPY",
-      "lat": 48.5,
-      "lon": -51.0,
+      "id": "SUNOT",
+      "name": "SUNOT",
+      "lat": 58.0,
+      "lon": -17.5,
       "category": "oceanic_oep",
-      "region": "west",
-      "accuracy": "approximate",
-      "notes": "Frequent eastbound exit / landfall (~48–49N / 050–052W)."
-    },
-    {
-      "id": "HOIST",
-      "name": "HOIST",
-      "lat": 39.0,
-      "lon": -67.0,
-      "category": "oceanic_oep",
-      "region": "west",
-      "accuracy": "approximate",
-      "notes": "Exit point; exact position cycle-dependent – verify."
-    },
-    {
-      "id": "EVRIN",
-      "name": "EVRIN",
-      "lat": 51.782222222,
-      "lon": -6.563333333,
-      "category": "land_based",
       "region": "east",
-      "accuracy": "exact",
-      "notes": "Confirmed OpenNav + UK AIP ENR 4.4 + Irish AIP."
+      "accuracy": "approximate",
+      "notes": "Common OEP (~015–020W)."
     },
     {
-      "id": "ELSOX",
-      "name": "ELSOX",
+      "id": "SUPRY",
+      "name": "SUPRY",
+      "lat": 46.0,
+      "lon": -50.0,
+      "category": "oceanic_oep",
+      "region": "west",
+      "accuracy": "exact",
+      "notes": "Transport Canada AIM NAT Table 1.1 / OEP association (4600… / 050W family). Educational — verify current AIM/AIP."
+    },
+    {
+      "id": "TUDEP",
+      "name": "TUDEP",
+      "lat": 52.0,
+      "lon": -50.0,
+      "category": "oceanic_oep",
+      "region": "west",
+      "accuracy": "exact",
+      "notes": "Transport Canada AIM NAT Table 1.1 / OEP association (5200… / 050W family). Educational — verify current AIM/AIP."
+    },
+    {
+      "id": "UMESI",
+      "name": "UMESI",
+      "lat": 51.5,
+      "lon": -50.0,
+      "category": "oceanic_oep",
+      "region": "west",
+      "accuracy": "exact",
+      "notes": "Transport Canada AIM NAT Table 1.1 / OEP association (5130… / 050W family). Educational — verify current AIM/AIP."
+    },
+    {
+      "id": "ANVER",
+      "name": "ANVER",
+      "lat": 35.252028,
+      "lon": -65.687792,
+      "category": "nat-named",
+      "region": "watrs",
+      "accuracy": "approximate",
+      "notes": "OpenNav BM ANVER (hemisphere corrected E→W for WATRS). Verify NFDC/AIP."
+    },
+    {
+      "id": "ATUGI",
+      "name": "ATUGI",
+      "lat": 35.638467,
+      "lon": -71.52675,
+      "category": "nat-named",
+      "region": "watrs",
+      "accuracy": "approximate",
+      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+    },
+    {
+      "id": "BEXUM",
+      "name": "BEXUM",
+      "lat": 33.302314,
+      "lon": -69.812475,
+      "category": "nat-named",
+      "region": "watrs",
+      "accuracy": "approximate",
+      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+    },
+    {
+      "id": "BOBTU",
+      "name": "BOBTU",
+      "lat": 44.117222,
+      "lon": -52.822222,
+      "category": "nat-named",
+      "region": "watrs",
+      "accuracy": "approximate",
+      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+    },
+    {
+      "id": "BOKTO",
+      "name": "BOKTO",
+      "lat": 51.2375,
+      "lon": -58.664444,
+      "category": "nat-named",
+      "region": "west",
+      "accuracy": "approximate",
+      "notes": "OpenNav/CA lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+    },
+    {
+      "id": "BOREX",
+      "name": "BOREX",
+      "lat": 28.851417,
+      "lon": -70.966789,
+      "category": "nat-named",
+      "region": "watrs",
+      "accuracy": "approximate",
+      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+    },
+    {
+      "id": "BOVIC",
+      "name": "BOVIC",
+      "lat": 34.873483,
+      "lon": -66.667581,
+      "category": "nat-named",
+      "region": "watrs",
+      "accuracy": "approximate",
+      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+    },
+    {
+      "id": "BRKZZ",
+      "name": "BRKZZ",
+      "lat": 27.320519,
+      "lon": -64.962347,
+      "category": "nat-named",
+      "region": "watrs",
+      "accuracy": "approximate",
+      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+    },
+    {
+      "id": "BUTUX",
+      "name": "BUTUX",
+      "lat": 18.0,
+      "lon": -45.38,
+      "category": "nat-named",
+      "region": "watrs",
+      "accuracy": "approximate",
+      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+    },
+    {
+      "id": "CHEDR",
+      "name": "CHEDR",
+      "lat": 22.046697,
+      "lon": -66.009619,
+      "category": "nat-named",
+      "region": "watrs",
+      "accuracy": "approximate",
+      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+    },
+    {
+      "id": "CITRS",
+      "name": "CITRS",
+      "lat": 18.0,
+      "lon": -59.0,
+      "category": "nat-named",
+      "region": "watrs",
+      "accuracy": "approximate",
+      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+    },
+    {
+      "id": "CRUPE",
+      "name": "CRUPE",
+      "lat": 22.043089,
+      "lon": -66.061208,
+      "category": "nat-named",
+      "region": "watrs",
+      "accuracy": "approximate",
+      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+    },
+    {
+      "id": "DABAK",
+      "name": "DABAK",
+      "lat": 18.0,
+      "lon": -51.325,
+      "category": "nat-named",
+      "region": "watrs",
+      "accuracy": "approximate",
+      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+    },
+    {
+      "id": "DARUX",
+      "name": "DARUX",
+      "lat": 36.159878,
+      "lon": -69.455086,
+      "category": "nat-named",
+      "region": "watrs",
+      "accuracy": "approximate",
+      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+    },
+    {
+      "id": "DASER",
+      "name": "DASER",
+      "lat": 34.138508,
+      "lon": -67.577622,
+      "category": "nat-named",
+      "region": "watrs",
+      "accuracy": "approximate",
+      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+    },
+    {
+      "id": "DAWIN",
+      "name": "DAWIN",
+      "lat": 20.538769,
+      "lon": -62.457578,
+      "category": "nat-named",
+      "region": "watrs",
+      "accuracy": "approximate",
+      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+    },
+    {
+      "id": "DOVEY",
+      "name": "DOVEY",
+      "lat": 41.116667,
+      "lon": -67.0,
+      "category": "nat-named",
+      "region": "watrs",
+      "accuracy": "approximate",
+      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+    },
+    {
+      "id": "DRYED",
+      "name": "DRYED",
+      "lat": 38.632278,
+      "lon": -66.667461,
+      "category": "nat-named",
+      "region": "watrs",
+      "accuracy": "approximate",
+      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+    },
+    {
+      "id": "DUPOX",
+      "name": "DUPOX",
+      "lat": 27.940969,
+      "lon": -68.541106,
+      "category": "nat-named",
+      "region": "watrs",
+      "accuracy": "approximate",
+      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+    },
+    {
+      "id": "EMAKO",
+      "name": "EMAKO",
+      "lat": 31.396414,
+      "lon": -68.238683,
+      "category": "nat-named",
+      "region": "watrs",
+      "accuracy": "approximate",
+      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+    },
+    {
+      "id": "ENAPI",
+      "name": "ENAPI",
+      "lat": 33.206025,
+      "lon": -68.105992,
+      "category": "nat-named",
+      "region": "watrs",
+      "accuracy": "approximate",
+      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+    },
+    {
+      "id": "FIVZE",
+      "name": "FIVZE",
+      "lat": 25.0,
+      "lon": -60.0,
+      "category": "nat-named",
+      "region": "watrs",
+      "accuracy": "approximate",
+      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+    },
+    {
+      "id": "GALVN",
+      "name": "GALVN",
+      "lat": 30.158986,
+      "lon": -72.447594,
+      "category": "nat-named",
+      "region": "watrs",
+      "accuracy": "approximate",
+      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+    },
+    {
+      "id": "GECAL",
+      "name": "GECAL",
+      "lat": 29.424492,
+      "lon": -65.421364,
+      "category": "nat-named",
+      "region": "watrs",
+      "accuracy": "approximate",
+      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+    },
+    {
+      "id": "GRAMN",
+      "name": "GRAMN",
+      "lat": 30.369092,
+      "lon": -70.253883,
+      "category": "nat-named",
+      "region": "watrs",
+      "accuracy": "approximate",
+      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+    },
+    {
+      "id": "HANCY",
+      "name": "HANCY",
+      "lat": 22.036886,
+      "lon": -66.170619,
+      "category": "nat-named",
+      "region": "watrs",
+      "accuracy": "approximate",
+      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+    },
+    {
+      "id": "ILIDO",
+      "name": "ILIDO",
+      "lat": 28.244639,
+      "lon": -74.123925,
+      "category": "nat-named",
+      "region": "watrs",
+      "accuracy": "approximate",
+      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+    },
+    {
+      "id": "JAINS",
+      "name": "JAINS",
+      "lat": 31.355569,
+      "lon": -77.000036,
+      "category": "nat-named",
+      "region": "watrs",
+      "accuracy": "approximate",
+      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+    },
+    {
+      "id": "JEBBY",
+      "name": "JEBBY",
+      "lat": 43.072222,
+      "lon": -57.868056,
+      "category": "nat-named",
+      "region": "watrs",
+      "accuracy": "approximate",
+      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+    },
+    {
+      "id": "JOBOC",
+      "name": "JOBOC",
+      "lat": 40.116667,
+      "lon": -67.0,
+      "category": "nat-named",
+      "region": "watrs",
+      "accuracy": "approximate",
+      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+    },
+    {
+      "id": "KAYYT",
+      "name": "KAYYT",
+      "lat": 38.877175,
+      "lon": -67.572856,
+      "category": "nat-named",
+      "region": "watrs",
+      "accuracy": "approximate",
+      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+    },
+    {
+      "id": "KEEKA",
+      "name": "KEEKA",
+      "lat": 22.097069,
+      "lon": -65.134825,
+      "category": "nat-named",
+      "region": "watrs",
+      "accuracy": "approximate",
+      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+    },
+    {
+      "id": "KINCH",
+      "name": "KINCH",
+      "lat": 21.621478,
+      "lon": -67.197817,
+      "category": "nat-named",
+      "region": "watrs",
+      "accuracy": "approximate",
+      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+    },
+    {
+      "id": "KINER",
+      "name": "KINER",
+      "lat": 36.574231,
+      "lon": -68.287447,
+      "category": "nat-named",
+      "region": "watrs",
+      "accuracy": "approximate",
+      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+    },
+    {
+      "id": "LAMER",
+      "name": "LAMER",
+      "lat": 25.0,
+      "lon": -70.051528,
+      "category": "nat-named",
+      "region": "watrs",
+      "accuracy": "approximate",
+      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+    },
+    {
+      "id": "LETON",
+      "name": "LETON",
+      "lat": 25.0,
+      "lon": -71.994111,
+      "category": "nat-named",
+      "region": "watrs",
+      "accuracy": "approximate",
+      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+    },
+    {
+      "id": "LNHOM",
+      "name": "LNHOM",
+      "lat": 25.0,
+      "lon": -71.01,
+      "category": "nat-named",
+      "region": "watrs",
+      "accuracy": "approximate",
+      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+    },
+    {
+      "id": "LUCTI",
+      "name": "LUCTI",
+      "lat": 25.0,
+      "lon": -69.093722,
+      "category": "nat-named",
+      "region": "watrs",
+      "accuracy": "approximate",
+      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+    },
+    {
+      "id": "LUNKR",
+      "name": "LUNKR",
+      "lat": 35.336814,
+      "lon": -66.383364,
+      "category": "nat-named",
+      "region": "watrs",
+      "accuracy": "approximate",
+      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+    },
+    {
+      "id": "MACOR",
+      "name": "MACOR",
+      "lat": 22.229911,
+      "lon": -67.321372,
+      "category": "nat-named",
+      "region": "watrs",
+      "accuracy": "approximate",
+      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+    },
+    {
+      "id": "MARIG",
+      "name": "MARIG",
+      "lat": 38.328444,
+      "lon": -70.059517,
+      "category": "nat-named",
+      "region": "watrs",
+      "accuracy": "approximate",
+      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+    },
+    {
+      "id": "MUNEY",
+      "name": "MUNEY",
+      "lat": 38.5,
+      "lon": -64.964361,
+      "category": "nat-named",
+      "region": "watrs",
+      "accuracy": "approximate",
+      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+    },
+    {
+      "id": "NETSS",
+      "name": "NETSS",
+      "lat": 34.194064,
+      "lon": -73.104386,
+      "category": "nat-named",
+      "region": "watrs",
+      "accuracy": "approximate",
+      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+    },
+    {
+      "id": "NOVOK",
+      "name": "NOVOK",
+      "lat": 42.381597,
+      "lon": -61.201561,
+      "category": "nat-named",
+      "region": "watrs",
+      "accuracy": "approximate",
+      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+    },
+    {
+      "id": "NUBUS",
+      "name": "NUBUS",
+      "lat": 23.5,
+      "lon": -65.536606,
+      "category": "nat-named",
+      "region": "watrs",
+      "accuracy": "approximate",
+      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+    },
+    {
+      "id": "OKONU",
+      "name": "OKONU",
+      "lat": 37.305908,
+      "lon": -71.965058,
+      "category": "nat-named",
+      "region": "watrs",
+      "accuracy": "approximate",
+      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+    },
+    {
+      "id": "ONGOT",
+      "name": "ONGOT",
+      "lat": 33.981806,
+      "lon": -72.301667,
+      "category": "nat-named",
+      "region": "watrs",
+      "accuracy": "approximate",
+      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+    },
+    {
+      "id": "OOONN",
+      "name": "OOONN",
+      "lat": 33.643336,
+      "lon": -74.589081,
+      "category": "nat-named",
+      "region": "watrs",
+      "accuracy": "approximate",
+      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+    },
+    {
+      "id": "OPAUL",
+      "name": "OPAUL",
+      "lat": 21.856597,
+      "lon": -63.846578,
+      "category": "nat-named",
+      "region": "watrs",
+      "accuracy": "approximate",
+      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+    },
+    {
+      "id": "PERDO",
+      "name": "PERDO",
+      "lat": 33.687161,
+      "lon": -71.036989,
+      "category": "nat-named",
+      "region": "watrs",
+      "accuracy": "approximate",
+      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+    },
+    {
+      "id": "PIREX",
+      "name": "PIREX",
+      "lat": 29.374361,
+      "lon": -64.321189,
+      "category": "nat-named",
+      "region": "watrs",
+      "accuracy": "approximate",
+      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+    },
+    {
+      "id": "PRCHA",
+      "name": "PRCHA",
+      "lat": 22.924539,
+      "lon": -66.352906,
+      "category": "nat-named",
+      "region": "watrs",
+      "accuracy": "approximate",
+      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+    },
+    {
+      "id": "RABAL",
+      "name": "RABAL",
+      "lat": 26.7245,
+      "lon": -69.453894,
+      "category": "nat-named",
+      "region": "watrs",
+      "accuracy": "approximate",
+      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+    },
+    {
+      "id": "RKDIA",
+      "name": "RKDIA",
+      "lat": 21.0,
+      "lon": -60.0,
+      "category": "nat-named",
+      "region": "watrs",
+      "accuracy": "approximate",
+      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+    },
+    {
+      "id": "SAUCR",
+      "name": "SAUCR",
+      "lat": 34.724325,
+      "lon": -72.381883,
+      "category": "nat-named",
+      "region": "watrs",
+      "accuracy": "approximate",
+      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+    },
+    {
+      "id": "SEAVR",
+      "name": "SEAVR",
+      "lat": 29.698858,
+      "lon": -63.073617,
+      "category": "nat-named",
+      "region": "watrs",
+      "accuracy": "approximate",
+      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+    },
+    {
+      "id": "SELIM",
+      "name": "SELIM",
+      "lat": 38.5,
+      "lon": -62.668933,
+      "category": "nat-named",
+      "region": "watrs",
+      "accuracy": "approximate",
+      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+    },
+    {
+      "id": "SHEIL",
+      "name": "SHEIL",
+      "lat": 29.909839,
+      "lon": -66.708806,
+      "category": "nat-named",
+      "region": "watrs",
+      "accuracy": "approximate",
+      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+    },
+    {
+      "id": "SKPPR",
+      "name": "SKPPR",
+      "lat": 35.759161,
+      "lon": -70.448786,
+      "category": "nat-named",
+      "region": "watrs",
+      "accuracy": "approximate",
+      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+    },
+    {
+      "id": "SLATN",
+      "name": "SLATN",
+      "lat": 39.116667,
+      "lon": -67.0,
+      "category": "nat-named",
+      "region": "watrs",
+      "accuracy": "approximate",
+      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+    },
+    {
+      "id": "SNAGY",
+      "name": "SNAGY",
+      "lat": 29.607331,
+      "lon": -76.864272,
+      "category": "nat-named",
+      "region": "watrs",
+      "accuracy": "approximate",
+      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+    },
+    {
+      "id": "STERN",
+      "name": "STERN",
+      "lat": 34.967903,
+      "lon": -72.342086,
+      "category": "nat-named",
+      "region": "watrs",
+      "accuracy": "approximate",
+      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+    },
+    {
+      "id": "SUMRS",
+      "name": "SUMRS",
+      "lat": 28.711689,
+      "lon": -76.558497,
+      "category": "nat-named",
+      "region": "watrs",
+      "accuracy": "approximate",
+      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+    },
+    {
+      "id": "TARMO",
+      "name": "TARMO",
+      "lat": 23.5,
+      "lon": -63.052578,
+      "category": "nat-named",
+      "region": "watrs",
+      "accuracy": "approximate",
+      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+    },
+    {
+      "id": "TASNI",
+      "name": "TASNI",
+      "lat": 30.900311,
+      "lon": -69.224944,
+      "category": "nat-named",
+      "region": "watrs",
+      "accuracy": "approximate",
+      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+    },
+    {
+      "id": "TUBBS",
+      "name": "TUBBS",
+      "lat": 31.715161,
+      "lon": -76.985772,
+      "category": "nat-named",
+      "region": "watrs",
+      "accuracy": "approximate",
+      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+    },
+    {
+      "id": "UKOKA",
+      "name": "UKOKA",
+      "lat": 30.64825,
+      "lon": -77.0,
+      "category": "nat-named",
+      "region": "watrs",
+      "accuracy": "approximate",
+      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+    },
+    {
+      "id": "VEGAA",
+      "name": "VEGAA",
+      "lat": 35.323161,
+      "lon": -72.0,
+      "category": "nat-named",
+      "region": "watrs",
+      "accuracy": "approximate",
+      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+    },
+    {
+      "id": "VESRA",
+      "name": "VESRA",
+      "lat": 25.474794,
+      "lon": -68.0,
+      "category": "nat-named",
+      "region": "watrs",
+      "accuracy": "approximate",
+      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+    },
+    {
+      "id": "VINSO",
+      "name": "VINSO",
+      "lat": 27.083122,
+      "lon": -67.242017,
+      "category": "nat-named",
+      "region": "watrs",
+      "accuracy": "approximate",
+      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+    },
+    {
+      "id": "VIRST",
+      "name": "VIRST",
+      "lat": 35.044831,
+      "lon": -72.543694,
+      "category": "nat-named",
+      "region": "watrs",
+      "accuracy": "approximate",
+      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+    },
+    {
+      "id": "WHOOS",
+      "name": "WHOOS",
+      "lat": 31.932667,
+      "lon": -76.988808,
+      "category": "nat-named",
+      "region": "watrs",
+      "accuracy": "approximate",
+      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+    },
+    {
+      "id": "ZZTOP",
+      "name": "ZZTOP",
+      "lat": 33.834147,
+      "lon": -73.587056,
+      "category": "nat-named",
+      "region": "watrs",
+      "accuracy": "approximate",
+      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+    },
+    {
+      "id": "42/60",
+      "name": "42/60",
+      "lat": 42.0,
+      "lon": -60.0,
+      "category": "nat-track",
+      "region": "learned",
+      "accuracy": "approximate",
+      "notes": "Learned from NAT tracks message"
+    },
+    {
+      "id": "44/50",
+      "name": "44/50",
+      "lat": 44.0,
+      "lon": -50.0,
+      "category": "nat-track",
+      "region": "learned",
+      "accuracy": "approximate",
+      "notes": "Learned from NAT tracks message"
+    },
+    {
+      "id": "45/40",
+      "name": "45/40",
+      "lat": 45.0,
+      "lon": -40.0,
+      "category": "nat-track",
+      "region": "learned",
+      "accuracy": "approximate",
+      "notes": "Learned from NAT tracks message"
+    },
+    {
+      "id": "46/50",
+      "name": "46/50",
+      "lat": 46.0,
+      "lon": -50.0,
+      "category": "nat-track",
+      "region": "learned",
+      "accuracy": "approximate",
+      "notes": "Learned from NAT tracks message"
+    },
+    {
+      "id": "47/50",
+      "name": "47/50",
+      "lat": 47.0,
+      "lon": -50.0,
+      "category": "nat-track",
+      "region": "learned",
+      "accuracy": "approximate",
+      "notes": "Learned from NAT tracks message"
+    },
+    {
+      "id": "48/30",
+      "name": "48/30",
+      "lat": 48.0,
+      "lon": -30.0,
+      "category": "nat-track",
+      "region": "learned",
+      "accuracy": "approximate",
+      "notes": "Learned from NAT tracks message"
+    },
+    {
+      "id": "48/50",
+      "name": "48/50",
+      "lat": 48.0,
+      "lon": -50.0,
+      "category": "nat-track",
+      "region": "learned",
+      "accuracy": "approximate",
+      "notes": "Learned from NAT tracks message"
+    },
+    {
+      "id": "49/20",
+      "name": "49/20",
+      "lat": 49.0,
+      "lon": -20.0,
+      "category": "nat-track",
+      "region": "learned",
+      "accuracy": "approximate",
+      "notes": "Learned from NAT tracks message"
+    },
+    {
+      "id": "49/40",
+      "name": "49/40",
+      "lat": 49.0,
+      "lon": -40.0,
+      "category": "nat-track",
+      "region": "learned",
+      "accuracy": "approximate",
+      "notes": "Learned from NAT tracks message"
+    },
+    {
+      "id": "49/50",
+      "name": "49/50",
+      "lat": 49.0,
+      "lon": -50.0,
+      "category": "nat-track",
+      "region": "learned",
+      "accuracy": "approximate",
+      "notes": "Learned from NAT tracks message"
+    },
+    {
+      "id": "50/40",
+      "name": "50/40",
+      "lat": 50.0,
+      "lon": -40.0,
+      "category": "nat-track",
+      "region": "learned",
+      "accuracy": "approximate",
+      "notes": "Learned from NAT tracks message"
+    },
+    {
+      "id": "50/50",
+      "name": "50/50",
+      "lat": 50.0,
+      "lon": -50.0,
+      "category": "nat-track",
+      "region": "learned",
+      "accuracy": "approximate",
+      "notes": "Learned from NAT tracks message"
+    },
+    {
+      "id": "51/20",
+      "name": "51/20",
       "lat": 51.0,
+      "lon": -20.0,
+      "category": "nat-track",
+      "region": "learned",
+      "accuracy": "approximate",
+      "notes": "Learned from NAT tracks message"
+    },
+    {
+      "id": "51/30",
+      "name": "51/30",
+      "lat": 51.0,
+      "lon": -30.0,
+      "category": "nat-track",
+      "region": "learned",
+      "accuracy": "approximate",
+      "notes": "Learned from NAT tracks message"
+    },
+    {
+      "id": "51/40",
+      "name": "51/40",
+      "lat": 51.0,
+      "lon": -40.0,
+      "category": "nat-track",
+      "region": "learned",
+      "accuracy": "approximate",
+      "notes": "Learned from NAT tracks message"
+    },
+    {
+      "id": "51/50",
+      "name": "51/50",
+      "lat": 51.0,
+      "lon": -50.0,
+      "category": "nat-track",
+      "region": "learned",
+      "accuracy": "approximate",
+      "notes": "Learned from NAT tracks message"
+    },
+    {
+      "id": "5130/50",
+      "name": "5130/50",
+      "lat": 51.5,
+      "lon": -50.0,
+      "category": "nat-track",
+      "region": "learned",
+      "accuracy": "approximate",
+      "notes": "Learned from NAT tracks message"
+    },
+    {
+      "id": "52/20",
+      "name": "52/20",
+      "lat": 52.0,
+      "lon": -20.0,
+      "category": "nat-track",
+      "region": "learned",
+      "accuracy": "approximate",
+      "notes": "Learned from NAT tracks message"
+    },
+    {
+      "id": "52/30",
+      "name": "52/30",
+      "lat": 52.0,
+      "lon": -30.0,
+      "category": "nat-track",
+      "region": "learned",
+      "accuracy": "approximate",
+      "notes": "Learned from NAT tracks message"
+    },
+    {
+      "id": "52/40",
+      "name": "52/40",
+      "lat": 52.0,
+      "lon": -40.0,
+      "category": "nat-track",
+      "region": "learned",
+      "accuracy": "approximate",
+      "notes": "Learned from NAT tracks message"
+    },
+    {
+      "id": "52/50",
+      "name": "52/50",
+      "lat": 52.0,
+      "lon": -50.0,
+      "category": "nat-track",
+      "region": "learned",
+      "accuracy": "approximate",
+      "notes": "Learned from NAT tracks message"
+    },
+    {
+      "id": "5230/20",
+      "name": "5230/20",
+      "lat": 52.5,
+      "lon": -20.0,
+      "category": "nat-track",
+      "region": "learned",
+      "accuracy": "approximate",
+      "notes": "Learned from NAT tracks message"
+    },
+    {
+      "id": "53/20",
+      "name": "53/20",
+      "lat": 53.0,
+      "lon": -20.0,
+      "category": "nat-track",
+      "region": "learned",
+      "accuracy": "approximate",
+      "notes": "Learned from NAT tracks message"
+    },
+    {
+      "id": "53/30",
+      "name": "53/30",
+      "lat": 53.0,
+      "lon": -30.0,
+      "category": "nat-track",
+      "region": "learned",
+      "accuracy": "approximate",
+      "notes": "Learned from NAT tracks message"
+    },
+    {
+      "id": "53/40",
+      "name": "53/40",
+      "lat": 53.0,
+      "lon": -40.0,
+      "category": "nat-track",
+      "region": "learned",
+      "accuracy": "approximate",
+      "notes": "Learned from NAT tracks message"
+    },
+    {
+      "id": "53/50",
+      "name": "53/50",
+      "lat": 53.0,
+      "lon": -50.0,
+      "category": "nat-track",
+      "region": "learned",
+      "accuracy": "approximate",
+      "notes": "Learned from NAT tracks message"
+    },
+    {
+      "id": "5330/30",
+      "name": "5330/30",
+      "lat": 53.5,
+      "lon": -30.0,
+      "category": "nat-track",
+      "region": "learned",
+      "accuracy": "approximate",
+      "notes": "Learned from NAT tracks message"
+    },
+    {
+      "id": "5330/40",
+      "name": "5330/40",
+      "lat": 53.5,
+      "lon": -40.0,
+      "category": "nat-track",
+      "region": "learned",
+      "accuracy": "approximate",
+      "notes": "Learned from NAT tracks message"
+    },
+    {
+      "id": "54/20",
+      "name": "54/20",
+      "lat": 54.0,
+      "lon": -20.0,
+      "category": "nat-track",
+      "region": "learned",
+      "accuracy": "approximate",
+      "notes": "Learned from NAT tracks message"
+    },
+    {
+      "id": "54/30",
+      "name": "54/30",
+      "lat": 54.0,
+      "lon": -30.0,
+      "category": "nat-track",
+      "region": "learned",
+      "accuracy": "approximate",
+      "notes": "Learned from NAT tracks message"
+    },
+    {
+      "id": "54/40",
+      "name": "54/40",
+      "lat": 54.0,
+      "lon": -40.0,
+      "category": "nat-track",
+      "region": "learned",
+      "accuracy": "approximate",
+      "notes": "Learned from NAT tracks message"
+    },
+    {
+      "id": "54/50",
+      "name": "54/50",
+      "lat": 54.0,
+      "lon": -50.0,
+      "category": "nat-track",
+      "region": "learned",
+      "accuracy": "approximate",
+      "notes": "Learned from NAT tracks message"
+    },
+    {
+      "id": "5430/50",
+      "name": "5430/50",
+      "lat": 54.5,
+      "lon": -50.0,
+      "category": "nat-track",
+      "region": "learned",
+      "accuracy": "approximate",
+      "notes": "Learned from NAT tracks message"
+    },
+    {
+      "id": "55/20",
+      "name": "55/20",
+      "lat": 55.0,
+      "lon": -20.0,
+      "category": "nat-track",
+      "region": "learned",
+      "accuracy": "approximate",
+      "notes": "Learned from NAT tracks message"
+    },
+    {
+      "id": "55/30",
+      "name": "55/30",
+      "lat": 55.0,
+      "lon": -30.0,
+      "category": "nat-track",
+      "region": "learned",
+      "accuracy": "approximate",
+      "notes": "Learned from NAT tracks message"
+    },
+    {
+      "id": "55/40",
+      "name": "55/40",
+      "lat": 55.0,
+      "lon": -40.0,
+      "category": "nat-track",
+      "region": "learned",
+      "accuracy": "approximate",
+      "notes": "Learned from NAT tracks message"
+    },
+    {
+      "id": "55/50",
+      "name": "55/50",
+      "lat": 55.0,
+      "lon": -50.0,
+      "category": "nat-track",
+      "region": "learned",
+      "accuracy": "approximate",
+      "notes": "Learned from NAT tracks message"
+    },
+    {
+      "id": "56/20",
+      "name": "56/20",
+      "lat": 56.0,
+      "lon": -20.0,
+      "category": "nat-track",
+      "region": "learned",
+      "accuracy": "approximate",
+      "notes": "Learned from NAT tracks message"
+    },
+    {
+      "id": "56/30",
+      "name": "56/30",
+      "lat": 56.0,
+      "lon": -30.0,
+      "category": "nat-track",
+      "region": "learned",
+      "accuracy": "approximate",
+      "notes": "Learned from NAT tracks message"
+    },
+    {
+      "id": "56/40",
+      "name": "56/40",
+      "lat": 56.0,
+      "lon": -40.0,
+      "category": "nat-track",
+      "region": "learned",
+      "accuracy": "approximate",
+      "notes": "Learned from NAT tracks message"
+    },
+    {
+      "id": "56/50",
+      "name": "56/50",
+      "lat": 56.0,
+      "lon": -50.0,
+      "category": "nat-track",
+      "region": "learned",
+      "accuracy": "approximate",
+      "notes": "Learned from NAT tracks message"
+    },
+    {
+      "id": "5630/20",
+      "name": "5630/20",
+      "lat": 56.5,
+      "lon": -20.0,
+      "category": "nat-track",
+      "region": "learned",
+      "accuracy": "approximate",
+      "notes": "Learned from NAT tracks message"
+    },
+    {
+      "id": "5630/40",
+      "name": "5630/40",
+      "lat": 56.5,
+      "lon": -40.0,
+      "category": "nat-track",
+      "region": "learned",
+      "accuracy": "approximate",
+      "notes": "Learned from NAT tracks message"
+    },
+    {
+      "id": "57/20",
+      "name": "57/20",
+      "lat": 57.0,
+      "lon": -20.0,
+      "category": "nat-track",
+      "region": "learned",
+      "accuracy": "approximate",
+      "notes": "Learned from NAT tracks message"
+    },
+    {
+      "id": "57/30",
+      "name": "57/30",
+      "lat": 57.0,
+      "lon": -30.0,
+      "category": "nat-track",
+      "region": "learned",
+      "accuracy": "approximate",
+      "notes": "Learned from NAT tracks message"
+    },
+    {
+      "id": "57/40",
+      "name": "57/40",
+      "lat": 57.0,
+      "lon": -40.0,
+      "category": "nat-track",
+      "region": "learned",
+      "accuracy": "approximate",
+      "notes": "Learned from NAT tracks message"
+    },
+    {
+      "id": "57/50",
+      "name": "57/50",
+      "lat": 57.0,
+      "lon": -50.0,
+      "category": "nat-track",
+      "region": "learned",
+      "accuracy": "approximate",
+      "notes": "Learned from NAT tracks message"
+    },
+    {
+      "id": "5730/30",
+      "name": "5730/30",
+      "lat": 57.5,
+      "lon": -30.0,
+      "category": "nat-track",
+      "region": "learned",
+      "accuracy": "approximate",
+      "notes": "Learned from NAT tracks message"
+    },
+    {
+      "id": "58/30",
+      "name": "58/30",
+      "lat": 58.0,
+      "lon": -30.0,
+      "category": "nat-track",
+      "region": "learned",
+      "accuracy": "approximate",
+      "notes": "Learned from NAT tracks message"
+    },
+    {
+      "id": "BEGID",
+      "name": "BEGID",
+      "lat": 56.5,
       "lon": -14.0,
       "category": "land_based",
       "region": "east",
       "accuracy": "exact",
-      "notes": "Confirmed OpenNav (IE) + UK AIP (SOTA landfall point)."
+      "notes": "Confirmed OpenNav + Irish AIP (Oceanic Landfall Point)."
     },
     {
       "id": "DINIM",
@@ -164,6 +1664,26 @@
       "notes": "Confirmed OpenNav (UK). Common OEP/landfall."
     },
     {
+      "id": "ELSOX",
+      "name": "ELSOX",
+      "lat": 51.0,
+      "lon": -14.0,
+      "category": "land_based",
+      "region": "east",
+      "accuracy": "exact",
+      "notes": "Confirmed OpenNav (IE) + UK AIP (SOTA landfall point)."
+    },
+    {
+      "id": "EVRIN",
+      "name": "EVRIN",
+      "lat": 51.782222222,
+      "lon": -6.563333333,
+      "category": "land_based",
+      "region": "east",
+      "accuracy": "exact",
+      "notes": "Confirmed OpenNav + UK AIP ENR 4.4 + Irish AIP."
+    },
+    {
       "id": "GISTI",
       "name": "GISTI",
       "lat": 53.0,
@@ -174,9 +1694,9 @@
       "notes": "Confirmed OpenNav (IE). Common in eastbound track messages."
     },
     {
-      "id": "NETKI",
-      "name": "NETKI",
-      "lat": 55.0,
+      "id": "KESIX",
+      "name": "KESIX",
+      "lat": 56.95,
       "lon": -14.0,
       "category": "land_based",
       "region": "east",
@@ -184,9 +1704,9 @@
       "notes": "Confirmed OpenNav (UK). Common landfall."
     },
     {
-      "id": "KESIX",
-      "name": "KESIX",
-      "lat": 56.95,
+      "id": "NETKI",
+      "name": "NETKI",
+      "lat": 55.0,
       "lon": -14.0,
       "category": "land_based",
       "region": "east",
@@ -204,16 +1724,6 @@
       "notes": "Confirmed Irish AIP ENR 4.4 (Oceanic Landfall Point)."
     },
     {
-      "id": "BEGID",
-      "name": "BEGID",
-      "lat": 56.5,
-      "lon": -14.0,
-      "category": "land_based",
-      "region": "east",
-      "accuracy": "exact",
-      "notes": "Confirmed OpenNav + Irish AIP (Oceanic Landfall Point)."
-    },
-    {
       "id": "SOVED",
       "name": "SOVED",
       "lat": 56.0,
@@ -222,6 +1732,50 @@
       "region": "east",
       "accuracy": "exact",
       "notes": "Confirmed OpenNav + Irish AIP (Oceanic Landfall Point)."
+    },
+    {
+      "id": "BIKF",
+      "name": "BIKF",
+      "lat": 63.983333333,
+      "lon": -22.6,
+      "category": "airport",
+      "region": "mid_atlantic",
+      "accuracy": "approximate",
+      "elevationFt": 171,
+      "notes": "Keflavik (Iceland). Northern diversion / technical."
+    },
+    {
+      "id": "CYQX",
+      "name": "CYQX",
+      "lat": 48.933333333,
+      "lon": -54.566666667,
+      "category": "airport",
+      "region": "west",
+      "accuracy": "approximate",
+      "elevationFt": 496,
+      "notes": "Gander (Newfoundland)."
+    },
+    {
+      "id": "CYYT",
+      "name": "CYYT",
+      "lat": 47.616666667,
+      "lon": -52.75,
+      "category": "airport",
+      "region": "west",
+      "accuracy": "approximate",
+      "elevationFt": 461,
+      "notes": "St. John's (Newfoundland)."
+    },
+    {
+      "id": "EINN",
+      "name": "EINN",
+      "lat": 52.7,
+      "lon": -8.916666667,
+      "category": "airport",
+      "region": "east",
+      "accuracy": "approximate",
+      "elevationFt": 46,
+      "notes": "Shannon (Ireland)."
     },
     {
       "id": "LPAZ",
@@ -257,539 +1811,25 @@
       "notes": "L.F. Wade Intl (Bermuda)."
     },
     {
-      "id": "BIKF",
-      "name": "BIKF",
-      "lat": 63.983333333,
-      "lon": -22.6,
-      "category": "airport",
-      "region": "mid_atlantic",
-      "accuracy": "approximate",
-      "elevationFt": 171,
-      "notes": "Keflavik (Iceland). Northern diversion / technical."
-    },
-    {
-      "id": "CYYT",
-      "name": "CYYT",
-      "lat": 47.616666667,
-      "lon": -52.75,
-      "category": "airport",
-      "region": "west",
-      "accuracy": "approximate",
-      "elevationFt": 461,
-      "notes": "St. John's (Newfoundland)."
-    },
-    {
-      "id": "CYQX",
-      "name": "CYQX",
-      "lat": 48.933333333,
-      "lon": -54.566666667,
-      "category": "airport",
-      "region": "west",
-      "accuracy": "approximate",
-      "elevationFt": 496,
-      "notes": "Gander (Newfoundland)."
-    },
-    {
-      "id": "EINN",
-      "name": "EINN",
-      "lat": 52.7,
-      "lon": -8.916666667,
-      "category": "airport",
-      "region": "east",
-      "accuracy": "approximate",
-      "elevationFt": 46,
-      "notes": "Shannon (Ireland)."
-    },
-    {
-      "id": "57/50",
-      "name": "57/50",
-      "lat": 57.0,
-      "lon": -50.0,
+      "id": "ONZIN",
+      "name": "ONZIN",
+      "lat": -85.0,
+      "lon": 0.0,
       "category": "nat-track",
       "region": "learned",
       "accuracy": "approximate",
       "notes": "Learned from NAT tracks message"
     },
     {
-      "id": "57/40",
-      "name": "57/40",
-      "lat": 57.0,
-      "lon": -40.0,
-      "category": "nat-track",
-      "region": "learned",
-      "accuracy": "approximate",
-      "notes": "Learned from NAT tracks message"
-    },
-    {
-      "id": "57/30",
-      "name": "57/30",
-      "lat": 57.0,
-      "lon": -30.0,
-      "category": "nat-track",
-      "region": "learned",
-      "accuracy": "approximate",
-      "notes": "Learned from NAT tracks message"
-    },
-    {
-      "id": "57/20",
-      "name": "57/20",
-      "lat": 57.0,
-      "lon": -20.0,
-      "category": "nat-track",
-      "region": "learned",
-      "accuracy": "approximate",
-      "notes": "Learned from NAT tracks message"
-    },
-    {
-      "id": "56/50",
-      "name": "56/50",
-      "lat": 56.0,
-      "lon": -50.0,
-      "category": "nat-track",
-      "region": "learned",
-      "accuracy": "approximate",
-      "notes": "Learned from NAT tracks message"
-    },
-    {
-      "id": "56/40",
-      "name": "56/40",
-      "lat": 56.0,
-      "lon": -40.0,
-      "category": "nat-track",
-      "region": "learned",
-      "accuracy": "approximate",
-      "notes": "Learned from NAT tracks message"
-    },
-    {
-      "id": "56/30",
-      "name": "56/30",
-      "lat": 56.0,
-      "lon": -30.0,
-      "category": "nat-track",
-      "region": "learned",
-      "accuracy": "approximate",
-      "notes": "Learned from NAT tracks message"
-    },
-    {
-      "id": "56/20",
-      "name": "56/20",
-      "lat": 56.0,
-      "lon": -20.0,
-      "category": "nat-track",
-      "region": "learned",
-      "accuracy": "approximate",
-      "notes": "Learned from NAT tracks message"
-    },
-    {
-      "id": "50/50",
-      "name": "50/50",
-      "lat": 50.0,
-      "lon": -50.0,
-      "category": "nat-track",
-      "region": "learned",
-      "accuracy": "approximate",
-      "notes": "Learned from NAT tracks message"
-    },
-    {
-      "id": "53/40",
-      "name": "53/40",
-      "lat": 53.0,
-      "lon": -40.0,
-      "category": "nat-track",
-      "region": "learned",
-      "accuracy": "approximate",
-      "notes": "Learned from NAT tracks message"
-    },
-    {
-      "id": "55/30",
-      "name": "55/30",
-      "lat": 55.0,
-      "lon": -30.0,
-      "category": "nat-track",
-      "region": "learned",
-      "accuracy": "approximate",
-      "notes": "Learned from NAT tracks message"
-    },
-    {
-      "id": "55/20",
-      "name": "55/20",
-      "lat": 55.0,
-      "lon": -20.0,
-      "category": "nat-track",
-      "region": "learned",
-      "accuracy": "approximate",
-      "notes": "Learned from NAT tracks message"
-    },
-    {
-      "id": "49/50",
-      "name": "49/50",
-      "lat": 49.0,
-      "lon": -50.0,
-      "category": "nat-track",
-      "region": "learned",
-      "accuracy": "approximate",
-      "notes": "Learned from NAT tracks message"
-    },
-    {
-      "id": "52/40",
-      "name": "52/40",
-      "lat": 52.0,
-      "lon": -40.0,
-      "category": "nat-track",
-      "region": "learned",
-      "accuracy": "approximate",
-      "notes": "Learned from NAT tracks message"
-    },
-    {
-      "id": "54/30",
-      "name": "54/30",
-      "lat": 54.0,
-      "lon": -30.0,
-      "category": "nat-track",
-      "region": "learned",
-      "accuracy": "approximate",
-      "notes": "Learned from NAT tracks message"
-    },
-    {
-      "id": "54/20",
-      "name": "54/20",
-      "lat": 54.0,
-      "lon": -20.0,
-      "category": "nat-track",
-      "region": "learned",
-      "accuracy": "approximate",
-      "notes": "Learned from NAT tracks message"
-    },
-    {
-      "id": "48/50",
-      "name": "48/50",
-      "lat": 48.0,
-      "lon": -50.0,
-      "category": "nat-track",
-      "region": "learned",
-      "accuracy": "approximate",
-      "notes": "Learned from NAT tracks message"
-    },
-    {
-      "id": "51/40",
-      "name": "51/40",
-      "lat": 51.0,
-      "lon": -40.0,
-      "category": "nat-track",
-      "region": "learned",
-      "accuracy": "approximate",
-      "notes": "Learned from NAT tracks message"
-    },
-    {
-      "id": "53/30",
-      "name": "53/30",
-      "lat": 53.0,
-      "lon": -30.0,
-      "category": "nat-track",
-      "region": "learned",
-      "accuracy": "approximate",
-      "notes": "Learned from NAT tracks message"
-    },
-    {
-      "id": "53/20",
-      "name": "53/20",
-      "lat": 53.0,
-      "lon": -20.0,
-      "category": "nat-track",
-      "region": "learned",
-      "accuracy": "approximate",
-      "notes": "Learned from NAT tracks message"
-    },
-    {
-      "id": "47/50",
-      "name": "47/50",
-      "lat": 47.0,
-      "lon": -50.0,
-      "category": "nat-track",
-      "region": "learned",
-      "accuracy": "approximate",
-      "notes": "Learned from NAT tracks message"
-    },
-    {
-      "id": "50/40",
-      "name": "50/40",
-      "lat": 50.0,
-      "lon": -40.0,
-      "category": "nat-track",
-      "region": "learned",
-      "accuracy": "approximate",
-      "notes": "Learned from NAT tracks message"
-    },
-    {
-      "id": "52/30",
-      "name": "52/30",
-      "lat": 52.0,
-      "lon": -30.0,
-      "category": "nat-track",
-      "region": "learned",
-      "accuracy": "approximate",
-      "notes": "Learned from NAT tracks message"
-    },
-    {
-      "id": "52/20",
-      "name": "52/20",
-      "lat": 52.0,
-      "lon": -20.0,
-      "category": "nat-track",
-      "region": "learned",
-      "accuracy": "approximate",
-      "notes": "Learned from NAT tracks message"
-    },
-    {
-      "id": "46/50",
-      "name": "46/50",
-      "lat": 46.0,
-      "lon": -50.0,
-      "category": "nat-track",
-      "region": "learned",
-      "accuracy": "approximate",
-      "notes": "Learned from NAT tracks message"
-    },
-    {
-      "id": "49/40",
-      "name": "49/40",
-      "lat": 49.0,
-      "lon": -40.0,
-      "category": "nat-track",
-      "region": "learned",
-      "accuracy": "approximate",
-      "notes": "Learned from NAT tracks message"
-    },
-    {
-      "id": "51/30",
-      "name": "51/30",
-      "lat": 51.0,
-      "lon": -30.0,
-      "category": "nat-track",
-      "region": "learned",
-      "accuracy": "approximate",
-      "notes": "Learned from NAT tracks message"
-    },
-    {
-      "id": "51/20",
-      "name": "51/20",
-      "lat": 51.0,
-      "lon": -20.0,
-      "category": "nat-track",
-      "region": "learned",
-      "accuracy": "approximate",
-      "notes": "Learned from NAT tracks message"
-    },
-    {
-      "id": "42/60",
-      "name": "42/60",
-      "lat": 42.0,
-      "lon": -60.0,
-      "category": "nat-track",
-      "region": "learned",
-      "accuracy": "approximate",
-      "notes": "Learned from NAT tracks message"
-    },
-    {
-      "id": "44/50",
-      "name": "44/50",
-      "lat": 44.0,
-      "lon": -50.0,
-      "category": "nat-track",
-      "region": "learned",
-      "accuracy": "approximate",
-      "notes": "Learned from NAT tracks message"
-    },
-    {
-      "id": "45/40",
-      "name": "45/40",
-      "lat": 45.0,
-      "lon": -40.0,
-      "category": "nat-track",
-      "region": "learned",
-      "accuracy": "approximate",
-      "notes": "Learned from NAT tracks message"
-    },
-    {
-      "id": "48/30",
-      "name": "48/30",
-      "lat": 48.0,
-      "lon": -30.0,
-      "category": "nat-track",
-      "region": "learned",
-      "accuracy": "approximate",
-      "notes": "Learned from NAT tracks message"
-    },
-    {
-      "id": "49/20",
-      "name": "49/20",
-      "lat": 49.0,
-      "lon": -20.0,
-      "category": "nat-track",
-      "region": "learned",
-      "accuracy": "approximate",
-      "notes": "Learned from NAT tracks message"
-    },
-    {
-      "id": "58/30",
-      "name": "58/30",
-      "lat": 58.0,
-      "lon": -30.0,
-      "category": "nat-track",
-      "region": "learned",
-      "accuracy": "approximate",
-      "notes": "Learned from NAT tracks message"
-    },
-    {
-      "id": "55/50",
-      "name": "55/50",
-      "lat": 55.0,
-      "lon": -50.0,
-      "category": "nat-track",
-      "region": "learned",
-      "accuracy": "approximate",
-      "notes": "Learned from NAT tracks message"
-    },
-    {
-      "id": "5630/20",
-      "name": "5630/20",
-      "lat": 56.5,
-      "lon": -20.0,
-      "category": "nat-track",
-      "region": "learned",
-      "accuracy": "approximate",
-      "notes": "Learned from NAT tracks message"
-    },
-    {
-      "id": "5730/30",
-      "name": "5730/30",
-      "lat": 57.5,
-      "lon": -30.0,
-      "category": "nat-track",
-      "region": "learned",
-      "accuracy": "approximate",
-      "notes": "Learned from NAT tracks message"
-    },
-    {
-      "id": "5630/40",
-      "name": "5630/40",
-      "lat": 56.5,
-      "lon": -40.0,
-      "category": "nat-track",
-      "region": "learned",
-      "accuracy": "approximate",
-      "notes": "Learned from NAT tracks message"
-    },
-    {
-      "id": "5430/50",
-      "name": "5430/50",
-      "lat": 54.5,
-      "lon": -50.0,
-      "category": "nat-track",
-      "region": "learned",
-      "accuracy": "approximate",
-      "notes": "Learned from NAT tracks message"
-    },
-    {
-      "id": "54/50",
-      "name": "54/50",
-      "lat": 54.0,
-      "lon": -50.0,
-      "category": "nat-track",
-      "region": "learned",
-      "accuracy": "approximate",
-      "notes": "Learned from NAT tracks message"
-    },
-    {
-      "id": "55/40",
-      "name": "55/40",
-      "lat": 55.0,
-      "lon": -40.0,
-      "category": "nat-track",
-      "region": "learned",
-      "accuracy": "approximate",
-      "notes": "Learned from NAT tracks message"
-    },
-    {
-      "id": "53/50",
-      "name": "53/50",
-      "lat": 53.0,
-      "lon": -50.0,
-      "category": "nat-track",
-      "region": "learned",
-      "accuracy": "approximate",
-      "notes": "Learned from NAT tracks message"
-    },
-    {
-      "id": "54/40",
-      "name": "54/40",
-      "lat": 54.0,
-      "lon": -40.0,
-      "category": "nat-track",
-      "region": "learned",
-      "accuracy": "approximate",
-      "notes": "Learned from NAT tracks message"
-    },
-    {
-      "id": "52/50",
-      "name": "52/50",
-      "lat": 52.0,
-      "lon": -50.0,
-      "category": "nat-track",
-      "region": "learned",
-      "accuracy": "approximate",
-      "notes": "Learned from NAT tracks message"
-    },
-    {
-      "id": "5230/20",
-      "name": "5230/20",
-      "lat": 52.5,
-      "lon": -20.0,
-      "category": "nat-track",
-      "region": "learned",
-      "accuracy": "approximate",
-      "notes": "Learned from NAT tracks message"
-    },
-    {
-      "id": "5330/30",
-      "name": "5330/30",
-      "lat": 53.5,
-      "lon": -30.0,
-      "category": "nat-track",
-      "region": "learned",
-      "accuracy": "approximate",
-      "notes": "Learned from NAT tracks message"
-    },
-    {
-      "id": "5330/40",
-      "name": "5330/40",
-      "lat": 53.5,
-      "lon": -40.0,
-      "category": "nat-track",
-      "region": "learned",
-      "accuracy": "approximate",
-      "notes": "Learned from NAT tracks message"
-    },
-    {
-      "id": "5130/50",
-      "name": "5130/50",
-      "lat": 51.5,
-      "lon": -50.0,
-      "category": "nat-track",
-      "region": "learned",
-      "accuracy": "approximate",
-      "notes": "Learned from NAT tracks message"
-    },
-    {
-      "id": "51/50",
-      "name": "51/50",
-      "lat": 51.0,
-      "lon": -50.0,
+      "id": "SOCCO",
+      "name": "SOCCO",
+      "lat": 21.116666666666667,
+      "lon": -63.06166666666667,
       "category": "nat-track",
       "region": "learned",
       "accuracy": "approximate",
       "notes": "Learned from NAT tracks message"
     }
   ],
-  "sourceDoc": "NAT_HLA_Waypoints_Reference_2026-07-26_1158Z.md"
+  "sourceDoc": "NAT_HLA_Waypoints_Reference.md + NAT_HLA_Named_Waypoints_Sample.md + OpenNav + TC AIM NAT"
 }

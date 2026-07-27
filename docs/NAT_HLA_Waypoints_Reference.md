@@ -190,6 +190,124 @@ Always cross-check the resulting track/distance against the Master Document / fi
 
 **Operational recommendation for NAT HLA**: Prefer full lat/long entry or confirmed 5-letter named points over ambiguous shorthand whenever possible. Always verify the next waypoint, track, and distance independently.
 
+
+<!-- NAMED-SAMPLE-START -->
+## Named waypoints added from sample list (2026-07-26)
+
+Coordinates looked up from **OpenNav** (WATRS / US / UK) and **Transport Canada AIM NAT** OEP tables (050°W associations).  
+**Educational / simulator only — verify current AIP / NFDC / AIM before any operational use.**
+
+| Waypoint | Latitude | Longitude | Notes |
+|----------|----------|-----------|-------|
+| ALLRY | N51 00.0 | W050 00.0 | Transport Canada AIM NAT Table 1.1 / OEP association (5100… / 050W family). Educ |
+| ANVER | N35 15.1 | W065 41.3 | OpenNav BM ANVER (hemisphere corrected E→W for WATRS). Verify NFDC/AIP. |
+| ATUGI | N35 38.3 | W071 31.6 | OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify  |
+| BEXUM | N33 18.1 | W069 48.7 | OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify  |
+| BOBTU | N44 07.0 | W052 49.3 | OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify  |
+| BOKTO | N51 14.2 | W058 39.9 | OpenNav/CA lookup from NAT HLA named-waypoint sample list. Educational — verify  |
+| BOREX | N28 51.1 | W070 58.0 | OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify  |
+| BOVIC | N34 52.4 | W066 40.1 | OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify  |
+| BRKZZ | N27 19.2 | W064 57.7 | OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify  |
+| BUDAR | N50 30.0 | W050 00.0 | Transport Canada AIM NAT Table 1.1 / OEP association (5030… / 050W family). Educ |
+| BUTUX | N18 00.0 | W045 22.8 | OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify  |
+| CHEDR | N22 02.8 | W066 00.6 | OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify  |
+| CITRS | N18 00.0 | W059 00.0 | OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify  |
+| CRUPE | N22 02.6 | W066 03.7 | OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify  |
+| CUDDY | N58 00.0 | W050 00.0 | Transport Canada AIM NAT Table 1.1 / OEP association (5800… / 050W family). Educ |
+| DABAK | N18 00.0 | W051 19.5 | OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify  |
+| DARUX | N36 09.6 | W069 27.3 | OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify  |
+| DASER | N34 08.3 | W067 34.7 | OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify  |
+| DAWIN | N20 32.3 | W062 27.5 | OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify  |
+| DORYY | N58 00.0 | W050 00.0 | Transport Canada AIM NAT Table 1.1 / OEP association (5800… / 050W family). Educ |
+| DOVEY | N41 07.0 | W067 00.0 | OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify  |
+| DRYED | N38 37.9 | W066 40.0 | OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify  |
+| DUPOX | N27 56.5 | W068 32.5 | OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify  |
+| ELSIR | N50 00.0 | W050 00.0 | Transport Canada AIM NAT Table 1.1 / OEP association (5000… / 050W family). Educ |
+| EMAKO | N31 23.8 | W068 14.3 | OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify  |
+| ENAPI | N33 12.4 | W068 06.4 | OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify  |
+| ENNSO | N57 30.0 | W050 00.0 | Transport Canada AIM NAT Table 1.1 / OEP association (5730… / 050W family). Educ |
+| ETIKI | N48 00.0 | W008 45.0 | OpenNav/UK lookup from NAT HLA named-waypoint sample list. Educational — verify  |
+| FIVZE | N25 00.0 | W060 00.0 | OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify  |
+| GALVN | N30 09.5 | W072 26.9 | OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify  |
+| GECAL | N29 25.5 | W065 25.3 | OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify  |
+| GRAMN | N30 22.1 | W070 15.2 | OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify  |
+| HANCY | N22 02.2 | W066 10.2 | OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify  |
+| HOIST | N57 00.0 | W050 00.0 | Transport Canada AIM NAT Table 1.1 / OEP association (5700… / 050W family). Educ |
+| IBERG | N49 30.0 | W050 00.0 | Transport Canada AIM NAT Table 1.1 / OEP association (4930… / 050W family). Educ |
+| ILIDO | N28 14.7 | W074 07.4 | OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify  |
+| IRLOK | N56 30.0 | W050 00.0 | Transport Canada AIM NAT Table 1.1 / OEP association (5630… / 050W family). Educ |
+| JAINS | N31 21.3 | W077 00.0 | OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify  |
+| JANJO | N56 00.0 | W050 00.0 | Transport Canada AIM NAT Table 1.1 / OEP association (5600… / 050W family). Educ |
+| JEBBY | N43 04.3 | W057 52.1 | OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify  |
+| JOBOC | N40 07.0 | W067 00.0 | OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify  |
+| JOOPY | N49 00.0 | W050 00.0 | Transport Canada AIM NAT Table 1.1 / OEP association (4900… / 050W family). Educ |
+| KAYYT | N38 52.6 | W067 34.4 | OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify  |
+| KEEKA | N22 05.8 | W065 08.1 | OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify  |
+| KINCH | N21 37.3 | W067 11.9 | OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify  |
+| KINER | N36 34.5 | W068 17.2 | OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify  |
+| KODIK | N55 30.0 | W050 00.0 | Transport Canada AIM NAT Table 1.1 / OEP association (5530… / 050W family). Educ |
+| LAMER | N25 00.0 | W070 03.1 | OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify  |
+| LETON | N25 00.0 | W071 59.6 | OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify  |
+| LIBOR | N61 01.0 | W062 41.0 | Transport Canada AIM NAT Table 1.1 / OEP association (6101… / 050W family). Educ |
+| LNHOM | N25 00.0 | W071 00.6 | OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify  |
+| LOMSI | N55 00.0 | W050 00.0 | Transport Canada AIM NAT Table 1.1 / OEP association (5500… / 050W family). Educ |
+| LUCTI | N25 00.0 | W069 05.6 | OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify  |
+| LUNKR | N35 20.2 | W066 23.0 | OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify  |
+| MACOR | N22 13.8 | W067 19.3 | OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify  |
+| MARIG | N38 19.7 | W070 03.6 | OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify  |
+| MELDI | N54 30.0 | W050 00.0 | Transport Canada AIM NAT Table 1.1 / OEP association (5430… / 050W family). Educ |
+| MUNEY | N38 30.0 | W064 57.9 | OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify  |
+| MUSAK | N48 30.0 | W050 00.0 | Transport Canada AIM NAT Table 1.1 / OEP association (4830… / 050W family). Educ |
+| NEEKO | N54 00.0 | W050 00.0 | Transport Canada AIM NAT Table 1.1 / OEP association (5400… / 050W family). Educ |
+| NETSS | N34 11.6 | W073 06.3 | OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify  |
+| NICSO | N48 00.0 | W050 00.0 | Transport Canada AIM NAT Table 1.1 / OEP association (4800… / 050W family). Educ |
+| NIFTY | N60 58.0 | W058 00.0 | OpenNav CA (605800N/0580000W). Northern Gander-related OEP — verify AIM/AIP. |
+| NOVOK | N42 22.9 | W061 12.1 | OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify  |
+| NUBUS | N23 30.0 | W065 32.2 | OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify  |
+| OKONU | N37 18.4 | W071 57.9 | OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify  |
+| OMSAT | N47 30.0 | W050 00.0 | Transport Canada AIM NAT Table 1.1 / OEP association (4730… / 050W family). Educ |
+| ONGOT | N33 58.9 | W072 18.1 | OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify  |
+| OOONN | N33 38.6 | W074 35.3 | OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify  |
+| OPAUL | N21 51.4 | W063 50.8 | OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify  |
+| PELTU | N53 30.0 | W050 00.0 | Transport Canada AIM NAT Table 1.1 / OEP association (5330… / 050W family). Educ |
+| PERDO | N33 41.2 | W071 02.2 | OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify  |
+| PIREX | N29 22.5 | W064 19.3 | OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify  |
+| PORTI | N47 00.0 | W050 00.0 | Transport Canada AIM NAT Table 1.1 / OEP association (4700… / 050W family). Educ |
+| PRCHA | N22 55.5 | W066 21.2 | OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify  |
+| RABAL | N26 43.5 | W069 27.2 | OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify  |
+| RAFIN | N45 00.0 | W050 00.0 | Transport Canada AIM NAT Table 1.1 / OEP association (4500… / 050W family). Educ |
+| RELIC | N46 30.0 | W050 00.0 | Transport Canada AIM NAT Table 1.1 / OEP association (4630… / 050W family). Educ |
+| RIKAL | N53 00.0 | W050 00.0 | Transport Canada AIM NAT Table 1.1 / OEP association (5300… / 050W family). Educ |
+| RKDIA | N21 00.0 | W060 00.0 | OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify  |
+| SAUCR | N34 43.5 | W072 22.9 | OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify  |
+| SAXAN | N52 30.0 | W050 00.0 | Transport Canada AIM NAT Table 1.1 / OEP association (5230… / 050W family). Educ |
+| SEAVR | N29 41.9 | W063 04.4 | OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify  |
+| SELIM | N38 30.0 | W062 40.1 | OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify  |
+| SEPAL | N47 00.0 | W008 45.0 | OpenNav/UK lookup from NAT HLA named-waypoint sample list. Educational — verify  |
+| SHEIL | N29 54.6 | W066 42.5 | OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify  |
+| SKPPR | N35 45.5 | W070 26.9 | OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify  |
+| SLATN | N39 07.0 | W067 00.0 | OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify  |
+| SNAGY | N29 36.4 | W076 51.9 | OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify  |
+| STERN | N34 58.1 | W072 20.5 | OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify  |
+| SUMRS | N28 42.7 | W076 33.5 | OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify  |
+| SUPRY | N46 00.0 | W050 00.0 | Transport Canada AIM NAT Table 1.1 / OEP association (4600… / 050W family). Educ |
+| TARMO | N23 30.0 | W063 03.2 | OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify  |
+| TASNI | N30 54.0 | W069 13.5 | OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify  |
+| TUBBS | N31 42.9 | W076 59.1 | OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify  |
+| TUDEP | N52 00.0 | W050 00.0 | Transport Canada AIM NAT Table 1.1 / OEP association (5200… / 050W family). Educ |
+| UKOKA | N30 38.9 | W077 00.0 | OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify  |
+| UMESI | N51 30.0 | W050 00.0 | Transport Canada AIM NAT Table 1.1 / OEP association (5130… / 050W family). Educ |
+| VEGAA | N35 19.4 | W072 00.0 | OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify  |
+| VESRA | N25 28.5 | W068 00.0 | OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify  |
+| VINSO | N27 05.0 | W067 14.5 | OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify  |
+| VIRST | N35 02.7 | W072 32.6 | OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify  |
+| WHOOS | N31 56.0 | W076 59.3 | OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify  |
+| ZZTOP | N33 50.0 | W073 35.2 | OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify  |
+
+Still missing reliable public coordinates from the sample list (not added): BUNAV, ETILO, LUSEN, ORTAV, RADUN, ROBB, SAVIK, TOXIT, UMLER, VESMI.
+
+<!-- NAMED-SAMPLE-END -->
+
 <!-- LEARNED-NAT-START -->
 ## Learned from NAT track messages
 
@@ -197,54 +315,56 @@ Coordinate fixes absorbed from downloaded OTS track routings (approximate; educa
 
 | Waypoint | Latitude | Longitude | Notes |
 |----------|-------------------|-------------------|---------------------------------------------|
-| 42/60 | 42.0000° N | 60.0000° W | Learned from NAT tracks message |
-| 44/50 | 44.0000° N | 50.0000° W | Learned from NAT tracks message |
-| 45/40 | 45.0000° N | 40.0000° W | Learned from NAT tracks message |
-| 46/50 | 46.0000° N | 50.0000° W | Learned from NAT tracks message |
-| 47/50 | 47.0000° N | 50.0000° W | Learned from NAT tracks message |
-| 48/30 | 48.0000° N | 30.0000° W | Learned from NAT tracks message |
-| 48/50 | 48.0000° N | 50.0000° W | Learned from NAT tracks message |
-| 49/20 | 49.0000° N | 20.0000° W | Learned from NAT tracks message |
-| 49/40 | 49.0000° N | 40.0000° W | Learned from NAT tracks message |
-| 49/50 | 49.0000° N | 50.0000° W | Learned from NAT tracks message |
-| 50/40 | 50.0000° N | 40.0000° W | Learned from NAT tracks message |
-| 50/50 | 50.0000° N | 50.0000° W | Learned from NAT tracks message |
-| 51/20 | 51.0000° N | 20.0000° W | Learned from NAT tracks message |
-| 51/30 | 51.0000° N | 30.0000° W | Learned from NAT tracks message |
-| 51/40 | 51.0000° N | 40.0000° W | Learned from NAT tracks message |
-| 51/50 | 51.0000° N | 50.0000° W | Learned from NAT tracks message |
-| 5130/50 | 51.5000° N | 50.0000° W | Learned from NAT tracks message |
-| 52/20 | 52.0000° N | 20.0000° W | Learned from NAT tracks message |
-| 52/30 | 52.0000° N | 30.0000° W | Learned from NAT tracks message |
-| 52/40 | 52.0000° N | 40.0000° W | Learned from NAT tracks message |
-| 52/50 | 52.0000° N | 50.0000° W | Learned from NAT tracks message |
-| 5230/20 | 52.5000° N | 20.0000° W | Learned from NAT tracks message |
-| 53/20 | 53.0000° N | 20.0000° W | Learned from NAT tracks message |
-| 53/30 | 53.0000° N | 30.0000° W | Learned from NAT tracks message |
-| 53/40 | 53.0000° N | 40.0000° W | Learned from NAT tracks message |
-| 53/50 | 53.0000° N | 50.0000° W | Learned from NAT tracks message |
-| 5330/30 | 53.5000° N | 30.0000° W | Learned from NAT tracks message |
-| 5330/40 | 53.5000° N | 40.0000° W | Learned from NAT tracks message |
-| 54/20 | 54.0000° N | 20.0000° W | Learned from NAT tracks message |
-| 54/30 | 54.0000° N | 30.0000° W | Learned from NAT tracks message |
-| 54/40 | 54.0000° N | 40.0000° W | Learned from NAT tracks message |
-| 54/50 | 54.0000° N | 50.0000° W | Learned from NAT tracks message |
-| 5430/50 | 54.5000° N | 50.0000° W | Learned from NAT tracks message |
-| 55/20 | 55.0000° N | 20.0000° W | Learned from NAT tracks message |
-| 55/30 | 55.0000° N | 30.0000° W | Learned from NAT tracks message |
-| 55/40 | 55.0000° N | 40.0000° W | Learned from NAT tracks message |
-| 55/50 | 55.0000° N | 50.0000° W | Learned from NAT tracks message |
-| 56/20 | 56.0000° N | 20.0000° W | Learned from NAT tracks message |
-| 56/30 | 56.0000° N | 30.0000° W | Learned from NAT tracks message |
-| 56/40 | 56.0000° N | 40.0000° W | Learned from NAT tracks message |
-| 56/50 | 56.0000° N | 50.0000° W | Learned from NAT tracks message |
-| 5630/20 | 56.5000° N | 20.0000° W | Learned from NAT tracks message |
-| 5630/40 | 56.5000° N | 40.0000° W | Learned from NAT tracks message |
-| 57/20 | 57.0000° N | 20.0000° W | Learned from NAT tracks message |
-| 57/30 | 57.0000° N | 30.0000° W | Learned from NAT tracks message |
-| 57/40 | 57.0000° N | 40.0000° W | Learned from NAT tracks message |
-| 57/50 | 57.0000° N | 50.0000° W | Learned from NAT tracks message |
-| 5730/30 | 57.5000° N | 30.0000° W | Learned from NAT tracks message |
-| 58/30 | 58.0000° N | 30.0000° W | Learned from NAT tracks message |
+| 42/60 | N42 00.0 | W060 00.0 | Learned from NAT tracks message |
+| 44/50 | N44 00.0 | W050 00.0 | Learned from NAT tracks message |
+| 45/40 | N45 00.0 | W040 00.0 | Learned from NAT tracks message |
+| 46/50 | N46 00.0 | W050 00.0 | Learned from NAT tracks message |
+| 47/50 | N47 00.0 | W050 00.0 | Learned from NAT tracks message |
+| 48/30 | N48 00.0 | W030 00.0 | Learned from NAT tracks message |
+| 48/50 | N48 00.0 | W050 00.0 | Learned from NAT tracks message |
+| 49/20 | N49 00.0 | W020 00.0 | Learned from NAT tracks message |
+| 49/40 | N49 00.0 | W040 00.0 | Learned from NAT tracks message |
+| 49/50 | N49 00.0 | W050 00.0 | Learned from NAT tracks message |
+| 50/40 | N50 00.0 | W040 00.0 | Learned from NAT tracks message |
+| 50/50 | N50 00.0 | W050 00.0 | Learned from NAT tracks message |
+| 51/20 | N51 00.0 | W020 00.0 | Learned from NAT tracks message |
+| 51/30 | N51 00.0 | W030 00.0 | Learned from NAT tracks message |
+| 51/40 | N51 00.0 | W040 00.0 | Learned from NAT tracks message |
+| 51/50 | N51 00.0 | W050 00.0 | Learned from NAT tracks message |
+| 5130/50 | N51 30.0 | W050 00.0 | Learned from NAT tracks message |
+| 52/20 | N52 00.0 | W020 00.0 | Learned from NAT tracks message |
+| 52/30 | N52 00.0 | W030 00.0 | Learned from NAT tracks message |
+| 52/40 | N52 00.0 | W040 00.0 | Learned from NAT tracks message |
+| 52/50 | N52 00.0 | W050 00.0 | Learned from NAT tracks message |
+| 5230/20 | N52 30.0 | W020 00.0 | Learned from NAT tracks message |
+| 53/20 | N53 00.0 | W020 00.0 | Learned from NAT tracks message |
+| 53/30 | N53 00.0 | W030 00.0 | Learned from NAT tracks message |
+| 53/40 | N53 00.0 | W040 00.0 | Learned from NAT tracks message |
+| 53/50 | N53 00.0 | W050 00.0 | Learned from NAT tracks message |
+| 5330/30 | N53 30.0 | W030 00.0 | Learned from NAT tracks message |
+| 5330/40 | N53 30.0 | W040 00.0 | Learned from NAT tracks message |
+| 54/20 | N54 00.0 | W020 00.0 | Learned from NAT tracks message |
+| 54/30 | N54 00.0 | W030 00.0 | Learned from NAT tracks message |
+| 54/40 | N54 00.0 | W040 00.0 | Learned from NAT tracks message |
+| 54/50 | N54 00.0 | W050 00.0 | Learned from NAT tracks message |
+| 5430/50 | N54 30.0 | W050 00.0 | Learned from NAT tracks message |
+| 55/20 | N55 00.0 | W020 00.0 | Learned from NAT tracks message |
+| 55/30 | N55 00.0 | W030 00.0 | Learned from NAT tracks message |
+| 55/40 | N55 00.0 | W040 00.0 | Learned from NAT tracks message |
+| 55/50 | N55 00.0 | W050 00.0 | Learned from NAT tracks message |
+| 56/20 | N56 00.0 | W020 00.0 | Learned from NAT tracks message |
+| 56/30 | N56 00.0 | W030 00.0 | Learned from NAT tracks message |
+| 56/40 | N56 00.0 | W040 00.0 | Learned from NAT tracks message |
+| 56/50 | N56 00.0 | W050 00.0 | Learned from NAT tracks message |
+| 5630/20 | N56 30.0 | W020 00.0 | Learned from NAT tracks message |
+| 5630/40 | N56 30.0 | W040 00.0 | Learned from NAT tracks message |
+| 57/20 | N57 00.0 | W020 00.0 | Learned from NAT tracks message |
+| 57/30 | N57 00.0 | W030 00.0 | Learned from NAT tracks message |
+| 57/40 | N57 00.0 | W040 00.0 | Learned from NAT tracks message |
+| 57/50 | N57 00.0 | W050 00.0 | Learned from NAT tracks message |
+| 5730/30 | N57 30.0 | W030 00.0 | Learned from NAT tracks message |
+| 58/30 | N58 00.0 | W030 00.0 | Learned from NAT tracks message |
+| ONZIN | S85 00.0 | E000 00.0 | Learned from NAT tracks message |
+| SOCCO | N21 07.0 | W063 03.7 | Learned from NAT tracks message |
 
 <!-- LEARNED-NAT-END -->

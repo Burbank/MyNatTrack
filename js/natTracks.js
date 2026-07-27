@@ -88,14 +88,13 @@ function parseLevels(line) {
   return (line.match(/\b\d{3}\b/g) || []).map((n) => parseInt(n, 10));
 }
 
-function parseValidity(text) {
+function parseValidityLabel(text) {
   // JUL 27/0100Z TO JUL 27/0800Z
-  const m = text.match(
+  const m = String(text || "").match(
     /([A-Z]{3})\s+(\d{1,2})\/(\d{4})Z\s+TO\s+([A-Z]{3})\s+(\d{1,2})\/(\d{4})Z/i
   );
-  if (!m) return { label: "", from: null, to: null };
-  const label = `${m[1]} ${m[2]}/${m[3]}Z TO ${m[4]} ${m[5]}/${m[6]}Z`;
-  return { label, from: null, to: null };
+  if (!m) return "";
+  return `${m[1]} ${m[2]}/${m[3]}Z TO ${m[4]} ${m[5]}/${m[6]}Z`;
 }
 
 function extractTmi(text) {
@@ -133,7 +132,7 @@ export function parseNatMessages(parts, db = []) {
     if (!msg.trim()) continue;
     texts.push(msg.trim());
     if (!tmi) tmi = extractTmi(msg);
-    const validity = parseValidity(msg);
+    const validityLabel = parseValidityLabel(msg);
     const icao = part.icao_id || part.origin_id || "";
     const start = part.start_datetime || null;
     const end = part.end_datetime || null;
@@ -171,7 +170,7 @@ export function parseNatMessages(parts, db = []) {
         icao,
         validFrom: start,
         validTo: end,
-        validityLabel: validity.label,
+        validityLabel,
         eastLevels: [],
         westLevels: [],
         direction: "unknown",

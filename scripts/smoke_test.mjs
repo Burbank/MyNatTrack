@@ -16,6 +16,9 @@ const { vincentyInverse, averageBearing, formatTrack } = await import(
 const {
   parseWaypointInput,
   parseRouteString,
+  parseWaypointsFromMarkdown,
+  parseMdLatCell,
+  parseMdLonCell,
   toArinc424,
   formatCockpitLatLon,
 } = await import(pathToFileURL(join(root, "js/parser.js")).href);
@@ -93,7 +96,7 @@ console.log(
   route.points.map((p) => p.name).join(" ")
 );
 
-if (wp.accuracyVerifiedOn !== "2026-07-26") {
+if (wp.accuracyVerifiedOn !== "2026-07-27") {
   throw new Error("accuracyVerifiedOn mismatch");
 }
 
@@ -105,6 +108,68 @@ const half = formatCockpitLatLon(52.5, -50);
 if (half !== "N52 30.0 W050 00.0") {
   throw new Error(`cockpit half-degree mismatch: ${half}`);
 }
-console.log("OK cockpit", cockpit, half);
+const southCockpit = formatCockpitLatLon(-85, -20);
+if (southCockpit !== "S85 00.0 W020 00.0") {
+  throw new Error(`cockpit south mismatch: ${southCockpit}`);
+}
+expect("S8500.0W02000.0", "S8500.0W02000.0", -85, -20);
+console.log("OK cockpit", cockpit, half, southCockpit);
+
+const { project, globeLayout } = await import(
+  pathToFileURL(join(root, "js/chart.js")).href
+);
+const southRoute = [
+  { lat: 50, lon: -15 },
+  { lat: -85, lon: -20 },
+];
+const layout = globeLayout(400, 300, southRoute, 1, { dLat: 0, dLon: 0 });
+if (layout.lat0 >= 5) {
+  throw new Error(
+    `globeLayout lat0 stuck northern (${layout.lat0}); southern routes must re-centre`
+  );
+}
+const southProj = project(-85, -20, 400, 300, layout);
+if (!southProj.visible) {
+  throw new Error("85S not visible after southern layout fit");
+}
+const northProj = project(50, -15, 400, 300, layout);
+if (!northProj.visible) {
+  throw new Error("50N not visible on mixed N/S layout");
+}
+console.log("OK southern plot", {
+  lat0: layout.lat0.toFixed(1),
+  lon0: layout.lon0.toFixed(1),
+});
+
+if (Math.abs(parseMdLatCell('N50 00.0') - 50) > 1e-9) {
+  throw new Error("parseMdLatCell cockpit");
+}
+if (Math.abs(parseMdLonCell('W015 00.0') - -15) > 1e-9) {
+  throw new Error("parseMdLonCell cockpit");
+}
+if (Math.abs(parseMdLatCell('50°00\'00" N') - 50) > 1e-9) {
+  throw new Error("parseMdLatCell DMS");
+}
+if (Math.abs(parseMdLonCell('015°00\'00" W') - -15) > 1e-9) {
+  throw new Error("parseMdLonCell DMS");
+}
+if (parseMdLatCell("~56°00' N") != null) {
+  throw new Error("parseMdLatCell should reject ~");
+}
+const mdSample = `
+| Waypoint | Latitude | Longitude | Notes |
+|----------|----------|-----------|-------|
+| SOMAX | 50°00'00" N | 015°00'00" W | bundled |
+| ZZNEW | N40 00.0 | W030 00.0 | taught |
+| SKIPME | ~48° N | ~050° W | approx |
+`;
+const imported = parseWaypointsFromMarkdown(mdSample);
+if (imported.length !== 2) {
+  throw new Error(`md import count ${imported.length}`);
+}
+if (imported[1].name !== "ZZNEW" || imported[1].lat !== 40 || imported[1].lon !== -30) {
+  throw new Error("md import ZZNEW mismatch");
+}
+console.log("OK md import parse", imported.map((w) => w.name).join(" "));
 
 console.log("smoke_test OK");

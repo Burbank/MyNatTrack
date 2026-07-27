@@ -17,7 +17,7 @@
     <link rel="shortcut icon" href="icons/favicon.png" />
     <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
     <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
-    <link rel="stylesheet" href="css/styles.css?v=1.8" />
+    <link rel="stylesheet" href="css/styles.css?v=1.9" />
     <title>MyNatTrack</title>
     <!--
       Critical header: full-width 3-col grid.
@@ -110,7 +110,7 @@
       </form>
     </div>
 
-    <header class="app-header" data-header-layout="center-title-clusters">
+    <header class="app-header">
       <div class="header-left-cluster">
         <button
           type="button"
@@ -135,10 +135,18 @@
 
     <main class="main">
       <section class="panel" id="route-panel">
-        <h2 class="route-title">
-          <span class="route-label">Route</span>
+        <div class="route-title-bar">
+          <button
+            type="button"
+            class="route-store-btn secondary"
+            id="route-store-btn"
+            aria-label="Save route as comparison baseline"
+          >
+            <span class="route-store-top">Route</span>
+            <span class="route-store-state" id="route-store-label">Save</span>
+          </button>
           <span id="route-hint" class="route-hint"></span>
-        </h2>
+        </div>
         <div class="panel-body">
           <div class="entry-row">
             <input
@@ -160,6 +168,38 @@
           <ul class="route-list" id="route-list"></ul>
         </div>
       </section>
+
+      <div class="overlay" id="route-store-confirm" hidden>
+        <div class="sheet md-io-sheet" role="dialog" aria-labelledby="route-store-confirm-title">
+          <header>
+            <h2 id="route-store-confirm-title">Update stored route?</h2>
+            <button type="button" class="icon-btn" id="route-store-confirm-cancel">Cancel</button>
+          </header>
+          <p class="md-io-lead">
+            Replace the stored baseline with the current route. Difference checks will then use this new baseline.
+          </p>
+          <div class="md-io-actions">
+            <button type="button" class="primary" id="route-store-confirm-ok">Update stored</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="overlay" id="route-clear-confirm" hidden>
+        <div class="sheet md-io-sheet" role="dialog" aria-labelledby="route-clear-confirm-title">
+          <header>
+            <h2 id="route-clear-confirm-title">Clear route?</h2>
+            <button type="button" class="icon-btn" id="route-clear-confirm-cancel">Cancel</button>
+          </header>
+          <ul class="md-io-help">
+            <li><strong>Clear Edits</strong> — restore the working route to the stored baseline (or empty the list if nothing is stored).</li>
+            <li><strong>Clear ALL</strong> — wipe the working route and the stored baseline.</li>
+          </ul>
+          <div class="md-io-actions route-clear-actions">
+            <button type="button" class="secondary" id="route-clear-edits-btn">Clear Edits</button>
+            <button type="button" class="primary danger-btn" id="route-clear-all-btn">Clear ALL</button>
+          </div>
+        </div>
+      </div>
 
       <div class="right-stack">
         <section class="panel" id="chart-panel">
@@ -259,7 +299,7 @@
             </label>
           </div>
           <p class="muted ref-lead">
-            Always plotted. Runways listed are ≥ 2500&nbsp;m (longest first). Alphabetical by ICAO.
+            Always plotted. Runways listed are ≥ 2400&nbsp;m (longest first). Alphabetical by ICAO.
           </p>
           <ul class="diversion-icao-list" id="diversion-icao-list"></ul>
         </section>
@@ -341,7 +381,7 @@
             rel="noopener noreferrer"
             title="Opens ICAO NAT Doc 007 (current edition V.2026-1). ICAO puts the edition in the filename — no permanent “latest.pdf” URL exists; when a new edition is published, this link is updated in the app. Browse all editions via EUR &amp; NAT Documents on icao.int."
           >Download Latest Nat Doc 007</a>
-          <span class="settings-version muted" aria-label="App version">v1.8</span>
+          <span class="settings-version muted" aria-label="App version">v1.9</span>
         </div>
       </div>
     </div>
@@ -493,9 +533,93 @@
       <div class="sheet wide" role="dialog" aria-labelledby="md-title">
         <header>
           <h2 id="md-title">NAT HLA Waypoints Reference</h2>
-          <button type="button" class="icon-btn" id="md-close">Close</button>
+          <div class="sheet-header-actions">
+            <button type="button" class="icon-btn" id="md-share-btn">Share</button>
+            <button type="button" class="icon-btn" id="md-import-btn">Import</button>
+            <button type="button" class="icon-btn" id="md-close">Close</button>
+          </div>
         </header>
         <div class="md-body" id="md-content"></div>
+      </div>
+    </div>
+
+    <div class="overlay" id="md-share-help" hidden>
+      <div class="sheet md-io-sheet" role="dialog" aria-labelledby="md-share-help-title">
+        <header>
+          <h2 id="md-share-help-title">Share waypoints file</h2>
+          <button type="button" class="icon-btn" id="md-share-help-cancel">Cancel</button>
+        </header>
+        <ul class="md-io-help">
+          <li>Exports the live reference markdown — bundled tables plus your learned and manually taught fixes.</li>
+          <li>Opens the system share menu (Save to Files, AirDrop, Mail, etc.).</li>
+          <li>Use this as a backup before deleting the app or clearing site data.</li>
+          <li>If share is unavailable, the same <code>.md</code> file downloads instead.</li>
+        </ul>
+        <div class="md-io-actions">
+          <button type="button" class="primary" id="md-share-help-continue">Share…</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="overlay" id="md-import-help" hidden>
+      <div class="sheet md-io-sheet" role="dialog" aria-labelledby="md-import-help-title">
+        <header>
+          <h2 id="md-import-help-title">Import waypoints file</h2>
+          <button type="button" class="icon-btn" id="md-import-help-cancel">Cancel</button>
+        </header>
+        <ul class="md-io-help">
+          <li>Choose a <code>.md</code> waypoints file (for example one previously shared from this app).</li>
+          <li>Table rows with a name plus parseable latitude and longitude are merged into your local database.</li>
+          <li>Accepts cockpit (<code>N50 00.0</code>) and DMS (<code>50°00'00" N</code>) cells.</li>
+          <li>Approximate rows (<code>~</code>, ranges, prose) are skipped.</li>
+          <li>Does not wipe the bundled database — adds or updates matching names only.</li>
+        </ul>
+        <p id="md-import-status" class="md-io-status" hidden></p>
+        <div class="md-io-actions">
+          <button type="button" class="primary" id="md-import-help-continue">Choose file…</button>
+        </div>
+        <input
+          type="file"
+          id="md-import-file"
+          accept=".md,text/markdown,text/plain"
+          hidden
+        />
+      </div>
+    </div>
+
+    <div class="overlay" id="teach-panel" hidden>
+      <div class="sheet teach-sheet" role="dialog" aria-labelledby="teach-title">
+        <header>
+          <h2 id="teach-title">Teach waypoint</h2>
+          <button type="button" class="icon-btn" id="teach-cancel-btn">Cancel</button>
+        </header>
+        <p class="muted teach-progress" id="teach-progress">1 of 1</p>
+        <p class="teach-name-row">
+          <span class="muted">Name</span>
+          <strong class="teach-name mono" id="teach-name">—————</strong>
+        </p>
+        <label class="teach-label" for="teach-coords">
+          Coordinates from chart (cockpit long-hand)
+        </label>
+        <input
+          id="teach-coords"
+          class="teach-coords mono"
+          type="text"
+          autocomplete="off"
+          autocorrect="off"
+          autocapitalize="characters"
+          spellcheck="false"
+          placeholder="N50 00.0 W020 00.0"
+          aria-label="Waypoint coordinates"
+        />
+        <p class="muted teach-hint">
+          Also accepts glued FMS form, e.g. N5000.0W02000.0. Saved to this device for next time.
+        </p>
+        <p id="teach-error" class="teach-error" hidden></p>
+        <div class="teach-actions">
+          <button type="button" class="secondary" id="teach-skip-btn">Skip</button>
+          <button type="button" class="primary" id="teach-save-btn">Save</button>
+        </div>
       </div>
     </div>
 
@@ -540,6 +664,6 @@
       </div>
     </div>
 
-    <script type="module" src="js/app.js?v=1.8"></script>
+    <script type="module" src="js/app.js?v=1.9"></script>
   </body>
 </html>

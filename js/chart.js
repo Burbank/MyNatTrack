@@ -16,6 +16,15 @@ import {
   runwayLabels,
 } from "./diversionAirports.js";
 
+/** Cached once — diversion list is static for the session. */
+let plottableAirports = null;
+function getPlottableAirports() {
+  if (!plottableAirports) {
+    plottableAirports = diversionAirportsPlottable(RWY_LABEL_MIN_M);
+  }
+  return plottableAirports;
+}
+
 /** Default North Atlantic framing (used when no route is programmed). */
 const DEFAULT_VIEW = {
   lat0: 50,
@@ -120,7 +129,7 @@ function meanCenter(points) {
  * @param {number} userZoom  pinch/wheel multiplier (1 = auto-fit)
  * @param {{ dLat?: number, dLon?: number }} pan  user pan offsets (deg) from fitted center
  */
-function globeLayout(width, height, focusPoints = [], userZoom = 1, pan = {}) {
+export function globeLayout(width, height, focusPoints = [], userZoom = 1, pan = {}) {
   const cx = width / 2;
   const cy = height / 2;
   const half = Math.min(width, height) * 0.5;
@@ -133,7 +142,9 @@ function globeLayout(width, height, focusPoints = [], userZoom = 1, pan = {}) {
       ? meanCenter(focusPoints)
       : { lat0: DEFAULT_VIEW.lat0, lon0: DEFAULT_VIEW.lon0 };
 
-  lat0 = Math.max(5, Math.min(85, lat0 + (Number(pan.dLat) || 0)));
+  // Allow southern hemisphere centres (was clamped to ≥5°N for NAT-only framing,
+  // which hid S-lat waypoints on the back of the orthographic globe).
+  lat0 = Math.max(-85, Math.min(85, lat0 + (Number(pan.dLat) || 0)));
   lon0 = lon0 + (Number(pan.dLon) || 0);
   if (lon0 > 180) lon0 -= 360;
   if (lon0 < -180) lon0 += 360;
@@ -149,7 +160,10 @@ function globeLayout(width, height, focusPoints = [], userZoom = 1, pan = {}) {
   const sinC = Math.sin(toRad(maxAngle));
   // Outermost focus point near the panel edge
   let radius = sinC > 1e-6 ? (half * 0.96) / sinC : half * 1.4;
-  radius = Math.max(radius, half * 1.15);
+  // For large arcs (e.g. NAT + deep south), do not force a tight zoom floor —
+  // that pushes endpoints off the panel even when they are on the front hemisphere.
+  const minRadius = maxAngle > 35 ? half * 0.55 : half * 1.15;
+  radius = Math.max(radius, minRadius);
   radius = Math.min(radius, half * 4.5);
 
   const zoom = Math.max(0.5, Math.min(5, Number(userZoom) || 1));
@@ -520,6 +534,29 @@ function drawPolyline(ctx, layout, points, style) {
   ctx.restore();
 }
 
+/** Point on a track nearest 030°W (classic NAT mid-ocean label longitude). */
+function natTrackPointNear30W(pts) {
+  let best = pts[0];
+  let bestDist = Infinity;
+  for (const p of pts) {
+    if (!Number.isFinite(p?.lon)) continue;
+    const d = Math.abs(p.lon - -30);
+    if (d < bestDist) {
+      bestDist = d;
+      best = p;
+    }
+  }
+  return best;
+}
+
+function drawNatTrackId(ctx, layout, id, pt, color, ox, oy) {
+  if (!pt || !Number.isFinite(pt.lat) || !Number.isFinite(pt.lon)) return;
+  const p = project(pt.lat, pt.lon, 0, 0, layout);
+  if (!p.visible) return;
+  ctx.fillStyle = color;
+  ctx.fillText(id, p.x + ox, p.y + oy);
+}
+
 function drawNatTracks(ctx, layout, tracks, lite = false) {
   if (!tracks || !tracks.length) return;
   if (!lite) {
@@ -535,12 +572,17 @@ function drawNatTracks(ctx, layout, tracks, lite = false) {
       dash: [6, 5],
     });
     if (lite) continue;
-    const mid = pts[Math.floor(pts.length / 2)];
-    const mp = project(mid.lat, mid.lon, 0, 0, layout);
-    if (mp.visible) {
-      ctx.fillStyle = color;
-      ctx.fillText(track.id, mp.x + 4, mp.y - 4);
+
+    const entry = pts[0];
+    const exit = pts[pts.length - 1];
+    const mid30 = natTrackPointNear30W(pts);
+
+    // Entry / ~030°W / exit — same letter, slight offsets so they stay readable
+    drawNatTrackId(ctx, layout, track.id, entry, color, 5, -5);
+    if (mid30 !== entry && mid30 !== exit) {
+      drawNatTrackId(ctx, layout, track.id, mid30, color, 4, -4);
     }
+    drawNatTrackId(ctx, layout, track.id, exit, color, 5, -5);
   }
 }
 
@@ -646,9 +688,11 @@ function drawDiversionAirports(
   ctx.arc(layout.cx, layout.cy, layout.radius - 0.5, 0, Math.PI * 2);
   ctx.clip();
 
+  const airports = getPlottableAirports();
+
   // Interaction frames: symbols only (collision labels are expensive)
   if (lite) {
-    for (const ap of diversionAirportsPlottable(RWY_LABEL_MIN_M)) {
+    for (const ap of airports) {
       const p = project(ap.lat, ap.lon, 0, 0, layout);
       if (!inCanvas(p, width, height, 4)) continue;
       drawAirportGear(ctx, p.x, p.y, color, 1);
@@ -659,7 +703,7 @@ function drawDiversionAirports(
 
   /** @type {{ap:any,x:number,y:number,lines:string[],metrics:number[],nn:number}[]} */
   const visible = [];
-  for (const ap of diversionAirportsPlottable(RWY_LABEL_MIN_M)) {
+  for (const ap of airports) {
     const p = project(ap.lat, ap.lon, 0, 0, layout);
     if (!inCanvas(p, width, height, 4)) continue;
     const rwys = includeRwys ? runwayLabels(ap, RWY_LABEL_MIN_M) : [];

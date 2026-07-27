@@ -386,11 +386,22 @@ export function toArinc424(lat, lon) {
  * Split a pasted space-separated route string into tokens and parse each.
  * Separators: whitespace, commas, or middle dots (·).
  * Example: "SOMAX 5020N 4930N 4740N 43N050W SOORY"
+ *
+ * Also returns `slots` + `unknowns` so the UI can teach missing names
+ * without rejecting the whole paste.
  */
 export function parseRouteString(raw, db = []) {
   const text = String(raw || "").trim();
   if (!text) {
-    return { ok: false, error: "Empty input", points: [], errors: [] };
+    return {
+      ok: false,
+      error: "Empty input",
+      points: [],
+      errors: [],
+      slots: [],
+      unknowns: [],
+      tokens: [],
+    };
   }
 
   const tokens = text
@@ -400,17 +411,31 @@ export function parseRouteString(raw, db = []) {
     .filter(Boolean);
 
   if (!tokens.length) {
-    return { ok: false, error: "Empty input", points: [], errors: [] };
+    return {
+      ok: false,
+      error: "Empty input",
+      points: [],
+      errors: [],
+      slots: [],
+      unknowns: [],
+      tokens: [],
+    };
   }
 
   const points = [];
   const errors = [];
+  const slots = [];
+  const unknowns = [];
   tokens.forEach((token, i) => {
     const result = parseWaypointInput(token, db);
     if (!result.ok) {
-      errors.push({ token, index: i, error: result.error });
+      const err = { token, index: i, error: result.error };
+      errors.push(err);
+      unknowns.push(err);
+      slots.push({ type: "unknown", token, index: i });
     } else {
       points.push(result.point);
+      slots.push({ type: "point", token, index: i, point: result.point });
     }
   });
 
@@ -423,11 +448,20 @@ export function parseRouteString(raw, db = []) {
       error: `Could not parse ${errors.length} of ${tokens.length} waypoint(s): ${detail}`,
       points,
       errors,
+      slots,
+      unknowns,
       tokens,
     };
   }
 
-  return { ok: true, points, errors: [], tokens };
+  return {
+    ok: true,
+    points,
+    errors: [],
+    slots,
+    unknowns: [],
+    tokens,
+  };
 }
 
 export function suggestWaypoints(query, db, limit = 8) {
@@ -440,4 +474,152 @@ export function suggestWaypoints(query, db, limit = 8) {
   return db
     .filter((w) => w.name.includes(q) || (w.id && w.id.includes(q)))
     .slice(0, limit);
+}
+
+/**
+ * Parse a latitude cell from the waypoints Markdown tables.
+ * Accepts cockpit (N50 00.0), DMS (50°00'00" N), or glued FMS lat-only fragments
+ * when paired via parseMdLonCell. Rejects approximate (~) / range text.
+ * @returns {number|null}
+ */
+export function parseMdLatCell(raw) {
+  const s = String(raw || "").trim();
+  if (!s || /~|–|—|\.\.|various|variable|western|range/i.test(s)) return null;
+
+  // Cockpit / glued: N50 00.0 or N5000.0
+  let m = s.match(/^([NS])\s*(\d{2})\s*(\d{2}(?:\.\d+)?)?$/i);
+  if (m) {
+    const deg = parseInt(m[2], 10);
+    const min = m[3] ? parseFloat(m[3]) : 0;
+    if (deg > 90 || min >= 60) return null;
+    return dmsToDeg(deg, min, 0, m[1]);
+  }
+
+  // DMS: 50°00'00" N  /  50°00' N  /  38°45.7' N
+  m = s.match(
+    /^(\d{1,2})\s*°\s*(\d{1,2}(?:\.\d+)?)?\s*(?:['′]\s*(\d{1,2}(?:\.\d+)?)?\s*(?:["″])?)?\s*([NS])$/i
+  );
+  if (m) {
+    const deg = parseInt(m[1], 10);
+    const min = m[2] ? parseFloat(m[2]) : 0;
+    const sec = m[3] ? parseFloat(m[3]) : 0;
+    if (deg > 90 || min >= 60 || sec >= 60) return null;
+    return dmsToDeg(deg, min, sec, m[4]);
+  }
+
+  // Full pair in one cell (rare): N50 00.0 W015 00.0
+  const glued = String(s).toUpperCase().replace(/\s+/g, "");
+  const full = parseWaypointInput(glued, []);
+  if (full.ok && full.point) return full.point.lat;
+
+  return null;
+}
+
+/**
+ * Parse a longitude cell from the waypoints Markdown tables.
+ * @returns {number|null}
+ */
+export function parseMdLonCell(raw) {
+  const s = String(raw || "").trim();
+  if (!s || /~|–|—|\.\.|various|variable|western|range/i.test(s)) return null;
+
+  // Cockpit / glued: W015 00.0 or W01500.0
+  let m = s.match(/^([EW])\s*(\d{2,3})\s*(\d{2}(?:\.\d+)?)?$/i);
+  if (m) {
+    const deg = parseInt(m[2], 10);
+    const min = m[3] ? parseFloat(m[3]) : 0;
+    if (deg > 180 || min >= 60) return null;
+    return dmsToDeg(deg, min, 0, m[1]);
+  }
+
+  // DMS: 015°00'00" W  /  025°10' W  /  060°16'03.3" W
+  m = s.match(
+    /^(\d{1,3})\s*°\s*(\d{1,2}(?:\.\d+)?)?\s*(?:['′]\s*(\d{1,2}(?:\.\d+)?)?\s*(?:["″])?)?\s*([EW])$/i
+  );
+  if (m) {
+    const deg = parseInt(m[1], 10);
+    const min = m[2] ? parseFloat(m[2]) : 0;
+    const sec = m[3] ? parseFloat(m[3]) : 0;
+    if (deg > 180 || min >= 60 || sec >= 60) return null;
+    return dmsToDeg(deg, min, sec, m[4]);
+  }
+
+  const glued = String(s).toUpperCase().replace(/\s+/g, "");
+  const full = parseWaypointInput(glued, []);
+  if (full.ok && full.point) return full.point.lon;
+
+  return null;
+}
+
+/**
+ * Extract named waypoints with parseable lat/lon from Markdown pipe tables.
+ * Skips approximate rows and non-fix tables (e.g. airports with combined coords).
+ * @returns {{ name: string, lat: number, lon: number, notes: string }[]}
+ */
+export function parseWaypointsFromMarkdown(md) {
+  const lines = String(md || "").split(/\r?\n/);
+  /** @type {{ name: string, lat: number, lon: number, notes: string }[]} */
+  const out = [];
+  const seen = new Set();
+
+  let cols = null; // { name, lat, lon, notes }
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed.startsWith("|")) {
+      cols = null;
+      continue;
+    }
+    const cells = trimmed
+      .replace(/^\|/, "")
+      .replace(/\|$/, "")
+      .split("|")
+      .map((c) => c.trim());
+    if (cells.length < 3) continue;
+
+    // Separator row
+    if (cells.every((c) => /^:?-{2,}:?$/.test(c) || c === "")) continue;
+
+    const lower = cells.map((c) => c.toLowerCase());
+    const nameIdx = lower.findIndex((c) =>
+      /^(waypoint|fix|name)$/.test(c)
+    );
+    const latIdx = lower.findIndex((c) => /^lat(itude)?$/.test(c));
+    const lonIdx = lower.findIndex((c) => /^lon(gitude)?$/.test(c));
+    if (nameIdx >= 0 && latIdx >= 0 && lonIdx >= 0) {
+      const notesIdx = lower.findIndex((c) => /note|source/.test(c));
+      cols = {
+        name: nameIdx,
+        lat: latIdx,
+        lon: lonIdx,
+        notes: notesIdx >= 0 ? notesIdx : -1,
+      };
+      continue;
+    }
+
+    if (!cols) continue;
+
+    const name = String(cells[cols.name] || "")
+      .trim()
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, "");
+    // Named fixes / short ICAO-style ids only (skip prose cells)
+    if (!/^[A-Z][A-Z0-9]{1,5}$/.test(name)) continue;
+
+    const lat = parseMdLatCell(cells[cols.lat]);
+    const lon = parseMdLonCell(cells[cols.lon]);
+    if (lat == null || lon == null) continue;
+    if (lat < -90 || lat > 90 || lon < -180 || lon > 180) continue;
+    if (seen.has(name)) continue;
+    seen.add(name);
+
+    const notes =
+      cols.notes >= 0 && cells[cols.notes]
+        ? String(cells[cols.notes]).trim()
+        : "Imported from markdown";
+
+    out.push({ name, lat, lon, notes });
+  }
+
+  return out;
 }

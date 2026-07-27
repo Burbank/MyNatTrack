@@ -9,6 +9,8 @@ import {
   formatCockpitLatLon,
   formatCockpitLon,
   parseRouteString,
+  parseWaypointInput,
+  parseWaypointsFromMarkdown,
   suggestWaypoints,
 } from "./parser.js";
 import {
@@ -33,7 +35,8 @@ import {
 } from "./diversionAirports.js";
 
 const STORAGE_KEY = "mynattrack_route_v1";
-const PREV_ROUTE_STATS_KEY = "mynattrack_prev_route_stats_v1";
+/** Explicit stored baseline for NM difference (Save route / Route stored). */
+const STORED_ROUTE_KEY = "mynattrack_stored_route_v1";
 const SETTINGS_KEY = "mynattrack_settings_v1";
 /** Waypoints learned silently from NAT track messages (coords already in the message). */
 const LEARNED_WP_KEY = "mynattrack_learned_waypoints_v1";
@@ -86,8 +89,24 @@ const state = {
    */
   activeLegIndex: null,
   routeSeqKey: "",
-  /** Stats for the route before the latest edit (for NM comparison). */
-  previousRouteStats: null,
+  /**
+   * Explicit baseline from “Save route” / “Route stored”.
+   * Diffs always compare the working route against this snapshot.
+   * @type {null | { waypoints: number, totalNm: number, key: string, route: object[] }}
+   */
+  storedRoute: null,
+  /** Cached from last renderLegs — avoids Vincenty on every GPS fix. */
+  routeTotals: { legsCount: 0, totalNm: 0, key: "" },
+  /**
+   * Teach-unknown-waypoint wizard.
+   * @type {null | {
+   *   unknowns: { token: string, index: number }[],
+   *   cursor: number,
+   *   slots: object[],
+   *   commit: { kind: 'replace'|'append'|'insert'|'edit', insertAt?: number, editIndex?: number }
+   * }}
+   */
+  teach: null,
 };
 
 const el = {
@@ -97,6 +116,15 @@ const el = {
   clearBtn: document.getElementById("clear-btn"),
   cancelEditBtn: document.getElementById("cancel-edit-btn"),
   routeHint: document.getElementById("route-hint"),
+  routeStoreBtn: document.getElementById("route-store-btn"),
+  routeStoreLabel: document.getElementById("route-store-label"),
+  routeStoreConfirm: document.getElementById("route-store-confirm"),
+  routeStoreConfirmCancel: document.getElementById("route-store-confirm-cancel"),
+  routeStoreConfirmOk: document.getElementById("route-store-confirm-ok"),
+  routeClearConfirm: document.getElementById("route-clear-confirm"),
+  routeClearConfirmCancel: document.getElementById("route-clear-confirm-cancel"),
+  routeClearEditsBtn: document.getElementById("route-clear-edits-btn"),
+  routeClearAllBtn: document.getElementById("route-clear-all-btn"),
   routeList: document.getElementById("route-list"),
   legsBody: document.getElementById("legs-body"),
   totals: document.getElementById("totals"),
@@ -104,6 +132,15 @@ const el = {
   legsModDiff: document.getElementById("legs-mod-diff"),
   chart: document.getElementById("chart"),
   error: document.getElementById("error"),
+  teachPanel: document.getElementById("teach-panel"),
+  teachTitle: document.getElementById("teach-title"),
+  teachProgress: document.getElementById("teach-progress"),
+  teachName: document.getElementById("teach-name"),
+  teachCoords: document.getElementById("teach-coords"),
+  teachError: document.getElementById("teach-error"),
+  teachSaveBtn: document.getElementById("teach-save-btn"),
+  teachSkipBtn: document.getElementById("teach-skip-btn"),
+  teachCancelBtn: document.getElementById("teach-cancel-btn"),
   settingsBtn: document.getElementById("settings-btn"),
   settingsPanel: document.getElementById("settings-panel"),
   settingsClose: document.getElementById("settings-close"),
@@ -118,7 +155,17 @@ const el = {
   openMdBtn: document.getElementById("open-md-btn"),
   mdPanel: document.getElementById("md-panel"),
   mdClose: document.getElementById("md-close"),
+  mdShareBtn: document.getElementById("md-share-btn"),
+  mdImportBtn: document.getElementById("md-import-btn"),
   mdContent: document.getElementById("md-content"),
+  mdShareHelp: document.getElementById("md-share-help"),
+  mdShareHelpCancel: document.getElementById("md-share-help-cancel"),
+  mdShareHelpContinue: document.getElementById("md-share-help-continue"),
+  mdImportHelp: document.getElementById("md-import-help"),
+  mdImportHelpCancel: document.getElementById("md-import-help-cancel"),
+  mdImportHelpContinue: document.getElementById("md-import-help-continue"),
+  mdImportFile: document.getElementById("md-import-file"),
+  mdImportStatus: document.getElementById("md-import-status"),
   settingsVerify: document.getElementById("settings-verify"),
   natTracksBtn: document.getElementById("nat-tracks-btn"),
   natPanel: document.getElementById("nat-panel"),
@@ -258,58 +305,167 @@ function loadRoute() {
   }
 }
 
-function loadPreviousRouteStats() {
+function snapshotRoutePoints(route) {
+  return (route || []).map((w) => ({
+    id: w.id || w.name,
+    name: w.name,
+    lat: w.lat,
+    lon: w.lon,
+    accuracy: w.accuracy,
+    category: w.category,
+    notes: w.notes,
+    format: w.format,
+  }));
+}
+
+function computeRouteTotalNm(route) {
+  if (!route || route.length < 2) return 0;
+  let totalNm = 0;
+  for (let i = 0; i < route.length - 1; i++) {
+    const a = route[i];
+    const b = route[i + 1];
+    if (
+      !Number.isFinite(a?.lat) ||
+      !Number.isFinite(a?.lon) ||
+      !Number.isFinite(b?.lat) ||
+      !Number.isFinite(b?.lon)
+    ) {
+      continue;
+    }
+    totalNm += vincentyInverse(a.lat, a.lon, b.lat, b.lon).distanceNm;
+  }
+  return totalNm;
+}
+
+function loadStoredRoute() {
   try {
-    const raw = localStorage.getItem(PREV_ROUTE_STATS_KEY);
+    const raw = localStorage.getItem(STORED_ROUTE_KEY);
     if (!raw) {
-      state.previousRouteStats = null;
+      state.storedRoute = null;
       return;
     }
     const parsed = JSON.parse(raw);
     if (
       parsed &&
+      Array.isArray(parsed.route) &&
       Number.isFinite(parsed.waypoints) &&
       Number.isFinite(parsed.totalNm)
     ) {
-      state.previousRouteStats = {
+      state.storedRoute = {
         waypoints: parsed.waypoints,
         totalNm: parsed.totalNm,
-        key: parsed.key || "",
+        key: parsed.key || routeSequenceKey(parsed.route),
+        route: parsed.route,
       };
     } else {
-      state.previousRouteStats = null;
+      state.storedRoute = null;
     }
   } catch {
-    state.previousRouteStats = null;
+    state.storedRoute = null;
   }
 }
 
-function savePreviousRouteStats(stats) {
-  state.previousRouteStats = stats;
+function persistStoredRoute(snapshot) {
+  state.storedRoute = snapshot;
   try {
-    if (stats) {
-      localStorage.setItem(PREV_ROUTE_STATS_KEY, JSON.stringify(stats));
+    if (snapshot) {
+      localStorage.setItem(STORED_ROUTE_KEY, JSON.stringify(snapshot));
     } else {
-      localStorage.removeItem(PREV_ROUTE_STATS_KEY);
+      localStorage.removeItem(STORED_ROUTE_KEY);
     }
   } catch {
     /* ignore */
   }
+  updateRouteStoreButton();
 }
 
-/**
- * Call immediately before mutating state.route so the outgoing route
- * becomes the “last loaded” baseline for the comparison line.
- */
-function capturePreviousRouteStats() {
-  if (!state.route || state.route.length < 2) return;
-  const key = routeSequenceKey(state.route);
-  const { totalNm } = computeLegs();
-  savePreviousRouteStats({
-    waypoints: state.route.length,
+/** Snapshot the current working route as the comparison baseline. */
+function storeCurrentRouteAsBaseline() {
+  const route = snapshotRoutePoints(state.route);
+  const key = routeSequenceKey(route);
+  const totalNm =
+    state.routeTotals.key === key
+      ? state.routeTotals.totalNm
+      : computeRouteTotalNm(route);
+  persistStoredRoute({
+    waypoints: route.length,
     totalNm,
     key,
+    route,
   });
+}
+
+function clearStoredRoute() {
+  persistStoredRoute(null);
+}
+
+function updateRouteStoreButton() {
+  const stored = !!state.storedRoute;
+  if (el.routeStoreLabel) {
+    el.routeStoreLabel.textContent = stored ? "Stored" : "Save";
+  }
+  if (el.routeStoreBtn) {
+    el.routeStoreBtn.classList.toggle("is-stored", stored);
+    el.routeStoreBtn.setAttribute(
+      "aria-label",
+      stored
+        ? "Route stored — tap to update the comparison baseline"
+        : "Save route as comparison baseline"
+    );
+  }
+}
+
+function onRouteStoreBtnClick() {
+  if (state.storedRoute) {
+    if (el.routeStoreConfirm) el.routeStoreConfirm.hidden = false;
+    return;
+  }
+  storeCurrentRouteAsBaseline();
+  updateTotalsCompare();
+}
+
+function restoreRouteFromStored() {
+  if (!state.storedRoute?.route?.length) {
+    state.route = [];
+  } else {
+    state.route = snapshotRoutePoints(state.storedRoute.route).map((p) =>
+      enrichPoint({ ...p })
+    );
+  }
+  state.editingIndex = null;
+  state.insertAfterIndex = null;
+  if (el.input) el.input.value = "";
+  hideSuggestions();
+  showError("");
+  updateEntryChrome();
+  renderAll();
+}
+
+function clearWorkingRouteOnly() {
+  state.route = [];
+  state.editingIndex = null;
+  state.insertAfterIndex = null;
+  if (el.input) el.input.value = "";
+  hideSuggestions();
+  showError("");
+  resetChartView();
+  updateEntryChrome();
+  renderAll();
+}
+
+function clearEditsAction() {
+  if (el.routeClearConfirm) el.routeClearConfirm.hidden = true;
+  if (state.storedRoute?.route?.length) {
+    restoreRouteFromStored();
+  } else {
+    clearWorkingRouteOnly();
+  }
+}
+
+function clearAllAction() {
+  if (el.routeClearConfirm) el.routeClearConfirm.hidden = true;
+  clearStoredRoute();
+  clearWorkingRouteOnly();
 }
 
 function saveRoute() {
@@ -399,13 +555,14 @@ function buildLearnedMarkdownSection(waypoints) {
     .sort((a, b) => String(a.name).localeCompare(String(b.name)))
     .map((w) => {
       const { lat, lon } = formatMdLatLon(w.lat, w.lon);
-      return `| ${w.name} | ${lat} | ${lon} | Learned from NAT tracks message |`;
+      const note = w.notes || "Learned / manually entered";
+      return `| ${w.name} | ${lat} | ${lon} | ${note} |`;
     })
     .join("\n");
   return `${LEARNED_MD_START}
-## Learned from NAT track messages
+## Learned / manually taught waypoints
 
-Coordinate fixes absorbed from downloaded OTS track routings (approximate; educational only).
+Coordinate fixes from NAT track messages or pilot chart entry (approximate; educational only).
 
 | Waypoint | Latitude | Longitude | Notes |
 |----------|-------------------|-------------------|---------------------------------------------|
@@ -430,10 +587,187 @@ function mergeLearnedIntoMarkdown(baseMd, learned) {
 
 function refreshMarkdownWithLearned() {
   const learned = loadLearnedWaypoints();
-  if (!state.mdText) return;
+  if (!state.mdText && !state.mdBaseText) return;
   // Keep a clean base once; re-merge learned section each time
   if (!state.mdBaseText) state.mdBaseText = state.mdText;
   state.mdText = mergeLearnedIntoMarkdown(state.mdBaseText, learned);
+}
+
+function waypointsMarkdownFilename() {
+  return `MyNatTrack-waypoints-${todayUtcDate()}.md`;
+}
+
+function currentWaypointsMarkdown() {
+  refreshMarkdownWithLearned();
+  return state.mdText || "";
+}
+
+function openMdShareHelp() {
+  if (el.mdShareHelp) el.mdShareHelp.hidden = false;
+}
+
+function openMdImportHelp() {
+  setMdImportStatus("");
+  if (el.mdImportHelp) el.mdImportHelp.hidden = false;
+}
+
+function setMdImportStatus(msg, isError = false) {
+  if (!el.mdImportStatus) return;
+  if (!msg) {
+    el.mdImportStatus.hidden = true;
+    el.mdImportStatus.textContent = "";
+    el.mdImportStatus.classList.remove("is-error");
+    return;
+  }
+  el.mdImportStatus.textContent = msg;
+  el.mdImportStatus.classList.toggle("is-error", isError);
+  el.mdImportStatus.hidden = false;
+}
+
+function downloadWaypointsMarkdown(text, filename) {
+  const blob = new Blob([text], { type: "text/markdown;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.rel = "noopener";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1500);
+}
+
+async function shareWaypointsMarkdown() {
+  const text = currentWaypointsMarkdown();
+  if (!text.trim()) {
+    showError("No waypoints markdown to share yet.");
+    return;
+  }
+  const filename = waypointsMarkdownFilename();
+  const file = new File([text], filename, {
+    type: "text/markdown",
+    lastModified: Date.now(),
+  });
+
+  try {
+    if (navigator.canShare?.({ files: [file] })) {
+      await navigator.share({
+        files: [file],
+        title: "MyNatTrack waypoints",
+        text: "NAT HLA waypoints reference (including learned / manual fixes)",
+      });
+      if (el.mdShareHelp) el.mdShareHelp.hidden = true;
+      return;
+    }
+  } catch (err) {
+    // User cancelled share sheet — leave help open; don't fall through to download
+    if (err && (err.name === "AbortError" || err.name === "NotAllowedError")) {
+      return;
+    }
+  }
+
+  downloadWaypointsMarkdown(text, filename);
+  if (el.mdShareHelp) el.mdShareHelp.hidden = true;
+}
+
+/**
+ * Merge imported named fixes into learned localStorage + state.db.
+ * Bundled names that already match are left alone (not copied into learned).
+ * @returns {{ added: number, updated: number, skipped: number }}
+ */
+function mergeImportedWaypoints(rows) {
+  const learned = loadLearnedWaypoints();
+  const byName = new Map(
+    learned.map((w) => [String(w?.name || "").toUpperCase(), w])
+  );
+  let added = 0;
+  let updated = 0;
+  let skipped = 0;
+  const touched = [];
+
+  for (const row of rows) {
+    const name = String(row.name || "").toUpperCase();
+    if (!name || !Number.isFinite(row.lat) || !Number.isFinite(row.lon)) {
+      skipped += 1;
+      continue;
+    }
+
+    const known = state.db.find(
+      (w) => String(w.name || "").toUpperCase() === name
+    );
+    if (
+      known &&
+      Math.abs(known.lat - row.lat) < 1e-7 &&
+      Math.abs(known.lon - row.lon) < 1e-7
+    ) {
+      skipped += 1;
+      continue;
+    }
+
+    const entry = {
+      id: name,
+      name,
+      lat: row.lat,
+      lon: row.lon,
+      accuracy: "approximate",
+      category: "manual",
+      region: "import",
+      notes: row.notes || "Imported from markdown",
+      source: "md-import",
+    };
+
+    if (known) {
+      known.lat = entry.lat;
+      known.lon = entry.lon;
+      known.accuracy = entry.accuracy;
+      known.notes = entry.notes;
+      known.category = known.category || "manual";
+      updated += 1;
+    } else {
+      state.db.push({ ...entry });
+      added += 1;
+    }
+    byName.set(name, entry);
+    touched.push(entry);
+  }
+
+  if (touched.length) {
+    saveLearnedWaypoints([...byName.values()]);
+    setAccuracyVerifiedDate(todayUtcDate());
+    refreshMarkdownWithLearned();
+    if (el.mdContent && el.mdPanel && !el.mdPanel.hidden) {
+      el.mdContent.innerHTML = simpleMarkdownToHtml(state.mdText);
+    }
+    persistLearnedWaypointsToServer(touched, state.accuracyVerifiedOn);
+  }
+  return { added, updated, skipped };
+}
+
+async function importWaypointsMarkdownFile(file) {
+  try {
+    const text = await file.text();
+    const rows = parseWaypointsFromMarkdown(text);
+    if (!rows.length) {
+      setMdImportStatus(
+        "No parseable waypoint rows found. Need table columns Waypoint / Latitude / Longitude with exact coords (no ~).",
+        true
+      );
+      return;
+    }
+    const { added, updated, skipped } = mergeImportedWaypoints(rows);
+    const parts = [];
+    if (added) parts.push(`${added} added`);
+    if (updated) parts.push(`${updated} updated`);
+    if (skipped) parts.push(`${skipped} unchanged`);
+    setMdImportStatus(
+      `Imported ${rows.length} parseable fix(es): ${parts.join(", ") || "done"}.`
+    );
+  } catch (err) {
+    setMdImportStatus(
+      err?.message || "Could not read that markdown file.",
+      true
+    );
+  }
 }
 
 async function persistLearnedWaypointsToServer(newEntries, verifiedOn) {
@@ -562,40 +896,26 @@ function enrichPoint(p) {
   return p;
 }
 
-/** Keep instruction text beside ROUTE even if an old SW cached the prior HTML. */
+/** Keep hint beside the Route/Save button if DOM was rearranged. */
 function ensureRouteHintPlacement() {
   const hint = el.routeHint || document.getElementById("route-hint");
-  const panel = document.getElementById("route-panel");
-  if (!hint || !panel) return;
-  el.routeHint = hint;
-  let title = panel.querySelector("h2.route-title") || panel.querySelector(":scope > h2");
-  if (!title) {
-    title = document.createElement("h2");
-    title.className = "route-title";
-    title.innerHTML = `<span class="route-label">Route</span>`;
-    panel.insertBefore(title, panel.firstChild);
-  } else {
-    title.classList.add("route-title");
-    if (!title.querySelector(".route-label")) {
-      const label = document.createElement("span");
-      label.className = "route-label";
-      label.textContent = "Route";
-      title.insertBefore(label, title.firstChild);
-      // Drop bare "Route" text nodes left from older markup
-      for (const node of [...title.childNodes]) {
-        if (node.nodeType === Node.TEXT_NODE && node.textContent.trim()) {
-          title.removeChild(node);
-        }
-      }
-    }
+  const bar = document.querySelector("#route-panel .route-title-bar");
+  const btn =
+    el.routeStoreBtn || document.getElementById("route-store-btn");
+  if (hint) el.routeHint = hint;
+  if (btn) {
+    el.routeStoreBtn = btn;
+    el.routeStoreLabel =
+      btn.querySelector("#route-store-label") || el.routeStoreLabel;
   }
-  if (hint.parentElement !== title) {
-    title.appendChild(hint);
+  if (hint && bar && hint.parentElement !== bar) {
+    bar.appendChild(hint);
   }
+  updateRouteStoreButton();
 }
 
 function updateEntryChrome() {
-  ensureRouteHintPlacement();
+  updateRouteStoreButton();
   const editing = state.editingIndex != null;
   const inserting = state.insertAfterIndex != null && !editing;
   if (el.addBtn) {
@@ -651,7 +971,7 @@ function renderRouteList() {
     li.innerHTML = `
       <span class="idx">${index + 1}</span>
       <span class="name">${wp.name}${approx}</span>
-      <span class="coords">${fmtLatLon(wp.lat, wp.lon)}</span>
+      <span class="coords">${formatCockpitLatLon(wp.lat, wp.lon)}</span>
       <span class="actions">
         <button type="button" data-edit="${index}" aria-label="Edit waypoint">Edit</button>
         <button type="button" data-insert="${index}" aria-label="Insert after">+↓</button>
@@ -662,10 +982,6 @@ function renderRouteList() {
     `;
     el.routeList.appendChild(li);
   });
-}
-
-function fmtLatLon(lat, lon) {
-  return formatCockpitLatLon(lat, lon);
 }
 
 function routeSequenceKey(route) {
@@ -899,29 +1215,33 @@ function updateTotalsCompare(currentNm) {
     clearLegsModDiff();
   };
   if (!el.totalsCompare && !el.legsModDiff) return;
-  const prev = state.previousRouteStats;
-  if (!prev || !Number.isFinite(prev.totalNm) || !Number.isFinite(prev.waypoints)) {
+  const stored = state.storedRoute;
+  if (
+    !stored ||
+    !Number.isFinite(stored.totalNm) ||
+    !Number.isFinite(stored.waypoints)
+  ) {
     hideAll();
     return;
   }
   const curKey = routeSequenceKey(state.route);
-  // Hide when we have nothing useful yet, or still on the same route as the snapshot
-  if (prev.key && curKey && prev.key === curKey) {
+  // Hide while working route still matches the stored baseline
+  if (stored.key && curKey && stored.key === curKey) {
     hideAll();
     return;
   }
   if (!state.route.length) {
     if (el.totalsCompare) {
       el.totalsCompare.innerHTML =
-        `Your last loaded route was ${prev.waypoints} waypoints · ` +
-        `${formatDistanceNm(prev.totalNm)} NM total`;
+        `Your stored route was ${stored.waypoints} waypoints · ` +
+        `${formatDistanceNm(stored.totalNm)} NM total`;
       el.totalsCompare.hidden = false;
     }
     clearLegsModDiff();
     return;
   }
   const nm = currentNm != null ? currentNm : computeLegs().totalNm;
-  const delta = nm - prev.totalNm;
+  const delta = nm - stored.totalNm;
   const diff = formatNmDelta(delta);
   const diffClass =
     diff.kind === "shorter"
@@ -931,8 +1251,8 @@ function updateTotalsCompare(currentNm) {
         : "";
   if (el.totalsCompare) {
     el.totalsCompare.innerHTML =
-      `Your last loaded route was ${prev.waypoints} waypoints · ` +
-      `${formatDistanceNm(prev.totalNm)} NM total · ` +
+      `vs stored · ${stored.waypoints} waypoints · ` +
+      `${formatDistanceNm(stored.totalNm)} NM total · ` +
       `<span class="${diffClass}">${diff.text}</span>`;
     el.totalsCompare.hidden = false;
   }
@@ -942,16 +1262,27 @@ function updateTotalsCompare(currentNm) {
 function updateTotalsLine(legsCount, totalNm) {
   if (!el.totals) return;
   if (!state.route.length) {
+    state.routeTotals = { legsCount: 0, totalNm: 0, key: "" };
     el.totals.textContent = "—";
     updateTotalsCompare(0);
     return;
   }
-  const nLegs =
-    legsCount != null ? legsCount : Math.max(0, state.route.length - 1);
-  const nm =
-    totalNm != null
-      ? totalNm
-      : computeLegs().totalNm;
+  const key = routeSequenceKey(state.route);
+  let nLegs = legsCount;
+  let nm = totalNm;
+  if (nLegs == null || nm == null) {
+    if (state.routeTotals.key === key) {
+      nLegs = state.routeTotals.legsCount;
+      nm = state.routeTotals.totalNm;
+    } else {
+      const computed = computeLegs();
+      nLegs = computed.legs.length;
+      nm = computed.totalNm;
+      state.routeTotals = { legsCount: nLegs, totalNm: nm, key };
+    }
+  } else {
+    state.routeTotals = { legsCount: nLegs, totalNm: nm, key };
+  }
   el.totals.textContent =
     `${state.route.length} waypoints · ${nLegs} legs · ${formatDistanceNm(nm)} NM total` +
     gpsProgressSuffix();
@@ -987,13 +1318,19 @@ function renderLegs() {
   updateTotalsLine(legs.length, totalNm);
 }
 
+/** Memoized colored/filtered NAT tracks for chart paints. */
+let coloredNatCache = { key: "", list: [] };
+
 function coloredNatTracks() {
   const showEast = state.settings.showEastTracks !== false;
   const showWest = state.settings.showWestTracks !== false;
   const validOnly = state.settings.validOnlyTracks !== false;
   const nowMs = Date.now();
-  const tracks = state.nat?.tracks || [];
-  return tracks
+  const vKey = validOnly ? natValidityKey(nowMs) : "all";
+  const cacheKey = `${showEast}|${showWest}|${validOnly}|${vKey}|${state.nat?.fetchedAt || ""}|${(state.nat?.tracks || []).length}`;
+  if (coloredNatCache.key === cacheKey) return coloredNatCache.list;
+
+  const list = (state.nat?.tracks || [])
     .filter((t) => {
       const dir = t.direction || "unknown";
       let dirOk = false;
@@ -1009,6 +1346,8 @@ function coloredNatTracks() {
       ...t,
       color: trackColor(t.id, t.direction),
     }));
+  coloredNatCache = { key: cacheKey, list };
+  return list;
 }
 
 function natValidityKey(nowMs = Date.now()) {
@@ -1250,19 +1589,29 @@ function startGpsWatch() {
         heading: Number.isFinite(c.heading) ? c.heading : null,
         speed: Number.isFinite(c.speed) ? c.speed : null,
       };
-      // Totals ETE/ETA is cheap text only — refresh every fix
-      updateTotalsLine();
+      // Reuse cached route totals — do not re-run Vincenty on every fix
+      const cached = state.routeTotals;
+      if (state.route.length && cached.key === routeSequenceKey(state.route)) {
+        updateTotalsLine(cached.legsCount, cached.totalNm);
+      } else {
+        updateTotalsLine();
+      }
       const now = performance.now();
-      // Throttle chart redraws; always allow first fix
+      // Throttle chart redraws; lite for ownship, then a quiet full paint for labels
       if (now - state.gpsLastDrawMs < 800 && state.gpsLastDrawMs > 0) return;
       state.gpsLastDrawMs = now;
-      scheduleChartRender({ lite: false });
+      markChartInteracting();
     },
     () => {
       /* permission denied / unavailable — clear ownship if it was showing */
       if (state.gps) {
         state.gps = null;
-        updateTotalsLine();
+        const cached = state.routeTotals;
+        if (state.route.length && cached.key === routeSequenceKey(state.route)) {
+          updateTotalsLine(cached.legsCount, cached.totalNm);
+        } else {
+          updateTotalsLine();
+        }
         scheduleChartRender({ lite: false });
       }
     },
@@ -1462,8 +1811,213 @@ function renderAll() {
   saveRoute();
 }
 
+function showTeachError(msg) {
+  if (!el.teachError) return;
+  if (!msg) {
+    el.teachError.hidden = true;
+    el.teachError.textContent = "";
+    return;
+  }
+  el.teachError.textContent = msg;
+  el.teachError.hidden = false;
+}
+
+function commitTaughtPoints(points) {
+  const enriched = points.map((p) => enrichPoint({ ...p }));
+  const commit = state.teach?.commit;
+  if (!enriched.length) {
+    state.teach = null;
+    updateEntryChrome();
+    return;
+  }
+
+  if (commit?.kind === "edit") {
+    if (enriched.length !== 1) {
+      showError("When editing, enter a single waypoint (or Cancel, then paste a full route).");
+      state.teach = null;
+      return;
+    }
+    state.route[commit.editIndex] = enriched[0];
+    state.editingIndex = null;
+  } else if (commit?.kind === "insert") {
+    state.route.splice(commit.insertAt, 0, ...enriched);
+    state.insertAfterIndex = null;
+  } else if (commit?.kind === "replace") {
+    state.route = enriched;
+  } else {
+    state.route.push(...enriched);
+  }
+
+  state.teach = null;
+  state.editingIndex = null;
+  state.insertAfterIndex = null;
+  if (el.input) el.input.value = "";
+  hideSuggestions();
+  showError("");
+  updateEntryChrome();
+  renderAll();
+}
+
+function rememberManualWaypoint(name, lat, lon) {
+  const entry = {
+    id: name,
+    name,
+    lat,
+    lon,
+    accuracy: "approximate",
+    category: "manual",
+    region: "user",
+    notes: "Manually entered from chart",
+    source: "manual-teach",
+  };
+  const known = state.db.find(
+    (w) => String(w.name || "").toUpperCase() === name
+  );
+  if (known) {
+    known.lat = lat;
+    known.lon = lon;
+    known.accuracy = "approximate";
+    known.notes = entry.notes;
+    known.category = known.category || "manual";
+  } else {
+    state.db.push(entry);
+  }
+  const learned = loadLearnedWaypoints().filter(
+    (w) => String(w?.name || "").toUpperCase() !== name
+  );
+  learned.push(entry);
+  saveLearnedWaypoints(learned);
+  setAccuracyVerifiedDate(todayUtcDate());
+  refreshMarkdownWithLearned();
+  persistLearnedWaypointsToServer([entry], state.accuracyVerifiedOn);
+  return enrichPoint({ ...entry });
+}
+
+function paintTeachStep() {
+  const teach = state.teach;
+  if (!teach || !el.teachPanel) return;
+  const total = teach.unknowns.length;
+  const cur = teach.unknowns[teach.cursor];
+  if (!cur) {
+    finishTeachQueue();
+    return;
+  }
+  const n = teach.cursor + 1;
+  if (el.teachTitle) {
+    el.teachTitle.textContent =
+      total > 1 ? `Teach waypoint ${n} of ${total}` : "Teach waypoint";
+  }
+  if (el.teachProgress) {
+    el.teachProgress.textContent =
+      total > 1
+        ? `${n} of ${total} unrecognized — enter chart coordinates, then Save`
+        : "Unrecognized name — enter chart coordinates, then Save";
+  }
+  if (el.teachName) el.teachName.textContent = cur.token;
+  if (el.teachCoords) el.teachCoords.value = "";
+  if (el.teachSaveBtn) {
+    el.teachSaveBtn.textContent = n >= total ? "Save & finish" : "Save";
+  }
+  showTeachError("");
+  el.teachPanel.hidden = false;
+  el.teachCoords?.focus();
+}
+
+function openTeachQueue(slots, unknowns, commit) {
+  state.teach = {
+    unknowns: unknowns.map((u) => ({ token: u.token, index: u.index })),
+    cursor: 0,
+    slots: slots.map((s) =>
+      s.type === "point"
+        ? { type: "point", index: s.index, point: s.point }
+        : { type: "unknown", index: s.index, token: s.token, point: null, skipped: false }
+    ),
+    commit,
+  };
+  showError("");
+  paintTeachStep();
+}
+
+function closeTeachPanel() {
+  if (el.teachPanel) el.teachPanel.hidden = true;
+  showTeachError("");
+}
+
+function cancelTeachQueue() {
+  state.teach = null;
+  closeTeachPanel();
+  updateEntryChrome();
+}
+
+function finishTeachQueue() {
+  const teach = state.teach;
+  if (!teach) return;
+  const points = [];
+  for (const slot of teach.slots) {
+    if (slot.type === "point" && slot.point) points.push(slot.point);
+    else if (slot.type === "unknown" && slot.point && !slot.skipped) {
+      points.push(slot.point);
+    }
+  }
+  closeTeachPanel();
+  commitTaughtPoints(points);
+}
+
+function advanceTeachQueue() {
+  const teach = state.teach;
+  if (!teach) return;
+  teach.cursor += 1;
+  if (teach.cursor >= teach.unknowns.length) {
+    finishTeachQueue();
+    return;
+  }
+  paintTeachStep();
+}
+
+function saveTeachCurrent() {
+  const teach = state.teach;
+  if (!teach) return;
+  const cur = teach.unknowns[teach.cursor];
+  if (!cur) return;
+  const raw = el.teachCoords?.value || "";
+  if (!String(raw).trim()) {
+    showTeachError("Enter coordinates from the chart.");
+    return;
+  }
+  const parsed = parseWaypointInput(raw, state.db);
+  if (!parsed.ok || !parsed.point) {
+    showTeachError(
+      parsed.error ||
+        "Could not read coordinates. Try N50 00.0 W020 00.0 or N5000.0W02000.0"
+    );
+    return;
+  }
+  const name = String(cur.token || "").trim().toUpperCase();
+  const point = rememberManualWaypoint(name, parsed.point.lat, parsed.point.lon);
+  const slot = teach.slots.find((s) => s.index === cur.index);
+  if (slot) {
+    slot.point = point;
+    slot.skipped = false;
+  }
+  advanceTeachQueue();
+}
+
+function skipTeachCurrent() {
+  const teach = state.teach;
+  if (!teach) return;
+  const cur = teach.unknowns[teach.cursor];
+  if (!cur) return;
+  const slot = teach.slots.find((s) => s.index === cur.index);
+  if (slot) {
+    slot.point = null;
+    slot.skipped = true;
+  }
+  advanceTeachQueue();
+}
+
 function addWaypointFromInput() {
   if (!el.input) return;
+  if (state.teach) return; // wizard open
   const raw = el.input.value;
   // Empty Add / Enter is a no-op — the route panel already shows the empty state
   if (!String(raw || "").trim()) {
@@ -1471,6 +2025,27 @@ function addWaypointFromInput() {
     return;
   }
   const result = parseRouteString(raw, state.db);
+
+  // Unknown named fixes → teach wizard (keep known tokens in order)
+  if (!result.ok && result.unknowns?.length) {
+    if (state.editingIndex != null && result.tokens.length !== 1) {
+      showError("When editing, enter a single waypoint (or Cancel, then paste a full route).");
+      return;
+    }
+    let commit;
+    if (state.editingIndex != null) {
+      commit = { kind: "edit", editIndex: state.editingIndex };
+    } else if (state.insertAfterIndex != null) {
+      commit = { kind: "insert", insertAt: state.insertAfterIndex + 1 };
+    } else if (!state.route.length && (result.tokens?.length || 0) > 1) {
+      commit = { kind: "replace" };
+    } else {
+      commit = { kind: "append" };
+    }
+    openTeachQueue(result.slots || [], result.unknowns, commit);
+    return;
+  }
+
   if (!result.ok) {
     showError(result.error);
     return;
@@ -1483,20 +2058,16 @@ function addWaypointFromInput() {
       showError("When editing, enter a single waypoint (or Cancel, then paste a full route).");
       return;
     }
-    capturePreviousRouteStats();
     state.route[state.editingIndex] = points[0];
     state.editingIndex = null;
   } else if (state.insertAfterIndex != null) {
-    capturePreviousRouteStats();
     const at = state.insertAfterIndex + 1;
     state.route.splice(at, 0, ...points);
     state.insertAfterIndex = null;
   } else if (!state.route.length && points.length > 1) {
     // Initial multi-waypoint paste into empty route → load whole string
-    capturePreviousRouteStats();
     state.route = points;
   } else {
-    capturePreviousRouteStats();
     state.route.push(...points);
   }
 
@@ -1635,7 +2206,8 @@ async function init() {
   ensureRouteHintPlacement();
   loadSettings();
   loadRoute();
-  loadPreviousRouteStats();
+  loadStoredRoute();
+  updateRouteStoreButton();
 
   const cachedNat = loadCachedNatTracks();
   if (cachedNat) {
@@ -1703,8 +2275,15 @@ async function init() {
     el.chartFullscreenBtn.addEventListener("click", toggleChartFullscreen);
   }
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && document.body.classList.contains("chart-fullscreen")) {
-      setChartFullscreen(false);
+    if (e.key === "Escape") {
+      if (state.teach) {
+        e.preventDefault();
+        cancelTeachQueue();
+        return;
+      }
+      if (document.body.classList.contains("chart-fullscreen")) {
+        setChartFullscreen(false);
+      }
     }
   });
 
@@ -1713,6 +2292,15 @@ async function init() {
     if (e.key === "Enter") {
       e.preventDefault();
       addWaypointFromInput();
+    }
+  });
+  el.teachSaveBtn?.addEventListener("click", saveTeachCurrent);
+  el.teachSkipBtn?.addEventListener("click", skipTeachCurrent);
+  el.teachCancelBtn?.addEventListener("click", cancelTeachQueue);
+  el.teachCoords?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      saveTeachCurrent();
     }
   });
   el.input?.addEventListener("input", renderSuggestions);
@@ -1735,11 +2323,29 @@ async function init() {
       cancelEditMode();
       return;
     }
-    if (state.route.length && !confirm("Clear entire route?")) return;
-    capturePreviousRouteStats();
-    state.route = [];
-    resetChartView();
-    renderAll();
+    if (!state.route.length && !state.storedRoute) return;
+    if (el.routeClearConfirm) el.routeClearConfirm.hidden = false;
+  });
+  el.routeClearConfirmCancel?.addEventListener("click", () => {
+    if (el.routeClearConfirm) el.routeClearConfirm.hidden = true;
+  });
+  el.routeClearConfirm?.addEventListener("click", (e) => {
+    if (e.target === el.routeClearConfirm) el.routeClearConfirm.hidden = true;
+  });
+  el.routeClearEditsBtn?.addEventListener("click", clearEditsAction);
+  el.routeClearAllBtn?.addEventListener("click", clearAllAction);
+
+  el.routeStoreBtn?.addEventListener("click", onRouteStoreBtnClick);
+  el.routeStoreConfirmCancel?.addEventListener("click", () => {
+    if (el.routeStoreConfirm) el.routeStoreConfirm.hidden = true;
+  });
+  el.routeStoreConfirm?.addEventListener("click", (e) => {
+    if (e.target === el.routeStoreConfirm) el.routeStoreConfirm.hidden = true;
+  });
+  el.routeStoreConfirmOk?.addEventListener("click", () => {
+    if (el.routeStoreConfirm) el.routeStoreConfirm.hidden = true;
+    storeCurrentRouteAsBaseline();
+    updateTotalsCompare();
   });
 
   if (el.cancelEditBtn) {
@@ -1772,7 +2378,6 @@ async function init() {
       el.input.focus();
     } else if (btn.dataset.del != null) {
       const i = Number(btn.dataset.del);
-      capturePreviousRouteStats();
       state.route.splice(i, 1);
       if (state.editingIndex === i) {
         state.editingIndex = null;
@@ -1789,7 +2394,6 @@ async function init() {
     } else if (btn.dataset.up != null) {
       const i = Number(btn.dataset.up);
       if (i > 0) {
-        capturePreviousRouteStats();
         [state.route[i - 1], state.route[i]] = [state.route[i], state.route[i - 1]];
         if (state.editingIndex === i) state.editingIndex = i - 1;
         else if (state.editingIndex === i - 1) state.editingIndex = i;
@@ -1800,7 +2404,6 @@ async function init() {
     } else if (btn.dataset.down != null) {
       const i = Number(btn.dataset.down);
       if (i < state.route.length - 1) {
-        capturePreviousRouteStats();
         [state.route[i + 1], state.route[i]] = [state.route[i], state.route[i + 1]];
         if (state.editingIndex === i) state.editingIndex = i + 1;
         else if (state.editingIndex === i + 1) state.editingIndex = i;
@@ -1851,6 +2454,7 @@ async function init() {
 
   el.openMdBtn?.addEventListener("click", () => {
     if (!el.mdContent || !el.mdPanel) return;
+    refreshMarkdownWithLearned();
     el.mdContent.innerHTML = simpleMarkdownToHtml(state.mdText);
     el.mdPanel.hidden = false;
   });
@@ -1859,6 +2463,32 @@ async function init() {
   });
   el.mdPanel?.addEventListener("click", (e) => {
     if (e.target === el.mdPanel) el.mdPanel.hidden = true;
+  });
+  el.mdShareBtn?.addEventListener("click", openMdShareHelp);
+  el.mdImportBtn?.addEventListener("click", openMdImportHelp);
+  el.mdShareHelpCancel?.addEventListener("click", () => {
+    if (el.mdShareHelp) el.mdShareHelp.hidden = true;
+  });
+  el.mdShareHelp?.addEventListener("click", (e) => {
+    if (e.target === el.mdShareHelp) el.mdShareHelp.hidden = true;
+  });
+  el.mdShareHelpContinue?.addEventListener("click", () => {
+    shareWaypointsMarkdown();
+  });
+  el.mdImportHelpCancel?.addEventListener("click", () => {
+    if (el.mdImportHelp) el.mdImportHelp.hidden = true;
+  });
+  el.mdImportHelp?.addEventListener("click", (e) => {
+    if (e.target === el.mdImportHelp) el.mdImportHelp.hidden = true;
+  });
+  el.mdImportHelpContinue?.addEventListener("click", () => {
+    setMdImportStatus("");
+    el.mdImportFile?.click();
+  });
+  el.mdImportFile?.addEventListener("change", () => {
+    const file = el.mdImportFile?.files?.[0];
+    if (el.mdImportFile) el.mdImportFile.value = "";
+    if (file) importWaypointsMarkdownFile(file);
   });
 
   if (el.natTracksBtn && el.natPanel) {
