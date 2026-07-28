@@ -252,6 +252,8 @@ const el = {
   gcPlanBar: document.getElementById("gc-plan-bar"),
   gcDep: document.getElementById("gc-dep"),
   gcArr: document.getElementById("gc-arr"),
+  gcDepCity: document.getElementById("gc-dep-city"),
+  gcArrCity: document.getElementById("gc-arr-city"),
   gcPlanLabel: document.getElementById("gc-plan-label"),
   modeEditBtn: document.getElementById("mode-edit-btn"),
   modeFlyBtn: document.getElementById("mode-fly-btn"),
@@ -326,7 +328,7 @@ function syncTrackToggleUi() {
 function setChartFullscreen(on) {
   document.body.classList.toggle("chart-fullscreen", on);
   if (el.chartFullscreenBtn) {
-    el.chartFullscreenBtn.textContent = on ? "Exit full screen" : "Full screen";
+    el.chartFullscreenBtn.textContent = on ? "Exit" : "Full screen";
     el.chartFullscreenBtn.setAttribute("aria-pressed", on ? "true" : "false");
     el.chartFullscreenBtn.title = on ? "Exit full screen chart" : "Full screen chart";
   }
@@ -430,8 +432,29 @@ function buildGcPlan() {
   return plan;
 }
 
+function updateGcCityChip(which, icao) {
+  const label = which === "dep" ? el.gcDepCity : el.gcArrCity;
+  if (!label) return;
+  const ap = resolveGcAirport(icao);
+  const short =
+    ap?.shortName ||
+    (ap?.name && ap.name !== ap.icao ? ap.name : "") ||
+    "";
+  if (short && icao && icao.length === 4 && ap) {
+    label.textContent = short;
+    label.hidden = false;
+    label.title = `${short} (${icao})`;
+  } else {
+    label.textContent = "";
+    label.hidden = true;
+    label.title = "";
+  }
+}
+
 function updateGcPlanLabel() {
   if (!el.gcPlanLabel) return;
+  updateGcCityChip("dep", state.gcDepIcao);
+  updateGcCityChip("arr", state.gcArrIcao);
   const plan = buildGcPlan();
   if (plan) {
     el.gcPlanLabel.textContent = `${formatDistanceNm(plan.distanceNm)} NM, ${plan.timeLabel}`;

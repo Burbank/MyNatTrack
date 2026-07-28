@@ -1,5 +1,5 @@
 /* MyNatTrack service worker — network-first with cache fallback (offline after first load). */
-const CACHE = "mynattrack-v2.5.1-20260728";
+const CACHE = "mynattrack-v2.5.2-20260728";
 
 const ASSETS = [
   "./",
@@ -18,6 +18,7 @@ const ASSETS = [
   "./js/oac.js",
   "./js/diversionAirports.js",
   "./js/airports747.js",
+  "./js/airportShortNames.js",
   "./js/natTracks.js",
   "./data/waypoints.json",
   "./data/watrs-airways.json",

@@ -239,38 +239,45 @@
               </div>
             </div>
             <div class="gc-plan-bar" id="gc-plan-bar" hidden>
-              <input
-                id="gc-dep"
-                class="gc-icao"
-                type="text"
-                maxlength="4"
-                spellcheck="false"
-                autocomplete="off"
-                autocapitalize="characters"
-                inputmode="text"
-                placeholder="DEP"
-                aria-label="747-8 departure ICAO"
-                title="747-8 departure ICAO"
-              />
+              <div class="gc-end">
+                <span class="gc-city" id="gc-dep-city" hidden></span>
+                <input
+                  id="gc-dep"
+                  class="gc-icao"
+                  type="text"
+                  maxlength="4"
+                  spellcheck="false"
+                  autocomplete="off"
+                  autocapitalize="characters"
+                  inputmode="text"
+                  placeholder="DEP"
+                  aria-label="747-8 departure ICAO"
+                  title="747-8 departure ICAO"
+                />
+              </div>
               <span id="gc-plan-label" class="gc-plan-label">PLAN 747-8 Great Circle</span>
-              <input
-                id="gc-arr"
-                class="gc-icao"
-                type="text"
-                maxlength="4"
-                spellcheck="false"
-                autocomplete="off"
-                autocapitalize="characters"
-                inputmode="text"
-                placeholder="DEST"
-                aria-label="747-8 destination ICAO"
-                title="747-8 destination ICAO"
-              />
+              <div class="gc-end">
+                <span class="gc-city" id="gc-arr-city" hidden></span>
+                <input
+                  id="gc-arr"
+                  class="gc-icao"
+                  type="text"
+                  maxlength="4"
+                  spellcheck="false"
+                  autocomplete="off"
+                  autocapitalize="characters"
+                  inputmode="text"
+                  placeholder="DEST"
+                  aria-label="747-8 destination ICAO"
+                  title="747-8 destination ICAO"
+                />
+              </div>
             </div>
             <div class="chart-toolbar-toggles">
               <label class="chart-toggle" for="valid-only-tracks" title="Hide NAT tracks outside their validity window">
                 <input type="checkbox" id="valid-only-tracks" checked />
                 <span class="toggle-label-full">Valid NAT only</span>
+                <span class="toggle-label-short">Valid NAT</span>
               </label>
               <label class="chart-toggle" for="show-east-tracks">
                 <input type="checkbox" id="show-east-tracks" checked />
@@ -307,9 +314,9 @@
                 ></span>
               </label>
             </div>
-            <p id="weather-status" class="weather-status muted" hidden></p>
           </div>
           <div class="chart-wrap">
+            <p id="weather-status" class="weather-status muted" hidden></p>
             <canvas id="chart" aria-label="North Atlantic route chart"></canvas>
             <canvas id="chart-ownship" class="chart-ownship" aria-hidden="true"></canvas>
             <aside id="wx-detail" class="wx-detail" hidden>
@@ -520,7 +527,7 @@
             rel="noopener noreferrer"
             title="Opens ICAO NAT Doc 007 (current edition V.2026-1). ICAO puts the edition in the filename — no permanent “latest.pdf” URL exists; when a new edition is published, this link is updated in the app. Browse all editions via EUR &amp; NAT Documents on icao.int."
           >Download Latest Nat Doc 007</a>
-          <span class="settings-version muted" aria-label="App version">v2.5.1</span>
+          <span class="settings-version muted" aria-label="App version">v2.5.2</span>
         </div>
       </div>
     </div>

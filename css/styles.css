@@ -516,7 +516,7 @@ body.chart-fullscreen .chart-route-summary:not([hidden]) {
   display: none;
   align-items: center;
   justify-content: center;
-  gap: 0.55rem;
+  gap: 0.45rem;
   flex: 1 1 100%;
   min-width: 0;
 }
@@ -525,10 +525,36 @@ body.chart-fullscreen .gc-plan-bar:not([hidden]) {
   display: flex;
 }
 
+.gc-end {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.05rem;
+  min-width: 0;
+}
+
+.gc-city {
+  max-width: 5.6rem;
+  padding: 0 0.15rem;
+  font-size: 0.62rem;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+  line-height: 1.1;
+  color: var(--muted, #8a9bb0);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gc-city[hidden] {
+  display: none !important;
+}
+
 .gc-icao {
   width: 4.2rem;
-  padding: 0.35rem 0.4rem;
-  font: 700 0.95rem ui-monospace, SFMono-Regular, Menlo, monospace;
+  padding: 0.28rem 0.35rem;
+  font: 700 0.9rem ui-monospace, SFMono-Regular, Menlo, monospace;
   letter-spacing: 0.06em;
   text-align: center;
   text-transform: uppercase;
@@ -1380,11 +1406,57 @@ body.chart-fullscreen #chart-panel .chart-toolbar {
   position: relative;
   z-index: 2;
   background: var(--bg-panel);
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    "time toggles exit"
+    "gc gc gc";
+  align-items: center;
+  column-gap: 0.45rem;
+  row-gap: 0.2rem;
+  padding: 0.22rem 0.45rem 0.28rem;
+  flex-wrap: nowrap;
+}
+
+body.chart-fullscreen #chart-panel .chart-toolbar-top {
+  grid-area: time;
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+body.chart-fullscreen #chart-panel .chart-toolbar-actions {
+  grid-area: exit;
+  margin-left: 0;
+}
+
+body.chart-fullscreen #chart-panel .chart-toolbar-toggles {
+  grid-area: toggles;
+  margin-left: 0;
+  justify-content: center;
+  flex-wrap: nowrap;
+  gap: 0.28rem 0.45rem;
+  min-width: 0;
+}
+
+body.chart-fullscreen #chart-panel .gc-plan-bar {
+  grid-area: gc;
+  flex: none;
+  width: 100%;
+  justify-content: center;
+}
+
+body.chart-fullscreen #chart-panel .chart-route-summary:not([hidden]) {
+  /* Keep route summary inline with time when a working route exists */
+  margin-left: 0.25rem;
 }
 
 body.chart-fullscreen.viewport-a2903 #chart-panel .chart-toolbar {
-  flex-direction: column;
-  align-items: stretch;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    "time toggles exit"
+    "gc gc gc";
+  flex-direction: unset;
+  align-items: center;
 }
 
 /* Same Valid NAT only / East / West controls as normal view — only NAT Tracks is hidden */
@@ -1405,9 +1477,9 @@ body.chart-fullscreen .chart-toggle-wx {
 }
 
 .weather-status {
-  margin: 0.15rem 0 0;
-  font-size: 0.72rem;
-  line-height: 1.25;
+  margin: 0;
+  font-size: 0.68rem;
+  line-height: 1.2;
 }
 
 .weather-status[hidden] {
@@ -1416,6 +1488,22 @@ body.chart-fullscreen .chart-toggle-wx {
 
 body.chart-fullscreen .weather-status:not([hidden]) {
   display: block;
+  position: absolute;
+  z-index: 3;
+  left: 0.5rem;
+  top: 0.35rem;
+  max-width: min(22rem, calc(100% - 1rem));
+  padding: 0.15rem 0.4rem;
+  border-radius: 6px;
+  background: rgba(8, 14, 22, 0.72);
+  border: 1px solid rgba(120, 160, 200, 0.22);
+  pointer-events: none;
+}
+
+html.theme-bright body.chart-fullscreen .weather-status:not([hidden]) {
+  background: rgba(255, 255, 255, 0.82);
+  border-color: rgba(0, 60, 120, 0.18);
+  color: #203040;
 }
 
 .wx-loading {
@@ -1519,14 +1607,11 @@ body.chart-fullscreen .chart-toggle .toggle-label-short {
   display: inline;
 }
 
-body.chart-fullscreen .chart-toggle:has(#valid-only-tracks) .toggle-label-full {
-  display: inline;
-}
-
 body.chart-fullscreen #chart-panel .chart-wrap {
   flex: 1;
   min-height: 0;
   padding: 0.35rem 0.5rem 0.6rem;
+  position: relative;
 }
 
 /* Must beat critical header `display: grid !important` in index.html */
