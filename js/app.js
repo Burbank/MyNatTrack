@@ -244,6 +244,12 @@ const el = {
   chartGpsCoords: document.getElementById("chart-gps-coords"),
   chartGpsLat: document.getElementById("chart-gps-lat"),
   chartGpsLon: document.getElementById("chart-gps-lon"),
+  gpsIntegrity: document.getElementById("gps-integrity"),
+  gpsRefChip: document.getElementById("gps-ref-chip"),
+  gpsRefIcao: document.getElementById("gps-ref-icao"),
+  gpsRefLat: document.getElementById("gps-ref-lat"),
+  gpsRefLon: document.getElementById("gps-ref-lon"),
+  gpsRefDelta: document.getElementById("gps-ref-delta"),
   natUtcClock: document.getElementById("nat-utc-clock"),
   themeBtn: document.getElementById("theme-btn"),
   chartFullscreenBtn: document.getElementById("chart-fullscreen-btn"),
@@ -2738,9 +2744,51 @@ const GPS_WATCH_OPTS = {
 const GPS_STATIONARY_MAX_MS = 1.5;
 /** ~5 kt — hysteresis so the chip does not flicker */
 const GPS_MOVING_MIN_MS = 2.5;
+/** GPS vs ARP mismatch → amber present-position chip */
+const GPS_INTEGRITY_WARN_NM = 4;
+/**
+ * Only treat ARP mismatch as a jam/spoof cue when the nearest field is
+ * close enough that you could plausibly be on the airport (ramp / taxi).
+ * Mid-ocean “nearest airport 420 NM” must not amber the GPS chip.
+ */
+const GPS_INTEGRITY_NEAR_FIELD_NM = 25;
 
 let gpsWasStationary = true;
 let gpsCoordsCopiedTimer = 0;
+/** @type {null | {icao:string,lat:number,lon:number}[]} */
+let gpsIntegrityAirportsCache = null;
+
+function integrityAirportList() {
+  if (gpsIntegrityAirportsCache) return gpsIntegrityAirportsCache;
+  const byIcao = new Map();
+  for (const ap of diversionAirportsPlottable(RWY_LABEL_MIN_M)) {
+    if (!ap?.icao || !Number.isFinite(ap.lat) || !Number.isFinite(ap.lon)) continue;
+    byIcao.set(ap.icao, { icao: ap.icao, lat: ap.lat, lon: ap.lon });
+  }
+  for (const ap of airports747List()) {
+    if (!ap?.icao || !Number.isFinite(ap.lat) || !Number.isFinite(ap.lon)) continue;
+    if (!byIcao.has(ap.icao)) {
+      byIcao.set(ap.icao, { icao: ap.icao, lat: ap.lat, lon: ap.lon });
+    }
+  }
+  gpsIntegrityAirportsCache = [...byIcao.values()];
+  return gpsIntegrityAirportsCache;
+}
+
+/** @returns {null | {icao:string,lat:number,lon:number,distanceNm:number}} */
+function findNearestIntegrityAirport(lat, lon) {
+  let best = null;
+  let bestNm = Infinity;
+  for (const ap of integrityAirportList()) {
+    const nm = vincentyInverse(lat, lon, ap.lat, ap.lon).distanceNm;
+    if (!Number.isFinite(nm)) continue;
+    if (nm < bestNm) {
+      bestNm = nm;
+      best = { icao: ap.icao, lat: ap.lat, lon: ap.lon, distanceNm: nm };
+    }
+  }
+  return best;
+}
 
 function isGpsStationary(gps) {
   if (!gps || !Number.isFinite(gps.lat) || !Number.isFinite(gps.lon)) return false;
@@ -2762,7 +2810,76 @@ function isGpsStationary(gps) {
 
 function hideGpsCoordsChip() {
   state.gpsStationary = null;
-  if (el.chartGpsCoords) el.chartGpsCoords.hidden = true;
+  if (el.gpsIntegrity) el.gpsIntegrity.hidden = true;
+  if (el.chartGpsCoords) {
+    el.chartGpsCoords.hidden = true;
+    el.chartGpsCoords.classList.remove("is-gps-warn", "is-copied");
+  }
+  if (el.gpsRefChip) {
+    el.gpsRefChip.hidden = true;
+    el.gpsRefChip.classList.remove("is-warn", "is-far");
+  }
+}
+
+function setGpsRefIcaoLetters(icao) {
+  if (!el.gpsRefIcao) return;
+  const code = String(icao || "")
+    .trim()
+    .toUpperCase()
+    .slice(0, 4);
+  el.gpsRefIcao.innerHTML = code
+    ? [...code].map((ch) => `<span class="icao-ch">${ch}</span>`).join("")
+    : "";
+}
+
+function updateGpsIntegrityUi(gpsLat, gpsLon) {
+  const nearest = findNearestIntegrityAirport(gpsLat, gpsLon);
+  if (!nearest || !el.gpsRefChip) {
+    if (el.gpsRefChip) el.gpsRefChip.hidden = true;
+    el.chartGpsCoords?.classList.remove("is-gps-warn");
+    return null;
+  }
+
+  const nearField = nearest.distanceNm <= GPS_INTEGRITY_NEAR_FIELD_NM;
+  const mismatch =
+    nearField && nearest.distanceNm > GPS_INTEGRITY_WARN_NM;
+
+  setGpsRefIcaoLetters(nearest.icao);
+  if (el.gpsRefLat) el.gpsRefLat.textContent = formatCockpitLat(nearest.lat);
+  if (el.gpsRefLon) el.gpsRefLon.textContent = formatCockpitLon(nearest.lon);
+  if (el.gpsRefDelta) {
+    el.gpsRefDelta.textContent =
+      nearest.distanceNm < 10
+        ? `${nearest.distanceNm.toFixed(1)} NM`
+        : `${Math.round(nearest.distanceNm)} NM`;
+  }
+
+  el.gpsRefChip.hidden = false;
+  el.gpsRefChip.classList.toggle("is-warn", mismatch);
+  el.gpsRefChip.classList.toggle("is-far", !nearField);
+  el.chartGpsCoords?.classList.toggle("is-gps-warn", mismatch);
+
+  const short =
+    lookupAirport747(nearest.icao)?.shortName ||
+    DIVERSION_AIRPORTS.find((a) => a.icao === nearest.icao)?.name ||
+    nearest.icao;
+  const tip = mismatch
+    ? `GPS ${nearest.distanceNm.toFixed(1)} NM from ${nearest.icao} ARP (${short}) — check for jam/spoof`
+    : nearField
+      ? `${nearest.icao} ARP (${short}) · ${nearest.distanceNm.toFixed(1)} NM — GPS integrity OK`
+      : `Nearest ${nearest.icao} (${short}) · ${Math.round(nearest.distanceNm)} NM — integrity warn only within ${GPS_INTEGRITY_NEAR_FIELD_NM} NM of a field`;
+  el.gpsRefChip.title = tip;
+  el.gpsRefChip.setAttribute(
+    "aria-label",
+    `${nearest.icao} airport reference, ${nearest.distanceNm.toFixed(1)} nautical miles`
+  );
+  if (el.chartGpsCoords) {
+    el.chartGpsCoords.title = mismatch
+      ? tip
+      : "Present position (stationary). Tap to copy FMS coords for route paste and centre chart.";
+  }
+
+  return { ...nearest, nearField, mismatch, short };
 }
 
 function updateGpsCoordsChip() {
@@ -2774,16 +2891,19 @@ function updateGpsCoordsChip() {
   // Display: cockpit long-hand. Clipboard: glued FMS so route paste is one token.
   const latTxt = formatCockpitLat(gps.lat);
   const lonTxt = formatCockpitLon(gps.lon);
+  const integrity = updateGpsIntegrityUi(gps.lat, gps.lon);
   state.gpsStationary = {
     lat: gps.lat,
     lon: gps.lon,
     latTxt,
     lonTxt,
     paste: formatFmsLatLon(gps.lat, gps.lon),
+    integrity,
   };
   if (el.chartGpsLat) el.chartGpsLat.textContent = latTxt;
   if (el.chartGpsLon) el.chartGpsLon.textContent = lonTxt;
   if (el.chartGpsCoords) el.chartGpsCoords.hidden = false;
+  if (el.gpsIntegrity) el.gpsIntegrity.hidden = false;
 }
 
 function centerChartOnLatLon(lat, lon) {
@@ -2813,11 +2933,15 @@ async function onGpsCoordsChipActivate() {
     await navigator.clipboard.writeText(frozen.paste);
     if (el.chartGpsCoords) {
       el.chartGpsCoords.classList.add("is-copied");
-      el.chartGpsCoords.title = "Copied FMS string — paste into route entry";
+      if (!el.chartGpsCoords.classList.contains("is-gps-warn")) {
+        el.chartGpsCoords.title = "Copied FMS string — paste into route entry";
+      }
       clearTimeout(gpsCoordsCopiedTimer);
       gpsCoordsCopiedTimer = window.setTimeout(() => {
         el.chartGpsCoords?.classList.remove("is-copied");
-        if (el.chartGpsCoords) {
+        if (el.chartGpsCoords && state.gpsStationary?.integrity) {
+          updateGpsIntegrityUi(state.gpsStationary.lat, state.gpsStationary.lon);
+        } else if (el.chartGpsCoords) {
           el.chartGpsCoords.title =
             "Present position (stationary). Tap to copy FMS coords for route paste and centre chart.";
         }
@@ -2826,6 +2950,12 @@ async function onGpsCoordsChipActivate() {
   } catch {
     /* clipboard may be blocked — chart still recentred */
   }
+}
+
+function onGpsRefChipActivate() {
+  const ref = state.gpsStationary?.integrity;
+  if (!ref || !Number.isFinite(ref.lat) || !Number.isFinite(ref.lon)) return;
+  centerChartOnLatLon(ref.lat, ref.lon);
 }
 
 function refreshTotalsFromGps() {
@@ -4089,6 +4219,9 @@ async function init() {
   }
   el.chartGpsCoords?.addEventListener("click", () => {
     void onGpsCoordsChipActivate();
+  });
+  el.gpsRefChip?.addEventListener("click", () => {
+    onGpsRefChipActivate();
   });
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") {

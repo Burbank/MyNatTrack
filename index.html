@@ -216,17 +216,33 @@
                   <span class="utc-chip-time mono" id="chart-utc-clock">——:——:——</span>
                   <span class="utc-chip-label">UTC</span>
                 </div>
-                <button
-                  type="button"
-                  id="chart-gps-coords"
-                  class="gps-coords-chip"
-                  hidden
-                  title="Present position (stationary). Tap to copy FMS coords for route paste and centre chart."
-                  aria-label="Present position. Tap to copy FMS coordinates for route paste and centre chart."
-                >
-                  <span class="gps-coords-lat mono" id="chart-gps-lat"></span>
-                  <span class="gps-coords-lon mono" id="chart-gps-lon"></span>
-                </button>
+                <div class="gps-integrity" id="gps-integrity" hidden>
+                  <button
+                    type="button"
+                    id="chart-gps-coords"
+                    class="gps-coords-chip"
+                    title="Present position (stationary). Tap to copy FMS coords for route paste and centre chart."
+                    aria-label="Present position. Tap to copy FMS coordinates for route paste and centre chart."
+                  >
+                    <span class="gps-coords-lat mono" id="chart-gps-lat"></span>
+                    <span class="gps-coords-lon mono" id="chart-gps-lon"></span>
+                  </button>
+                  <button
+                    type="button"
+                    id="gps-ref-chip"
+                    class="gps-ref-chip"
+                    hidden
+                    title="Nearest airport ARP — GPS integrity reference"
+                    aria-label="Nearest airport reference coordinates"
+                  >
+                    <span class="gps-ref-icao" id="gps-ref-icao" aria-hidden="true"></span>
+                    <span class="gps-ref-body">
+                      <span class="gps-ref-lat mono" id="gps-ref-lat"></span>
+                      <span class="gps-ref-lon mono" id="gps-ref-lon"></span>
+                      <span class="gps-ref-delta mono" id="gps-ref-delta"></span>
+                    </span>
+                  </button>
+                </div>
               </div>
               <div class="chart-route-summary" id="chart-route-summary" hidden title="Route total distance and crude ETE">
                 <span class="chart-route-summary-text mono" id="chart-route-summary-text"></span>
@@ -375,6 +391,9 @@
             Ownship (Fly): coarse location only — Precise Location is not required.
             When stationary, cockpit lat/lon appears beside the UTC clock (mini and full screen);
             tap to copy an FMS paste string (e.g. N2546.3W08011.4) and centre the chart. Hidden while moving.
+            A twin chip shows the nearest airport ARP (vertical ICAO + coords + NM). If you are within
+            ~25 NM of that field and GPS is more than 4 NM from the ARP, present position turns amber
+            (educational jam/spoof cue — not certified).
             To stop Safari asking each visit: iPad <strong>Settings → Apps → Safari → Location → Allow</strong>
             (or Settings → Safari → Location). Sites cannot store a lasting “permission cookie” for GPS;
             that choice lives in Safari/iOS settings.
@@ -527,7 +546,7 @@
             rel="noopener noreferrer"
             title="Opens ICAO NAT Doc 007 (current edition V.2026-1). ICAO puts the edition in the filename — no permanent “latest.pdf” URL exists; when a new edition is published, this link is updated in the app. Browse all editions via EUR &amp; NAT Documents on icao.int."
           >Download Latest Nat Doc 007</a>
-          <span class="settings-version muted" aria-label="App version">v2.5.3</span>
+          <span class="settings-version muted" aria-label="App version">v2.5.4</span>
         </div>
       </div>
     </div>
