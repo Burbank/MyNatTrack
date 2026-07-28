@@ -197,10 +197,12 @@
           <ul class="md-io-help">
             <li><strong>Clear Edits</strong> — restore the working route to the stored baseline (or empty the list if nothing is stored).</li>
             <li><strong>Clear ALL</strong> — wipe the working route and the stored baseline.</li>
+            <li id="route-restore-help" hidden><strong>Restore last route</strong> — bring back the route that was cleared most recently (only when the list is empty).</li>
           </ul>
           <div class="md-io-actions route-clear-actions">
             <button type="button" class="secondary" id="route-clear-edits-btn">Clear Edits</button>
             <button type="button" class="primary danger-btn" id="route-clear-all-btn">Clear ALL</button>
+            <button type="button" class="secondary" id="route-restore-last-btn" hidden>Restore last route</button>
           </div>
         </div>
       </div>
@@ -209,9 +211,22 @@
         <section class="panel" id="chart-panel">
           <div class="panel-head chart-toolbar">
             <div class="chart-toolbar-top">
-              <div class="utc-chip" title="Coordinated Universal Time" aria-live="polite">
-                <span class="utc-chip-time mono" id="chart-utc-clock">——:——:——</span>
-                <span class="utc-chip-label">UTC</span>
+              <div class="chart-time-block">
+                <div class="utc-chip" title="Coordinated Universal Time" aria-live="polite">
+                  <span class="utc-chip-time mono" id="chart-utc-clock">——:——:——</span>
+                  <span class="utc-chip-label">UTC</span>
+                </div>
+                <button
+                  type="button"
+                  id="chart-gps-coords"
+                  class="gps-coords-chip"
+                  hidden
+                  title="Present position (stationary). Tap to copy and centre chart."
+                  aria-label="Present position. Tap to copy coordinates and centre chart."
+                >
+                  <span class="gps-coords-lat mono" id="chart-gps-lat"></span>
+                  <span class="gps-coords-lon mono" id="chart-gps-lon"></span>
+                </button>
               </div>
               <div class="chart-route-summary" id="chart-route-summary" hidden title="Route total distance and crude ETE">
                 <span class="chart-route-summary-text mono" id="chart-route-summary-text"></span>
@@ -267,11 +282,45 @@
                 <span class="toggle-label-full">Show West Tracks</span>
                 <span class="toggle-label-short">West</span>
               </label>
+              <label
+                class="chart-toggle chart-toggle-wx"
+                for="storm-systems-toggle"
+                title="NHC tropicals + all text SIGMETs / VA (cached 12h; valid only)"
+              >
+                <input type="checkbox" id="storm-systems-toggle" />
+                <span class="toggle-label-full">Storm systems and SIGMETs</span>
+                <span class="toggle-label-short">Storms+SIGMET</span>
+              </label>
+              <label
+                class="chart-toggle chart-toggle-wx"
+                for="live-ts-toggle"
+                title="Live radar intensity (RainViewer) — online only, regional zoom"
+              >
+                <input type="checkbox" id="live-ts-toggle" />
+                <span class="toggle-label-full">Live Thunderstorms</span>
+                <span class="toggle-label-short">Live TS</span>
+                <span
+                  id="live-ts-loading"
+                  class="wx-loading"
+                  hidden
+                  aria-hidden="true"
+                ></span>
+              </label>
             </div>
+            <p id="weather-status" class="weather-status muted" hidden></p>
           </div>
           <div class="chart-wrap">
             <canvas id="chart" aria-label="North Atlantic route chart"></canvas>
             <canvas id="chart-ownship" class="chart-ownship" aria-hidden="true"></canvas>
+            <aside id="wx-detail" class="wx-detail" hidden>
+              <header class="wx-detail-head">
+                <strong id="wx-detail-title">SIGMET</strong>
+                <button type="button" id="wx-detail-close" class="wx-detail-close" aria-label="Close">
+                  ×
+                </button>
+              </header>
+              <pre id="wx-detail-body" class="wx-detail-body"></pre>
+            </aside>
           </div>
         </section>
 
@@ -284,14 +333,14 @@
             <table class="legs">
               <thead>
                 <tr>
-                  <th>From</th>
-                  <th>To</th>
-                  <th title="FMS-style average great-circle track">Avg True</th>
-                  <th id="th-avg-mag" title="Average track converted with mid-leg variation">Avg Mag</th>
-                  <th title="Initial true track leaving the from-waypoint (ND)">Init True</th>
-                  <th id="th-init-mag" title="Initial magnetic track leaving the from-waypoint">Init Mag</th>
-                  <th>Dist NM</th>
-                  <th title="Crude ETE with mid-latitude westerlies; climb/descent pad only for airport ends">ETE</th>
+                  <th class="leg-from">From</th>
+                  <th class="leg-to">To</th>
+                  <th class="leg-avg-true" title="FMS-style average great-circle track">Avg True</th>
+                  <th class="leg-avg-mag" id="th-avg-mag" title="Average track converted with mid-leg variation">Avg Mag</th>
+                  <th class="leg-init-true" title="Initial true track leaving the from-waypoint (ND)">Init True</th>
+                  <th class="leg-init-mag" id="th-init-mag" title="Initial magnetic track leaving the from-waypoint">Init Mag</th>
+                  <th class="leg-dist">Dist NM</th>
+                  <th class="leg-ete" title="Crude ETE with mid-latitude westerlies; climb/descent pad only for airport ends">ETE</th>
                 </tr>
               </thead>
               <tbody id="legs-body"></tbody>
@@ -317,6 +366,8 @@
           </p>
           <p class="muted settings-gps-note">
             Ownship (Fly): coarse location only — Precise Location is not required.
+            When stationary, cockpit lat/lon appears beside the UTC clock (mini and full screen);
+            tap to copy and centre the chart. Hidden while moving.
             To stop Safari asking each visit: iPad <strong>Settings → Apps → Safari → Location → Allow</strong>
             (or Settings → Safari → Location). Sites cannot store a lasting “permission cookie” for GPS;
             that choice lives in Safari/iOS settings.
@@ -335,6 +386,11 @@
             AirNav Ireland AIP ENR 4.4 for SOMAX/DOGAL/MALOT/LIMRI;
             FAA NFDC Fixes/Waypoints for US / many oceanic fixes.
             Online lookup uses FAA only (OpenNav is not used). Eurocontrol EAD requires registration, so some European fixes may still be approximate until Teach/AIP.
+          </p>
+          <p class="muted settings-wx-note">
+            Fullscreen weather: <strong>Storm systems and SIGMETs</strong> (NHC + all text SIGMETs including convective/VA, cached 12h; valid only; volcano icons at published PSN)
+            and <strong>Live Thunderstorms</strong> (RainViewer radar intensity only — regional zoom, land/coastal coverage).
+            Tap a SIGMET/volcano for the raw text. Educational — not for dispatch.
           </p>
           <div class="settings-icloud-block">
             <p class="muted settings-icloud-note">
@@ -464,7 +520,7 @@
             rel="noopener noreferrer"
             title="Opens ICAO NAT Doc 007 (current edition V.2026-1). ICAO puts the edition in the filename — no permanent “latest.pdf” URL exists; when a new edition is published, this link is updated in the app. Browse all editions via EUR &amp; NAT Documents on icao.int."
           >Download Latest Nat Doc 007</a>
-          <span class="settings-version muted" aria-label="App version">v2.4.0</span>
+          <span class="settings-version muted" aria-label="App version">v2.5.0</span>
         </div>
       </div>
     </div>
@@ -683,7 +739,7 @@
           <strong class="teach-name mono" id="teach-name">—————</strong>
         </p>
         <label class="teach-label" for="teach-coords">
-          Coordinates from chart (cockpit long-hand)
+          Coordinates (FMS, cockpit, or ARINC)
         </label>
         <input
           id="teach-coords"
@@ -691,13 +747,14 @@
           type="text"
           autocomplete="off"
           autocorrect="off"
-          autocapitalize="characters"
+          autocapitalize="off"
           spellcheck="false"
-          placeholder="N50 00.0 W020 00.0"
+          placeholder="N53 28.8 W005 30.0 · or 5215N · or H5250"
           aria-label="Waypoint coordinates"
         />
         <p class="muted teach-hint">
-          Also accepts glued FMS form, e.g. N5000.0W02000.0. Manual Teach is saved on this device and overrides any online lookup.
+          Accepts n/s/e/w in either case; glued FMS (N5328.8W00530.0); ARINC (5215N, 50N50, H5250).
+          Lon is 3°+2′ (W00530.0, not W000530.0). Manual Teach overrides online lookup on this device.
         </p>
         <p id="teach-error" class="teach-error" hidden></p>
         <div class="teach-actions">

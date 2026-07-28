@@ -1,5 +1,5 @@
 /* MyNatTrack service worker — network-first with cache fallback (offline after first load). */
-const CACHE = "mynattrack-v2.4.0-20260728";
+const CACHE = "mynattrack-v2.5.0-20260728";
 
 const ASSETS = [
   "./",
@@ -14,6 +14,7 @@ const ASSETS = [
   "./js/aimOeps.js",
   "./js/magvar.js",
   "./js/chart.js",
+  "./js/weather.js",
   "./js/oac.js",
   "./js/diversionAirports.js",
   "./js/airports747.js",
@@ -56,8 +57,11 @@ self.addEventListener("fetch", (event) => {
   if (request.method !== "GET") return;
 
   const url = new URL(request.url);
-  // Always hit network for NAT track API (never serve a stale proxy response from SW)
-  if (url.pathname.endsWith("/api/nat-tracks") || url.pathname.includes("/api/nat-tracks")) {
+  // Always hit network for live APIs (never serve a stale proxy response from SW)
+  if (
+    url.pathname.includes("/api/nat-tracks") ||
+    url.pathname.includes("/api/weather-major")
+  ) {
     event.respondWith(
       fetch(request).catch(
         () =>

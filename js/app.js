@@ -24,8 +24,20 @@ import {
   MAGVAR_TABLE_DATE,
   MAGVAR_DRIFT_REMARK,
 } from "./magvar.js";
-import { drawChart, loadLandData, paintOwnshipOverlay, hitTestChartAirport } from "./chart.js";
+import { drawChart, loadLandData, paintOwnshipOverlay, hitTestChartAirport, hitTestWeather } from "./chart.js";
 import { lookupAirport747, airports747List } from "./airports747.js";
+import {
+  loadStormSystemsAndSigmets,
+  refreshStormSystemsInBackground,
+  formatWeatherAge,
+  filterActivePolygons,
+  dedupePolygons,
+  extractVolcanoes,
+  isRegionalWeatherView,
+  loadLiveRadarDetail,
+  clearLiveRadarMemory,
+  getLiveRadarMemory,
+} from "./weather.js";
 import {
   DIVERSION_AIRPORTS,
   diversionAirportsPlottable,
@@ -46,6 +58,8 @@ import { ensureUnlocked } from "./auth.js";
 const STORAGE_KEY = "mynattrack_route_v1";
 /** Explicit stored baseline for NM difference (Save route / Route stored). */
 const STORED_ROUTE_KEY = "mynattrack_stored_route_v1";
+/** Last non-empty working route cleared in this browser (Restore last route). */
+const LAST_ROUTE_KEY = "mynattrack_last_route_v1";
 const SETTINGS_KEY = "mynattrack_settings_v1";
 /** Waypoints learned silently from NAT track messages (coords already in the message). */
 const LEARNED_WP_KEY = "mynattrack_learned_waypoints_v1";
@@ -68,6 +82,10 @@ const state = {
     showWestTracks: true,
     /** Remember Valid-only checkbox across reloads (same as East/West) */
     validOnlyTracks: true,
+    /** Fullscreen: NHC + major SIGMETs (12h cache) */
+    showStormSystems: false,
+    /** Fullscreen: live convective/TS — online memory only */
+    showLiveThunderstorms: false,
   },
   mdText: "",
   /** Original bundled markdown before learned-NAT section is merged */
@@ -89,6 +107,8 @@ const state = {
   /** Device GPS for ownship marker on chart */
   gps: null,
   gpsWatchId: null,
+  /** Last frozen stationary cockpit coords (null while moving / unknown) */
+  gpsStationary: null,
   /** edit = route+chart+legs; fly = chart left, legs right */
   uiMode: "edit",
   /**
@@ -103,6 +123,8 @@ const state = {
    * @type {null | { waypoints: number, totalNm: number, key: string, route: object[] }}
    */
   storedRoute: null,
+  /** Last cleared working route (session + localStorage). */
+  lastRoute: null,
   /** Cached from last renderLegs — avoids Vincenty on every GPS fix. */
   routeTotals: { legsCount: 0, totalNm: 0, totalEteMin: 0, key: "" },
   /** 747-8 GC planner (full-screen, empty route only) */
@@ -110,6 +132,8 @@ const state = {
   gcArrIcao: "",
   /** Memoized GC great-circle plan (keyed by dep|arr ICAO). */
   gcPlanCache: null,
+  /** Last GC framing key — reset pan/zoom when dep/arr plan changes. */
+  gcViewKey: "",
   /**
    * Teach-unknown-waypoint wizard.
    * @type {null | {
@@ -124,6 +148,9 @@ const state = {
   skippedUnknowns: false,
   /** Bundled WATRS / NY OAC airway definitions (M201–M204, …). */
   airways: Object.create(null),
+  /** Cached storm systems + SIGMETs payload (also mirrored in localStorage). */
+  stormSystems: null,
+  weatherStatus: "",
 };
 
 const el = {
@@ -144,6 +171,8 @@ const el = {
   routeClearConfirmCancel: document.getElementById("route-clear-confirm-cancel"),
   routeClearEditsBtn: document.getElementById("route-clear-edits-btn"),
   routeClearAllBtn: document.getElementById("route-clear-all-btn"),
+  routeRestoreLastBtn: document.getElementById("route-restore-last-btn"),
+  routeRestoreHelp: document.getElementById("route-restore-help"),
   routeList: document.getElementById("route-list"),
   legsBody: document.getElementById("legs-body"),
   totals: document.getElementById("totals"),
@@ -197,12 +226,23 @@ const el = {
   showEastTracks: document.getElementById("show-east-tracks"),
   showWestTracks: document.getElementById("show-west-tracks"),
   validOnlyTracks: document.getElementById("valid-only-tracks"),
+  stormSystemsToggle: document.getElementById("storm-systems-toggle"),
+  liveTsToggle: document.getElementById("live-ts-toggle"),
+  liveTsLoading: document.getElementById("live-ts-loading"),
+  weatherStatusEl: document.getElementById("weather-status"),
+  wxDetail: document.getElementById("wx-detail"),
+  wxDetailTitle: document.getElementById("wx-detail-title"),
+  wxDetailBody: document.getElementById("wx-detail-body"),
+  wxDetailClose: document.getElementById("wx-detail-close"),
   natTmi: document.getElementById("nat-tmi"),
   natStatus: document.getElementById("nat-status"),
   natMessage: document.getElementById("nat-message"),
   natClockEast: document.getElementById("nat-clock-east"),
   natClockWest: document.getElementById("nat-clock-west"),
   chartUtcClock: document.getElementById("chart-utc-clock"),
+  chartGpsCoords: document.getElementById("chart-gps-coords"),
+  chartGpsLat: document.getElementById("chart-gps-lat"),
+  chartGpsLon: document.getElementById("chart-gps-lon"),
   natUtcClock: document.getElementById("nat-utc-clock"),
   themeBtn: document.getElementById("theme-btn"),
   chartFullscreenBtn: document.getElementById("chart-fullscreen-btn"),
@@ -274,6 +314,12 @@ function syncTrackToggleUi() {
   if (el.showWestTracks) {
     el.showWestTracks.checked = state.settings.showWestTracks !== false;
   }
+  if (el.stormSystemsToggle) {
+    el.stormSystemsToggle.checked = state.settings.showStormSystems === true;
+  }
+  if (el.liveTsToggle) {
+    el.liveTsToggle.checked = state.settings.showLiveThunderstorms === true;
+  }
 }
 
 function setChartFullscreen(on) {
@@ -285,12 +331,19 @@ function setChartFullscreen(on) {
   }
   if (!on) {
     clearGcPlan();
+    stopLiveTsRefreshTimer();
+    clearLiveRadarMemory();
+    setLiveTsLoading(false);
+    hideWxDetail();
   }
   syncTrackToggleUi();
   syncGcPlanBar();
   // Allow layout to settle before redraw
   requestAnimationFrame(() => {
-    requestAnimationFrame(() => renderChart());
+    requestAnimationFrame(() => {
+      renderChart();
+      if (on) void ensureWeatherLayers({ background: true });
+    });
   });
 }
 
@@ -309,6 +362,7 @@ function clearGcPlan() {
   state.gcDepIcao = "";
   state.gcArrIcao = "";
   state.gcPlanCache = null;
+  state.gcViewKey = "";
   if (el.gcDep) el.gcDep.value = "";
   if (el.gcArr) el.gcArr.value = "";
   if (el.gcDep) el.gcDep.classList.remove("warn-diff");
@@ -414,8 +468,29 @@ function onGcIcaoInput(which, raw) {
     const ok = code.length === 0 || (code.length === 4 && !!resolveGcAirport(code));
     input.classList.toggle("warn-diff", code.length > 0 && !ok);
   }
+  syncGcChartFit();
   updateGcPlanLabel();
   renderChart();
+}
+
+/**
+ * When DEP/DEST change, snap pan/zoom so the GC (or single airport) is framed.
+ * Avoids leftover NAT exploration offsets hiding the new plan.
+ */
+function syncGcChartFit() {
+  if (!routeIsIdleForGcPlan()) {
+    state.gcViewKey = "";
+    return;
+  }
+  const dep = resolveGcAirport(state.gcDepIcao);
+  const arr = resolveGcAirport(state.gcArrIcao);
+  let key = "";
+  if (dep && arr && dep.icao !== arr.icao) key = `gc:${dep.icao}|${arr.icao}`;
+  else if (dep) key = `gc1:${dep.icao}`;
+  else if (arr) key = `gc1:${arr.icao}`;
+  if (key === state.gcViewKey) return;
+  state.gcViewKey = key;
+  if (key) resetChartView();
 }
 
 /** Full-screen GC planner: 1st tap → DEP, 2nd → DEST, further tap restarts with new DEP. */
@@ -466,6 +541,16 @@ function loadSettings() {
   if (el.showEastTracks) el.showEastTracks.checked = state.settings.showEastTracks;
   if (el.showWestTracks) el.showWestTracks.checked = state.settings.showWestTracks;
   if (el.validOnlyTracks) el.validOnlyTracks.checked = state.settings.validOnlyTracks;
+  if (state.settings.showStormSystems !== true) state.settings.showStormSystems = false;
+  if (state.settings.showLiveThunderstorms !== true) {
+    state.settings.showLiveThunderstorms = false;
+  }
+  if (el.stormSystemsToggle) {
+    el.stormSystemsToggle.checked = state.settings.showStormSystems === true;
+  }
+  if (el.liveTsToggle) {
+    el.liveTsToggle.checked = state.settings.showLiveThunderstorms === true;
+  }
 }
 
 function saveSettings() {
@@ -642,11 +727,78 @@ function restoreRouteFromStored() {
   if (el.input) el.input.value = "";
   hideSuggestions();
   showError("");
+  fitChartAfterRouteChange(0, "restore");
+  updateEntryChrome();
+  renderAll();
+}
+
+function loadLastRouteSnapshot() {
+  if (state.lastRoute?.length) return state.lastRoute;
+  try {
+    const raw = localStorage.getItem(LAST_ROUTE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed) || !parsed.length) return null;
+    state.lastRoute = parsed;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function rememberLastRoute(route) {
+  if (!route?.length) return;
+  const snap = snapshotRoutePoints(route);
+  state.lastRoute = snap;
+  try {
+    localStorage.setItem(LAST_ROUTE_KEY, JSON.stringify(snap));
+  } catch {
+    /* ignore quota */
+  }
+}
+
+function hasLastRouteToRestore() {
+  return Boolean(loadLastRouteSnapshot()?.length);
+}
+
+function updateRouteClearConfirmUi() {
+  const empty = !state.route.length;
+  const showRestore = empty && hasLastRouteToRestore();
+  if (el.routeRestoreLastBtn) el.routeRestoreLastBtn.hidden = !showRestore;
+  if (el.routeRestoreHelp) el.routeRestoreHelp.hidden = !showRestore;
+}
+
+function openRouteClearConfirm() {
+  if (state.editingIndex != null || state.insertAfterIndex != null) {
+    cancelEditMode();
+    return;
+  }
+  if (!state.route.length && !state.storedRoute && !hasLastRouteToRestore()) {
+    return;
+  }
+  updateRouteClearConfirmUi();
+  if (el.routeClearConfirm) el.routeClearConfirm.hidden = false;
+}
+
+function restoreLastRouteAction() {
+  if (el.routeClearConfirm) el.routeClearConfirm.hidden = true;
+  const snap = loadLastRouteSnapshot();
+  if (!snap?.length) return;
+  const prevLen = state.route.length;
+  state.route = snapshotRoutePoints(snap).map((p) => enrichPoint({ ...p }));
+  state.editingIndex = null;
+  state.insertAfterIndex = null;
+  state.skippedUnknowns = false;
+  if (el.input) el.input.value = "";
+  hideSuggestions();
+  showError("");
+  fitChartAfterRouteChange(prevLen, "restore");
   updateEntryChrome();
   renderAll();
 }
 
 function clearWorkingRouteOnly() {
+  if (state.route.length) rememberLastRoute(state.route);
   state.route = [];
   state.editingIndex = null;
   state.insertAfterIndex = null;
@@ -661,6 +813,7 @@ function clearWorkingRouteOnly() {
 
 function clearEditsAction() {
   if (el.routeClearConfirm) el.routeClearConfirm.hidden = true;
+  if (state.route.length) rememberLastRoute(state.route);
   if (state.storedRoute?.route?.length) {
     restoreRouteFromStored();
   } else {
@@ -670,8 +823,23 @@ function clearEditsAction() {
 
 function clearAllAction() {
   if (el.routeClearConfirm) el.routeClearConfirm.hidden = true;
+  if (state.route.length) {
+    rememberLastRoute(state.route);
+  } else if (state.storedRoute?.route?.length) {
+    rememberLastRoute(state.storedRoute.route);
+  }
   clearStoredRoute();
-  clearWorkingRouteOnly();
+  // Avoid double-remember: clearWorkingRouteOnly also remembers if non-empty
+  state.route = [];
+  state.editingIndex = null;
+  state.insertAfterIndex = null;
+  state.skippedUnknowns = false;
+  if (el.input) el.input.value = "";
+  hideSuggestions();
+  showError("");
+  resetChartView();
+  updateEntryChrome();
+  renderAll();
 }
 
 function saveRoute() {
@@ -714,7 +882,7 @@ function mergeLearnedWaypointsIntoDb() {
       if (isManual) {
         existing.lat = w.lat;
         existing.lon = w.lon;
-        existing.accuracy = w.accuracy || "approximate";
+        existing.accuracy = w.accuracy || "learned";
         existing.category = "manual";
         existing.notes = w.notes || existing.notes;
         existing.source = "manual-teach";
@@ -727,7 +895,7 @@ function mergeLearnedWaypointsIntoDb() {
       name,
       lat: w.lat,
       lon: w.lon,
-      accuracy: w.accuracy || "approximate",
+      accuracy: w.accuracy || (isManual ? "learned" : "approximate"),
       category: w.category || "nat-track",
       notes: w.notes || "Learned from NAT tracks message",
       source: w.source || "learned",
@@ -1479,6 +1647,18 @@ function cancelEditMode() {
   renderRouteList();
 }
 
+function routeAccuracyBadge(wp) {
+  if (!wp) return "";
+  if (isManualTaughtEntry(wp) || wp.accuracy === "learned") {
+    const title = wp.notes || "Manually taught / learned on this device";
+    return `<span class="badge learned" title="${title}">learned</span>`;
+  }
+  if (wp.accuracy === "approximate") {
+    return `<span class="badge approx" title="${wp.notes || "Approximate"}">approx</span>`;
+  }
+  return "";
+}
+
 function renderRouteList() {
   if (!el.routeList) {
     updateEntryChrome();
@@ -1494,13 +1674,10 @@ function renderRouteList() {
     li.className = "route-item";
     if (state.editingIndex === index) li.classList.add("editing");
     if (state.insertAfterIndex === index) li.classList.add("insert-after");
-    const approx =
-      wp.accuracy === "approximate"
-        ? `<span class="badge approx" title="${wp.notes || "Approximate"}">approx</span>`
-        : "";
+    const badge = routeAccuracyBadge(wp);
     li.innerHTML = `
       <span class="idx">${index + 1}</span>
-      <span class="name">${wp.name}${approx}</span>
+      <span class="name">${wp.name}${badge}</span>
       <span class="coords">${formatCockpitLatLon(wp.lat, wp.lon)}</span>
       <span class="actions">
         <button type="button" data-edit="${index}" aria-label="Edit waypoint">Edit</button>
@@ -1896,14 +2073,14 @@ function renderLegs() {
   legs.forEach((leg) => {
     const tr = document.createElement("tr");
     tr.innerHTML = `
-      <td>${leg.from.name}</td>
-      <td>${leg.to.name}</td>
-      <td class="mono">${formatTrack(leg.avgTrue)}°</td>
-      <td class="mono" ${showMag ? "" : "hidden"}>${formatTrack(leg.avgMag)}° <span class="muted">(${leg.avgVarLabel})</span></td>
-      <td class="mono">${formatTrack(leg.initTrue)}°</td>
-      <td class="mono" ${showMag ? "" : "hidden"}>${formatTrack(leg.initMag)}° <span class="muted">(${leg.initVarLabel})</span></td>
-      <td class="mono">${formatDistanceNm(leg.distanceNm)}</td>
-      <td class="mono" title="Crude ETE (westerlies; climb/descent pad only if either end is an airport)">${leg.eteLabel}</td>
+      <td class="leg-from">${leg.from.name}</td>
+      <td class="leg-to">${leg.to.name}</td>
+      <td class="mono leg-avg-true">${formatTrack(leg.avgTrue)}°</td>
+      <td class="mono leg-avg-mag" ${showMag ? "" : "hidden"}>${formatTrack(leg.avgMag)}° <span class="muted">(${leg.avgVarLabel})</span></td>
+      <td class="mono leg-init-true">${formatTrack(leg.initTrue)}°</td>
+      <td class="mono leg-init-mag" ${showMag ? "" : "hidden"}>${formatTrack(leg.initMag)}° <span class="muted">(${leg.initVarLabel})</span></td>
+      <td class="mono leg-dist">${formatDistanceNm(leg.distanceNm)}</td>
+      <td class="mono leg-ete" title="Crude ETE (westerlies; climb/descent pad only if either end is an airport)">${leg.eteLabel}</td>
     `;
     el.legsBody.appendChild(tr);
   });
@@ -2149,14 +2326,265 @@ function renderNatPanel() {
     (state.nat.text || "");
 }
 
+let liveTsRefreshTimer = 0;
+let radarReloadTimer = 0;
+let radarLoading = false;
+
+function stopLiveTsRefreshTimer() {
+  if (liveTsRefreshTimer) {
+    clearInterval(liveTsRefreshTimer);
+    liveTsRefreshTimer = 0;
+  }
+}
+
+function setLiveTsLoading(on) {
+  radarLoading = on === true;
+  if (el.liveTsLoading) el.liveTsLoading.hidden = !radarLoading;
+}
+
+function pruneStormSystemsForPaint(payload) {
+  if (!payload) return null;
+  const sigmets = dedupePolygons(filterActivePolygons(payload.sigmets || []));
+  return {
+    ...payload,
+    storms: payload.storms || [],
+    sigmets,
+    volcanoes: extractVolcanoes(sigmets),
+  };
+}
+
+function updateWeatherStatusLine() {
+  if (!el.weatherStatusEl) return;
+  const fullscreen = document.body.classList.contains("chart-fullscreen");
+  const parts = [];
+  if (fullscreen && state.settings.showStormSystems && state.stormSystems) {
+    const n =
+      (state.stormSystems.storms?.length || 0) +
+      (filterActivePolygons(state.stormSystems.sigmets || []).length || 0);
+    const vols = extractVolcanoes(
+      filterActivePolygons(state.stormSystems.sigmets || [])
+    ).length;
+    const age = formatWeatherAge(state.stormSystems.fetchedAt);
+    parts.push(
+      `Storms+SIGMET · ${n}${vols ? ` · ${vols} VA` : ""} · ${
+        state.stormSystems.fromCache ? "cached " : ""
+      }${age}`
+    );
+  }
+  if (fullscreen && state.settings.showLiveThunderstorms) {
+    const radar = getLiveRadarMemory();
+    if (radarLoading) {
+      parts.push("Live TS · loading…");
+    } else if (radar?.tiles?.length) {
+      parts.push(`Live TS radar · ${formatWeatherAge(radar.fetchedAt)}`);
+    } else if (state.weatherStatus) {
+      parts.push(state.weatherStatus);
+    } else {
+      parts.push("Live TS · zoom in for radar");
+    }
+  }
+  if (!parts.length) {
+    el.weatherStatusEl.hidden = true;
+    el.weatherStatusEl.textContent = "";
+    return;
+  }
+  el.weatherStatusEl.hidden = false;
+  el.weatherStatusEl.textContent = parts.join(" · ");
+}
+
+function visibleWeatherSpan(layout) {
+  if (!layout) return 40;
+  const half = Math.min(layout.width || 800, layout.height || 600) * 0.5;
+  const ang =
+    (Math.asin(Math.min(0.999, half / Math.max(layout.radius, 1))) * 180) /
+    Math.PI;
+  return Math.max(8, ang * 2.2);
+}
+
+/** Regional RainViewer tiles — only when Live TS on and zoomed to basin-sized disc.
+ * @returns {Promise<boolean>} true if chart should repaint
+ */
+async function ensureLiveRadarDetail({ force = false } = {}) {
+  const fullscreen = document.body.classList.contains("chart-fullscreen");
+  if (!fullscreen || !state.settings.showLiveThunderstorms) {
+    const had = !!getLiveRadarMemory();
+    clearLiveRadarMemory();
+    setLiveTsLoading(false);
+    return had;
+  }
+  const layout = state.lastChartLayout;
+  if (
+    !layout ||
+    !isRegionalWeatherView(layout, layout.width, layout.height)
+  ) {
+    const had = !!getLiveRadarMemory();
+    clearLiveRadarMemory();
+    return had;
+  }
+  if (navigator.onLine === false) {
+    state.weatherStatus = "Live TS radar needs online";
+    return false;
+  }
+
+  const span = visibleWeatherSpan(layout);
+  const prevKey = getLiveRadarMemory()?.key || "";
+  setLiveTsLoading(true);
+  updateWeatherStatusLine();
+  try {
+    const data = await loadLiveRadarDetail({
+      lat0: layout.lat0,
+      lon0: layout.lon0,
+      spanLat: span,
+      spanLon: span,
+      force,
+    });
+    state.weatherStatus = "";
+    return !data?.fromMemory || data.key !== prevKey;
+  } catch {
+    state.weatherStatus = "Radar detail unavailable";
+    return false;
+  } finally {
+    setLiveTsLoading(false);
+    updateWeatherStatusLine();
+  }
+}
+
+function scheduleRadarReload() {
+  clearTimeout(radarReloadTimer);
+  radarReloadTimer = window.setTimeout(() => {
+    if (!state.settings.showLiveThunderstorms) return;
+    if (!document.body.classList.contains("chart-fullscreen")) return;
+    void ensureLiveRadarDetail().then((changed) => {
+      if (changed && document.body.classList.contains("chart-fullscreen")) {
+        renderChart();
+      }
+    });
+  }, 280);
+}
+
+function hideWxDetail() {
+  if (el.wxDetail) el.wxDetail.hidden = true;
+}
+
+function showWxDetail(poly) {
+  if (!el.wxDetail || !poly) return;
+  const title = String(poly.name || poly.label || poly.hazard || "SIGMET").trim();
+  if (el.wxDetailTitle) el.wxDetailTitle.textContent = title;
+  const bits = [];
+  bits.push(`${title}${poly.hazard ? ` · ${poly.hazard}` : ""}`);
+  if (poly.validFrom || poly.validTo) {
+    bits.push(`Valid ${poly.validFrom || "?"} → ${poly.validTo || "?"}`);
+  }
+  if (
+    (poly.altitudeLo != null && poly.altitudeLo !== "") ||
+    (poly.altitudeHi != null && poly.altitudeHi !== "")
+  ) {
+    bits.push(`Alt ${poly.altitudeLo || "?"}–${poly.altitudeHi || "?"} (as published)`);
+  }
+  if (poly.severity) bits.push(`Severity ${poly.severity}`);
+  bits.push("");
+  bits.push(poly.raw || "(No narrative text from source)");
+  if (el.wxDetailBody) el.wxDetailBody.textContent = bits.join("\n");
+  el.wxDetail.hidden = false;
+}
+
+async function ensureWeatherLayers(opts = {}) {
+  const fullscreen = document.body.classList.contains("chart-fullscreen");
+  if (!fullscreen) {
+    updateWeatherStatusLine();
+    return;
+  }
+
+  const wantStorms = state.settings.showStormSystems === true;
+  const wantLive = state.settings.showLiveThunderstorms === true;
+
+  if (wantStorms) {
+    try {
+      const data = await loadStormSystemsAndSigmets({
+        force: opts.forceStorms === true,
+      });
+      state.stormSystems = data;
+      if (data.fromCache && navigator.onLine !== false) {
+        void refreshStormSystemsInBackground().then((fresh) => {
+          if (!fresh || !state.settings.showStormSystems) return;
+          state.stormSystems = fresh;
+          updateWeatherStatusLine();
+          if (document.body.classList.contains("chart-fullscreen")) {
+            renderChart();
+          }
+        });
+      }
+    } catch (e) {
+      if (!state.stormSystems) {
+        state.weatherStatus = `Storms+SIGMET unavailable`;
+      }
+    }
+  }
+
+  if (wantLive) {
+    setLiveTsLoading(true);
+    updateWeatherStatusLine();
+    try {
+      state.weatherStatus = "";
+      if (!liveTsRefreshTimer) {
+        liveTsRefreshTimer = setInterval(() => {
+          if (
+            !document.body.classList.contains("chart-fullscreen") ||
+            !state.settings.showLiveThunderstorms ||
+            navigator.onLine === false
+          ) {
+            return;
+          }
+          void ensureLiveRadarDetail({ force: true })
+            .then((changed) => {
+              updateWeatherStatusLine();
+              if (changed) renderChart();
+            })
+            .catch(() => {});
+        }, 10 * 60 * 1000);
+      }
+      await ensureLiveRadarDetail({ force: opts.forceLive === true });
+    } catch {
+      clearLiveRadarMemory();
+      state.weatherStatus = "Live TS radar unavailable (online only)";
+      stopLiveTsRefreshTimer();
+    } finally {
+      setLiveTsLoading(false);
+    }
+  } else {
+    clearLiveRadarMemory();
+    stopLiveTsRefreshTimer();
+    setLiveTsLoading(false);
+  }
+
+  updateWeatherStatusLine();
+  if (!opts.skipPaint) renderChart();
+}
+
 function paintChart(lite = false) {
   if (!el.chart) return;
   const showAny =
     state.settings.showEastTracks !== false ||
     state.settings.showWestTracks !== false;
-  const gcIdle =
-    document.body.classList.contains("chart-fullscreen") && routeIsIdleForGcPlan();
+  const fullscreen = document.body.classList.contains("chart-fullscreen");
+  const gcIdle = fullscreen && routeIsIdleForGcPlan();
+  const stormSystems =
+    fullscreen && state.settings.showStormSystems === true
+      ? pruneStormSystemsForPaint(state.stormSystems)
+      : null;
+  const liveRadar =
+    fullscreen && state.settings.showLiveThunderstorms === true
+      ? getLiveRadarMemory()
+      : null;
   const gcPlan = gcIdle ? buildGcPlan() : null;
+  /** Provisional focus while picking GC airports (1 or 2 ends). */
+  const gcFocusAirports = [];
+  if (gcIdle) {
+    const depAp = resolveGcAirport(state.gcDepIcao);
+    const arrAp = resolveGcAirport(state.gcArrIcao);
+    if (depAp) gcFocusAirports.push(depAp);
+    if (arrAp && arrAp.icao !== depAp?.icao) gcFocusAirports.push(arrAp);
+  }
   state.lastChartLayout = drawChart(el.chart, {
     route: state.route,
     natTracks: coloredNatTracks(),
@@ -2168,8 +2596,35 @@ function paintChart(lite = false) {
     pan: state.chartPan,
     lite,
     gcPlan,
+    gcFocusAirports,
     show747Airports: gcIdle,
+    stormSystems,
+    liveRadar,
   });
+  // After layout settles, load/refresh radar for the new regional window
+  if (
+    fullscreen &&
+    state.settings.showLiveThunderstorms &&
+    !lite &&
+    isRegionalWeatherView(
+      state.lastChartLayout,
+      state.lastChartLayout.width,
+      state.lastChartLayout.height
+    )
+  ) {
+    scheduleRadarReload();
+  } else if (
+    getLiveRadarMemory() &&
+    (!fullscreen ||
+      !state.settings.showLiveThunderstorms ||
+      !isRegionalWeatherView(
+        state.lastChartLayout,
+        state.lastChartLayout.width,
+        state.lastChartLayout.height
+      ))
+  ) {
+    clearLiveRadarMemory();
+  }
   paintOwnshipOnly();
 }
 
@@ -2200,9 +2655,10 @@ function renderChart() {
 function markChartInteracting() {
   scheduleChartRender({ lite: true });
   clearTimeout(chartIdleTimer);
+  // Slightly longer settle so rapid pans don't thrash full redraws
   chartIdleTimer = window.setTimeout(() => {
     scheduleChartRender({ lite: false });
-  }, 140);
+  }, 180);
 }
 
 function applyUiMode(mode, { paint = true } = {}) {
@@ -2254,6 +2710,100 @@ const GPS_WATCH_OPTS = {
   timeout: 20000,
 };
 
+/** ~3 kt — show/update coords only while essentially stopped */
+const GPS_STATIONARY_MAX_MS = 1.5;
+/** ~5 kt — hysteresis so the chip does not flicker */
+const GPS_MOVING_MIN_MS = 2.5;
+
+let gpsWasStationary = true;
+let gpsCoordsCopiedTimer = 0;
+
+function isGpsStationary(gps) {
+  if (!gps || !Number.isFinite(gps.lat) || !Number.isFinite(gps.lon)) return false;
+  if (Number.isFinite(gps.speed)) {
+    if (gps.speed <= GPS_STATIONARY_MAX_MS) {
+      gpsWasStationary = true;
+      return true;
+    }
+    if (gps.speed >= GPS_MOVING_MIN_MS) {
+      gpsWasStationary = false;
+      return false;
+    }
+    return gpsWasStationary;
+  }
+  // Wi‑Fi / cell fixes often omit speed — treat as stationary for the chip
+  gpsWasStationary = true;
+  return true;
+}
+
+function hideGpsCoordsChip() {
+  state.gpsStationary = null;
+  if (el.chartGpsCoords) el.chartGpsCoords.hidden = true;
+}
+
+function updateGpsCoordsChip() {
+  const gps = state.gps;
+  if (!gps || !isGpsStationary(gps)) {
+    hideGpsCoordsChip();
+    return;
+  }
+  // Only format when stationary (avoid cockpit string work while moving)
+  const latTxt = formatCockpitLat(gps.lat);
+  const lonTxt = formatCockpitLon(gps.lon);
+  state.gpsStationary = {
+    lat: gps.lat,
+    lon: gps.lon,
+    latTxt,
+    lonTxt,
+    paste: `${latTxt} ${lonTxt}`,
+  };
+  if (el.chartGpsLat) el.chartGpsLat.textContent = latTxt;
+  if (el.chartGpsLon) el.chartGpsLon.textContent = lonTxt;
+  if (el.chartGpsCoords) el.chartGpsCoords.hidden = false;
+}
+
+function centerChartOnLatLon(lat, lon) {
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
+  const layout = state.lastChartLayout;
+  let fitLat = layout?.fitLat0;
+  let fitLon = layout?.fitLon0;
+  if (!Number.isFinite(fitLat) || !Number.isFinite(fitLon)) {
+    fitLat = 50;
+    fitLon = -35;
+  }
+  let dLon = lon - fitLon;
+  while (dLon > 180) dLon -= 360;
+  while (dLon < -180) dLon += 360;
+  state.chartPan = clampPan({
+    dLat: lat - fitLat,
+    dLon,
+  });
+  renderChart();
+}
+
+async function onGpsCoordsChipActivate() {
+  const frozen = state.gpsStationary;
+  if (!frozen) return;
+  centerChartOnLatLon(frozen.lat, frozen.lon);
+  try {
+    await navigator.clipboard.writeText(frozen.paste);
+    if (el.chartGpsCoords) {
+      el.chartGpsCoords.classList.add("is-copied");
+      el.chartGpsCoords.title = "Copied — paste into route entry";
+      clearTimeout(gpsCoordsCopiedTimer);
+      gpsCoordsCopiedTimer = window.setTimeout(() => {
+        el.chartGpsCoords?.classList.remove("is-copied");
+        if (el.chartGpsCoords) {
+          el.chartGpsCoords.title =
+            "Present position (stationary). Tap to copy and centre chart.";
+        }
+      }, 1600);
+    }
+  } catch {
+    /* clipboard may be blocked — chart still recentred */
+  }
+}
+
 function refreshTotalsFromGps() {
   const cached = state.routeTotals;
   if (state.route.length && cached.key === routeSequenceKey(state.route)) {
@@ -2277,6 +2827,7 @@ function startGpsWatch() {
       };
       refreshTotalsFromGps();
       paintOwnshipOnly();
+      updateGpsCoordsChip();
     },
     () => {
       /* permission denied / unavailable — clear ownship if it was showing */
@@ -2285,6 +2836,7 @@ function startGpsWatch() {
         refreshTotalsFromGps();
         paintOwnshipOnly();
       }
+      hideGpsCoordsChip();
     },
     GPS_WATCH_OPTS
   );
@@ -2308,24 +2860,33 @@ function clampChartZoom(z) {
   return Math.max(0.55, Math.min(5, z));
 }
 
+/** Allow panning the fit window over the whole globe (BA / JNB / Asia, etc.). */
 function clampPan(pan) {
+  let dLon = Number(pan.dLon) || 0;
+  // Keep lon offset in a tidy range; layout still wraps absolute lon
+  while (dLon > 180) dLon -= 360;
+  while (dLon < -180) dLon += 360;
   return {
-    dLat: Math.max(-45, Math.min(45, pan.dLat)),
-    dLon: Math.max(-90, Math.min(90, pan.dLon)),
+    dLat: Math.max(-140, Math.min(140, Number(pan.dLat) || 0)),
+    dLon,
   };
 }
 
 function applyChartPanPixels(dx, dy) {
   if (!el.chart) return;
   const layout = state.lastChartLayout;
-  const R =
+  const R = Math.max(
+    48,
     layout?.radius ||
-    Math.min(el.chart.clientWidth || 400, el.chart.clientHeight || 300) * 0.9;
+      Math.min(el.chart.clientWidth || 400, el.chart.clientHeight || 300) * 0.9
+  );
+  // Orthographic: vertical drag ≈ latitude; horizontal ≈ longitude / cos(lat)
+  // Use view centre lat so east-west scale stays sensible in the south
   const lat0 = toRadSafe(layout?.lat0 ?? 50);
-  const cosLat = Math.max(0.25, Math.cos(lat0));
-  // Drag content with the pointer (map-follows-finger)
-  const dLat = (dy / R) * (180 / Math.PI);
-  const dLon = (-dx / R / cosLat) * (180 / Math.PI);
+  const cosLat = Math.max(0.2, Math.abs(Math.cos(lat0)));
+  const degPerPx = 180 / Math.PI / R;
+  const dLat = dy * degPerPx;
+  const dLon = -dx * degPerPx / cosLat;
   state.chartPan = clampPan({
     dLat: state.chartPan.dLat + dLat,
     dLon: state.chartPan.dLon + dLon,
@@ -2340,6 +2901,22 @@ function toRadSafe(deg) {
 function resetChartView() {
   state.chartZoom = 1.35;
   state.chartPan = { dLat: 0, dLon: 0 };
+}
+
+/**
+ * Snap chart to auto-fit after a route is loaded/replaced (not mid-route edits).
+ * @param {number} prevLen
+ * @param {"replace"|"restore"|"append"|"insert"|"edit"|string} mode
+ */
+function fitChartAfterRouteChange(prevLen, mode) {
+  if (
+    mode === "replace" ||
+    mode === "restore" ||
+    (prevLen === 0 && state.route.length > 0 && mode !== "edit")
+  ) {
+    resetChartView();
+    state.gcViewKey = "";
+  }
 }
 
 function bindChartGestures() {
@@ -2357,6 +2934,53 @@ function bindChartGestures() {
   let tapStartT = 0;
   let tapMoved = false;
   let mousePanMoved = false;
+  let velX = 0;
+  let velY = 0;
+  let lastMoveT = 0;
+  let momentumRaf = 0;
+
+  const stopMomentum = () => {
+    if (momentumRaf) {
+      cancelAnimationFrame(momentumRaf);
+      momentumRaf = 0;
+    }
+    velX = 0;
+    velY = 0;
+  };
+
+  const notePanDelta = (dx, dy) => {
+    const now = performance.now();
+    const dt = Math.max(8, now - (lastMoveT || now));
+    lastMoveT = now;
+    // EMA velocity in px/frame-ish units
+    const ax = dx * (16 / dt);
+    const ay = dy * (16 / dt);
+    velX = velX * 0.65 + ax * 0.35;
+    velY = velY * 0.65 + ay * 0.35;
+  };
+
+  const startMomentum = () => {
+    stopMomentum();
+    if (Math.hypot(velX, velY) < 0.8) {
+      velX = 0;
+      velY = 0;
+      return;
+    }
+    const tick = () => {
+      velX *= 0.92;
+      velY *= 0.92;
+      if (Math.hypot(velX, velY) < 0.35) {
+        momentumRaf = 0;
+        velX = 0;
+        velY = 0;
+        scheduleChartRender({ lite: false });
+        return;
+      }
+      applyChartPanPixels(velX, velY);
+      momentumRaf = requestAnimationFrame(tick);
+    };
+    momentumRaf = requestAnimationFrame(tick);
+  };
 
   const touchDist = (touches) => {
     const a = touches[0];
@@ -2388,9 +3012,44 @@ function bindChartGestures() {
     if (ap) selectGcAirportFromTap(ap);
   };
 
+  const tryWeatherTap = (clientX, clientY) => {
+    if (!document.body.classList.contains("chart-fullscreen")) return false;
+    if (
+      !state.settings.showStormSystems &&
+      !state.settings.showLiveThunderstorms
+    ) {
+      return false;
+    }
+    const layout = state.lastChartLayout;
+    if (!layout) return false;
+    const rect = canvas.getBoundingClientRect();
+    const x = clientX - rect.left;
+    const y = clientY - rect.top;
+    const poly = hitTestWeather(
+      layout,
+      x,
+      y,
+      state.settings.showStormSystems
+        ? pruneStormSystemsForPaint(state.stormSystems)
+        : null
+    );
+    if (!poly) {
+      hideWxDetail();
+      return false;
+    }
+    showWxDetail(poly);
+    return true;
+  };
+
+  const tryChartTap = (clientX, clientY) => {
+    if (tryWeatherTap(clientX, clientY)) return;
+    tryAirportTap(clientX, clientY);
+  };
+
   canvas.addEventListener(
     "touchstart",
     (e) => {
+      stopMomentum();
       if (e.touches.length === 2) {
         panning = false;
         tapMoved = true;
@@ -2401,9 +3060,12 @@ function bindChartGestures() {
         tapMoved = false;
         lastX = e.touches[0].clientX;
         lastY = e.touches[0].clientY;
+        lastMoveT = performance.now();
+        velX = 0;
+        velY = 0;
         tapStartX = lastX;
         tapStartY = lastY;
-        tapStartT = performance.now();
+        tapStartT = lastMoveT;
       }
     },
     { passive: true }
@@ -2416,6 +3078,7 @@ function bindChartGestures() {
         e.preventDefault();
         panning = false;
         tapMoved = true;
+        stopMomentum();
         const dist = touchDist(e.touches);
         state.chartZoom = clampChartZoom(pinchStartZoom * (dist / pinchStartDist));
         markChartInteracting();
@@ -2429,6 +3092,7 @@ function bindChartGestures() {
         if (Math.hypot(t.clientX - tapStartX, t.clientY - tapStartY) > 12) {
           tapMoved = true;
         }
+        notePanDelta(dx, dy);
         applyChartPanPixels(dx, dy);
         lastX = t.clientX;
         lastY = t.clientY;
@@ -2447,13 +3111,21 @@ function bindChartGestures() {
           performance.now() - tapStartT < 450 &&
           Math.hypot(lastX - tapStartX, lastY - tapStartY) <= 12;
         panning = false;
-        markChartInteracting();
-        if (wasTap) tryAirportTap(tapStartX, tapStartY);
+        if (wasTap) {
+          stopMomentum();
+          markChartInteracting();
+          tryChartTap(tapStartX, tapStartY);
+        } else if (tapMoved) {
+          startMomentum();
+        } else {
+          markChartInteracting();
+        }
       }
       if (e.touches.length === 1) {
         panning = true;
         lastX = e.touches[0].clientX;
         lastY = e.touches[0].clientY;
+        lastMoveT = performance.now();
       }
     },
     { passive: true }
@@ -2463,6 +3135,7 @@ function bindChartGestures() {
     "wheel",
     (e) => {
       e.preventDefault();
+      stopMomentum();
       const factor = e.deltaY < 0 ? 1.08 : 1 / 1.08;
       state.chartZoom = clampChartZoom(state.chartZoom * factor);
       markChartInteracting();
@@ -2472,13 +3145,17 @@ function bindChartGestures() {
 
   canvas.addEventListener("mousedown", (e) => {
     if (e.button !== 0) return;
+    stopMomentum();
     panning = true;
     mousePanMoved = false;
     lastX = e.clientX;
     lastY = e.clientY;
+    lastMoveT = performance.now();
+    velX = 0;
+    velY = 0;
     tapStartX = lastX;
     tapStartY = lastY;
-    tapStartT = performance.now();
+    tapStartT = lastMoveT;
     canvas.style.cursor = "grabbing";
   });
 
@@ -2487,7 +3164,10 @@ function bindChartGestures() {
     if (Math.hypot(e.clientX - tapStartX, e.clientY - tapStartY) > 8) {
       mousePanMoved = true;
     }
-    applyChartPanPixels(e.clientX - lastX, e.clientY - lastY);
+    const dx = e.clientX - lastX;
+    const dy = e.clientY - lastY;
+    notePanDelta(dx, dy);
+    applyChartPanPixels(dx, dy);
     lastX = e.clientX;
     lastY = e.clientY;
   });
@@ -2496,12 +3176,19 @@ function bindChartGestures() {
     if (!panning) return;
     panning = false;
     canvas.style.cursor = "grab";
-    markChartInteracting();
     const wasTap =
       !mousePanMoved &&
       performance.now() - tapStartT < 450 &&
       Math.hypot((e?.clientX ?? lastX) - tapStartX, (e?.clientY ?? lastY) - tapStartY) <= 8;
-    if (wasTap) tryAirportTap(tapStartX, tapStartY);
+    if (wasTap) {
+      stopMomentum();
+      markChartInteracting();
+      tryChartTap(tapStartX, tapStartY);
+    } else if (mousePanMoved) {
+      startMomentum();
+    } else {
+      markChartInteracting();
+    }
   };
   window.addEventListener("mouseup", endMousePan);
 }
@@ -2540,6 +3227,9 @@ function commitTaughtPoints(points) {
     return;
   }
 
+  const prevLen = state.route.length;
+  let fitMode = "append";
+
   if (commit?.kind === "edit") {
     if (enriched.length !== 1) {
       showError("When editing, enter a single waypoint (or Cancel, then paste a full route).");
@@ -2548,11 +3238,14 @@ function commitTaughtPoints(points) {
     }
     state.route[commit.editIndex] = enriched[0];
     state.editingIndex = null;
+    fitMode = "edit";
   } else if (commit?.kind === "insert") {
     state.route.splice(commit.insertAt, 0, ...enriched);
     state.insertAfterIndex = null;
+    fitMode = "insert";
   } else if (commit?.kind === "replace") {
     state.route = enriched;
+    fitMode = "replace";
   } else if (commit?.kind === "teach-only") {
     // DB already updated via rememberManualWaypoint — refresh any route copies
     const p = enriched[0];
@@ -2560,9 +3253,13 @@ function commitTaughtPoints(points) {
     state.route = state.route.map((wp) =>
       String(wp.name || "").toUpperCase() === n ? enrichPoint({ ...p }) : wp
     );
+    fitMode = "edit";
   } else {
     state.route.push(...enriched);
+    fitMode = "append";
   }
+
+  fitChartAfterRouteChange(prevLen, fitMode);
 
   state.teach = null;
   state.editingIndex = null;
@@ -2581,7 +3278,7 @@ function rememberManualWaypoint(name, lat, lon) {
     name,
     lat,
     lon,
-    accuracy: "approximate",
+    accuracy: "learned",
     category: "manual",
     region: "user",
     notes: "Manually taught — overrides online lookup",
@@ -2593,7 +3290,7 @@ function rememberManualWaypoint(name, lat, lon) {
   if (known) {
     known.lat = lat;
     known.lon = lon;
-    known.accuracy = "approximate";
+    known.accuracy = "learned";
     known.notes = entry.notes;
     known.category = "manual";
     known.source = "manual-teach";
@@ -2874,7 +3571,7 @@ function saveTeachCurrent() {
   if (!parsed.ok || !parsed.point) {
     showTeachError(
       parsed.error ||
-        "Could not read coordinates. Try N50 00.0 W020 00.0 or N5000.0W02000.0"
+        "Could not read coordinates. Try N53 28.8 W005 30.0, N5328.8W00530.0, or ARINC 5215N / H5250."
     );
     return;
   }
@@ -2997,6 +3694,7 @@ async function resolveUnknownsOnline(unknowns) {
 }
 
 function commitRoutePoints(points, { mode, skipped }) {
+  const prevLen = state.route.length;
   const enriched = points.map((p) => enrichPoint({ ...p }));
   if (mode === "edit") {
     if (enriched.length !== 1) return false;
@@ -3012,6 +3710,7 @@ function commitRoutePoints(points, { mode, skipped }) {
     state.route.push(...enriched);
   }
   state.skippedUnknowns = Boolean(skipped);
+  fitChartAfterRouteChange(prevLen, mode);
   return true;
 }
 
@@ -3090,6 +3789,7 @@ async function addWaypointFromInputAsync() {
         if (again.ok && again.points[0]) {
           showError("");
           const pt = enrichPoint({ ...again.points[0] });
+          const prevLen = state.route.length;
           if (state.editingIndex != null) {
             state.route[state.editingIndex] = pt;
             state.editingIndex = null;
@@ -3098,6 +3798,7 @@ async function addWaypointFromInputAsync() {
             state.insertAfterIndex = null;
           } else {
             state.route.push(pt);
+            fitChartAfterRouteChange(prevLen, "append");
           }
           el.input.value = "";
           hideSuggestions();
@@ -3119,6 +3820,7 @@ async function addWaypointFromInputAsync() {
   }
   showError("");
   const points = result.points.map((p) => enrichPoint({ ...p }));
+  const prevLen = state.route.length;
 
   if (state.editingIndex != null) {
     if (points.length !== 1) {
@@ -3137,8 +3839,10 @@ async function addWaypointFromInputAsync() {
     // Initial multi-waypoint paste into empty route → load whole string
     state.route = points;
     state.skippedUnknowns = false;
+    fitChartAfterRouteChange(prevLen, "replace");
   } else {
     state.route.push(...points);
+    fitChartAfterRouteChange(prevLen, "append");
   }
 
   el.input.value = "";
@@ -3277,6 +3981,7 @@ async function init() {
   loadSettings();
   loadRoute();
   loadStoredRoute();
+  loadLastRouteSnapshot();
   updateRouteStoreButton();
 
   const cachedNat = loadCachedNatTracks();
@@ -3358,6 +4063,9 @@ async function init() {
   if (el.chartFullscreenBtn) {
     el.chartFullscreenBtn.addEventListener("click", toggleChartFullscreen);
   }
+  el.chartGpsCoords?.addEventListener("click", () => {
+    void onGpsCoordsChipActivate();
+  });
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") {
       if (state.teach) {
@@ -3405,14 +4113,7 @@ async function init() {
     }, 150);
   });
 
-  el.clearBtn?.addEventListener("click", () => {
-    if (state.editingIndex != null || state.insertAfterIndex != null) {
-      cancelEditMode();
-      return;
-    }
-    if (!state.route.length && !state.storedRoute) return;
-    if (el.routeClearConfirm) el.routeClearConfirm.hidden = false;
-  });
+  el.clearBtn?.addEventListener("click", openRouteClearConfirm);
   el.routeClearConfirmCancel?.addEventListener("click", () => {
     if (el.routeClearConfirm) el.routeClearConfirm.hidden = true;
   });
@@ -3421,6 +4122,7 @@ async function init() {
   });
   el.routeClearEditsBtn?.addEventListener("click", clearEditsAction);
   el.routeClearAllBtn?.addEventListener("click", clearAllAction);
+  el.routeRestoreLastBtn?.addEventListener("click", restoreLastRouteAction);
 
   el.routeStoreBtn?.addEventListener("click", onRouteStoreBtnClick);
   el.routeStoreConfirmCancel?.addEventListener("click", () => {
@@ -3626,6 +4328,41 @@ async function init() {
   el.showEastTracks?.addEventListener("change", syncTrackToggles);
   el.showWestTracks?.addEventListener("change", syncTrackToggles);
   el.validOnlyTracks?.addEventListener("change", syncTrackToggles);
+
+  el.stormSystemsToggle?.addEventListener("change", () => {
+    state.settings.showStormSystems = !!el.stormSystemsToggle.checked;
+    saveSettings();
+    if (!state.settings.showStormSystems) {
+      hideWxDetail();
+      updateWeatherStatusLine();
+      renderChart();
+      return;
+    }
+    void ensureWeatherLayers({ forceStorms: true });
+  });
+  el.liveTsToggle?.addEventListener("change", () => {
+    state.settings.showLiveThunderstorms = !!el.liveTsToggle.checked;
+    saveSettings();
+    if (!state.settings.showLiveThunderstorms) {
+      clearLiveRadarMemory();
+      stopLiveTsRefreshTimer();
+      setLiveTsLoading(false);
+      hideWxDetail();
+      updateWeatherStatusLine();
+      renderChart();
+      return;
+    }
+    void ensureWeatherLayers({ forceLive: true });
+  });
+  el.wxDetailClose?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    hideWxDetail();
+  });
+  el.wxDetail?.addEventListener("click", (e) => e.stopPropagation());
+  window.addEventListener("online", () => {
+    if (!document.body.classList.contains("chart-fullscreen")) return;
+    void ensureWeatherLayers({ background: true });
+  });
 
   let resizeTimer = 0;
   window.addEventListener("resize", () => {

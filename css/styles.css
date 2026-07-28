@@ -590,6 +590,14 @@ body.viewport-a2903 .chart-toolbar-toggles {
   margin-left: 0;
 }
 
+.chart-time-block {
+  display: inline-flex;
+  align-items: stretch;
+  gap: 0.35rem;
+  flex-shrink: 0;
+  min-width: 0;
+}
+
 .utc-chip {
   display: inline-flex;
   align-items: baseline;
@@ -600,6 +608,53 @@ body.viewport-a2903 .chart-toolbar-toggles {
   border-radius: 10px;
   background: var(--field);
   line-height: 1.1;
+}
+
+.gps-coords-chip {
+  display: inline-flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.05rem;
+  margin: 0;
+  padding: 0.2rem 0.45rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--field);
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+  line-height: 1.15;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.gps-coords-chip[hidden] {
+  display: none !important;
+}
+
+.gps-coords-chip:hover,
+.gps-coords-chip:focus-visible {
+  border-color: var(--accent, #5cc8d8);
+}
+
+.gps-coords-chip:active {
+  opacity: 0.85;
+}
+
+.gps-coords-lat,
+.gps-coords-lon {
+  font-size: 0.68rem;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.gps-coords-chip.is-copied {
+  border-color: rgba(90, 200, 120, 0.7);
+}
+
+body.chart-fullscreen .gps-coords-lat,
+body.chart-fullscreen .gps-coords-lon {
+  font-size: 0.72rem;
 }
 
 .utc-chip-label {
@@ -1231,6 +1286,21 @@ html.theme-bright .route-item {
   background: var(--warn);
 }
 
+.badge.learned {
+  margin-left: 0.4rem;
+  font-size: 0.68rem;
+  border-radius: 4px;
+  padding: 0.1rem 0.35rem;
+  vertical-align: middle;
+  color: #062416;
+  background: #7dcea0;
+}
+
+html.theme-bright .badge.learned {
+  color: #0a3d24;
+  background: #b7e4c7;
+}
+
 .right-stack {
   display: grid;
   grid-template-rows: minmax(200px, 1.15fr) minmax(200px, 1fr);
@@ -1324,8 +1394,121 @@ body.chart-fullscreen #nat-tracks-btn {
 
 body.chart-fullscreen .chart-toggle:has(#valid-only-tracks),
 body.chart-fullscreen .chart-toggle:has(#show-east-tracks),
-body.chart-fullscreen .chart-toggle:has(#show-west-tracks) {
+body.chart-fullscreen .chart-toggle:has(#show-west-tracks),
+body.chart-fullscreen .chart-toggle-wx {
   display: flex !important;
+}
+
+/* Weather ticks only in fullscreen */
+.chart-toggle-wx {
+  display: none !important;
+}
+
+.weather-status {
+  margin: 0.15rem 0 0;
+  font-size: 0.72rem;
+  line-height: 1.25;
+}
+
+.weather-status[hidden] {
+  display: none !important;
+}
+
+body.chart-fullscreen .weather-status:not([hidden]) {
+  display: block;
+}
+
+.wx-loading {
+  display: inline-block;
+  width: 0.72rem;
+  height: 0.72rem;
+  margin-left: 0.28rem;
+  border: 2px solid rgba(140, 180, 210, 0.25);
+  border-top-color: rgba(120, 200, 255, 0.95);
+  border-radius: 50%;
+  vertical-align: -0.1rem;
+  animation: wx-spin 0.7s linear infinite;
+}
+
+.wx-loading[hidden] {
+  display: none !important;
+}
+
+html.theme-bright .wx-loading {
+  border-color: rgba(0, 60, 120, 0.2);
+  border-top-color: rgba(0, 90, 180, 0.9);
+}
+
+@keyframes wx-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.wx-detail {
+  position: absolute;
+  z-index: 6;
+  left: 0.6rem;
+  right: 0.6rem;
+  bottom: 0.6rem;
+  max-width: min(36rem, calc(100% - 1.2rem));
+  max-height: 42%;
+  overflow: auto;
+  padding: 0.55rem 0.7rem 0.65rem;
+  border-radius: 8px;
+  background: rgba(8, 16, 26, 0.92);
+  border: 1px solid rgba(140, 190, 230, 0.35);
+  color: rgba(230, 240, 250, 0.95);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+}
+
+html.theme-bright .wx-detail {
+  background: rgba(255, 255, 255, 0.96);
+  border-color: rgba(0, 60, 120, 0.25);
+  color: #102030;
+  box-shadow: 0 8px 24px rgba(0, 40, 80, 0.15);
+}
+
+.wx-detail[hidden] {
+  display: none !important;
+}
+
+.wx-detail-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+}
+
+.wx-detail-head strong {
+  font-size: 0.85rem;
+  letter-spacing: 0.02em;
+}
+
+.wx-detail-close {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.75;
+  padding: 0 0.15rem;
+}
+
+.wx-detail-close:hover {
+  opacity: 1;
+}
+
+.wx-detail-body {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  opacity: 0.95;
 }
 
 body.chart-fullscreen .chart-toggle .toggle-label-full {
@@ -1355,10 +1538,15 @@ html.theme-bright body.chart-fullscreen #chart-panel {
   border: none;
 }
 
+#legs-panel > .panel-body {
+  padding: 0.35rem 0.35rem 0.5rem;
+}
+
 table.legs {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.85rem;
+  table-layout: fixed;
+  font-size: 0.82rem;
 }
 
 table.legs th[title] {
@@ -1367,17 +1555,54 @@ table.legs th[title] {
 
 table.legs th,
 table.legs td {
-  padding: 0.55rem 0.45rem;
+  padding: 0.45rem 0.28rem;
   border-bottom: 1px solid var(--line);
   text-align: left;
+  vertical-align: top;
+}
+
+/* Tighten From / To so ETE keeps a full HH:MM on screen (Edit + Fly) */
+table.legs .leg-from,
+table.legs .leg-to {
+  width: 4.6rem;
+  max-width: 4.6rem;
+  padding-left: 0.15rem;
+  padding-right: 0.2rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+table.legs .leg-dist {
+  width: 3.6rem;
+  white-space: nowrap;
+}
+
+table.legs .leg-ete {
+  width: 3.35rem;
+  padding-right: 0.15rem;
+  white-space: nowrap;
+  text-align: right;
 }
 
 table.legs th {
   color: var(--muted);
   font-weight: 600;
-  font-size: 0.78rem;
+  font-size: 0.72rem;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.04em;
+}
+
+table.legs td .muted {
+  font-size: 0.68rem;
+}
+
+body.ui-fly #legs-panel > .panel-body {
+  padding: 0.3rem 0.28rem 0.45rem;
+}
+
+body.ui-fly table.legs {
+  font-size: 0.8rem;
 }
 
 .mono {

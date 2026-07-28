@@ -170,6 +170,103 @@ function parsePackedLon(digits, hemi) {
 }
 
 /**
+ * Strip excess leading zeros so FMS integer digit counts match:
+ * lat ddmm (4), lon dddmm (5). Returns { digits, stripped }.
+ */
+function collapseLeadingZeros(intDigits, targetLen) {
+  let digits = String(intDigits || "").replace(/\D/g, "");
+  let stripped = 0;
+  while (digits.length > targetLen && digits.startsWith("0")) {
+    digits = digits.slice(1);
+    stripped += 1;
+  }
+  return { digits, stripped };
+}
+
+/**
+ * Flexible lat: dd, ddmm, or ddmm.m — tolerates extra leading zeros (005328.8 → 5328.8).
+ * @returns {{ok:true,value:number,stripped:number}|{ok:false,stripped:number,tooMany:boolean}}
+ */
+function parseFlexibleLatPart(part, hemi) {
+  const raw = String(part || "");
+  const [intRaw, frac = ""] = raw.split(".");
+  const collapsed = collapseLeadingZeros(intRaw, 4);
+  const d = collapsed.digits;
+  if (d.length !== 2 && d.length !== 4) {
+    return {
+      ok: false,
+      stripped: collapsed.stripped,
+      tooMany: String(intRaw).replace(/\D/g, "").length > 4,
+    };
+  }
+  const deg = parseInt(d.slice(0, 2), 10);
+  let min = d.length === 4 ? parseInt(d.slice(2, 4), 10) : 0;
+  if (frac) min += parseFloat(`0.${frac}`);
+  if (!Number.isFinite(deg) || deg > 90 || min >= 60) {
+    return { ok: false, stripped: collapsed.stripped, tooMany: false };
+  }
+  return {
+    ok: true,
+    value: dmsToDeg(deg, min, 0, hemi),
+    stripped: collapsed.stripped,
+  };
+}
+
+/**
+ * Flexible lon: ddd, dddmm, or dddmm.m — tolerates extra leading zeros (000530.0 → 00530.0).
+ */
+function parseFlexibleLonPart(part, hemi) {
+  const raw = String(part || "");
+  const [intRaw, frac = ""] = raw.split(".");
+  const collapsed = collapseLeadingZeros(intRaw, 5);
+  const d = collapsed.digits;
+  if (d.length !== 3 && d.length !== 5) {
+    return {
+      ok: false,
+      stripped: collapsed.stripped,
+      tooMany: String(intRaw).replace(/\D/g, "").length > 5,
+    };
+  }
+  const deg = parseInt(d.slice(0, 3), 10);
+  let min = d.length === 5 ? parseInt(d.slice(3, 5), 10) : 0;
+  if (frac) min += parseFloat(`0.${frac}`);
+  if (!Number.isFinite(deg) || deg > 180 || min >= 60) {
+    return { ok: false, stripped: collapsed.stripped, tooMany: false };
+  }
+  return {
+    ok: true,
+    value: dmsToDeg(deg, min, 0, hemi),
+    stripped: collapsed.stripped,
+  };
+}
+
+function looksLikeCoordPair(input) {
+  return /^[NS]\d/i.test(input) && /[EW]\d/i.test(input);
+}
+
+function looksLikeExcessZeros(input) {
+  // Lon integer run longer than dddmm, or lat longer than ddmm, with leading 0s
+  const m = String(input || "")
+    .toUpperCase()
+    .replace(/\s+/g, "")
+    .match(/^([NS])(\d+)(?:\.(\d+))?([EW])(\d+)(?:\.(\d+))?$/);
+  if (!m) return false;
+  return m[2].length > 4 || m[5].length > 5;
+}
+
+function unrecognizedCoordError(raw, opts = {}) {
+  let msg =
+    `Unrecognized waypoint: ${raw}. Try a name (SOMAX), ARINC (5215N, 50N50, H5250), ` +
+    `or FMS (N5000.0W05000.0 — n/s/e/w OK).`;
+  if (opts.tooManyZeros) {
+    msg +=
+      " Too many digits/zeros: longitude is 3°+2′ (W00530.0, not W000530.0); " +
+      "latitude is 2°+2′ (N5328.8).";
+  }
+  return { ok: false, error: msg };
+}
+
+/**
  * @param {string} raw
  * @param {Array<{name:string,lat:number,lon:number}>} [db]
  */
@@ -177,6 +274,7 @@ export function parseWaypointInput(raw, db = []) {
   if (!raw || !String(raw).trim()) {
     return { ok: false, error: "Empty input" };
   }
+  // Compass letters and ARINC letters accepted in either case
   const input = String(raw).trim().toUpperCase().replace(/\s+/g, "");
 
   // Named 5-letter (or ICAO) fix from DB — before digit shorthand
@@ -210,7 +308,7 @@ export function parseWaypointInput(raw, db = []) {
   const arinc = parseArinc424Shorthand(input);
   if (arinc) return arinc;
 
-  // Full FMS: N5000.0W05000.0 / N50W040 / N5030W04000
+  // Full FMS (strict): N5000.0W05000.0 / N50W040 / N5030W04000
   let m = input.match(
     /^([NS])(\d{2})(?:(\d{2})(?:\.(\d+))?)?([EW])(\d{2,3})(?:(\d{2})(?:\.(\d+))?)?$/
   );
@@ -225,12 +323,35 @@ export function parseWaypointInput(raw, db = []) {
     const lonMin = m[7]
       ? parseInt(m[7], 10) + (m[8] ? parseFloat("0." + m[8]) : 0)
       : 0;
-    return okPoint(
-      input,
-      dmsToDeg(latDeg, latMin, 0, latH),
-      dmsToDeg(lonDeg, lonMin, 0, lonH),
-      { format: "fms_full" }
-    );
+    if (latDeg <= 90 && lonDeg <= 180 && latMin < 60 && lonMin < 60) {
+      return okPoint(
+        input,
+        dmsToDeg(latDeg, latMin, 0, latH),
+        dmsToDeg(lonDeg, lonMin, 0, lonH),
+        { format: "fms_full" }
+      );
+    }
+  }
+
+  // Flexible FMS: allow extra leading zeros (N5328.8W000530.0 → W00530.0)
+  m = input.match(/^([NS])(\d+(?:\.\d+)?)([EW])(\d+(?:\.\d+)?)$/);
+  if (m) {
+    const latParsed = parseFlexibleLatPart(m[2], m[1]);
+    const lonParsed = parseFlexibleLonPart(m[4], m[3]);
+    if (latParsed.ok && lonParsed.ok) {
+      return okPoint(input, latParsed.value, lonParsed.value, {
+        format: "fms_flex",
+      });
+    }
+    if (
+      looksLikeExcessZeros(input) ||
+      latParsed.tooMany ||
+      lonParsed.tooMany
+    ) {
+      return unrecognizedCoordError(raw, { tooManyZeros: true });
+    }
+  } else if (looksLikeCoordPair(input) && looksLikeExcessZeros(input)) {
+    return unrecognizedCoordError(raw, { tooManyZeros: true });
   }
 
   // Expanded oceanic: 57N020W / 5730N020W / 57N02030W
@@ -294,10 +415,9 @@ export function parseWaypointInput(raw, db = []) {
     };
   }
 
-  return {
-    ok: false,
-    error: `Unrecognized waypoint: ${raw}. Try SOMAX, ARINC (5215N, 50N50, H5250), or full FMS (N5000.0W05000.0).`,
-  };
+  return unrecognizedCoordError(raw, {
+    tooManyZeros: looksLikeExcessZeros(input),
+  });
 }
 
 function formatCoordLabel(lat, lon) {

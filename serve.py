@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Local static server for MyNatTrack install / update on the LAN.
 
-Proxies NAT track JSON at /api/nat-tracks:
-  1) FAA NMS (preferred — full NOTAM text + TMI)
-  2) VATSIM natTrak (fallback when FAA is unreachable)
+Proxies:
+  /api/nat-tracks     — FAA NMS (preferred) or VATSIM natTrak
+  /api/weather-major  — NHC storms + AWC/IEM SIGMET GeoJSON (educational)
 """
 from __future__ import annotations
 
@@ -20,6 +20,14 @@ from http.server import SimpleHTTPRequestHandler
 
 FAA_NAT_JSON = "https://nms.aim.faa.gov/datanat/nat.json"
 VATSIM_TRACKS = "https://nattrak.vatsim.net/api/tracks"
+
+# Educational weather (CORS bypass for local/LAN testing)
+NHC_STORMS = "https://www.nhc.noaa.gov/CurrentStorms.json"
+AWC_ISIGMET = "https://aviationweather.gov/api/data/isigmet?format=geojson"
+AWC_AIRSIGMET = "https://aviationweather.gov/api/data/airsigmet?format=geojson"
+AWC_VA_ISIGMET = "https://aviationweather.gov/api/data/isigmet?hazard=VA&format=geojson"
+IEM_CONVECTIVE = "https://mesonet.agron.iastate.edu/geojson/convective_sigmet.py"
+WX_UA = "MyNatTrack/2.5.0 (private educational; local proxy)"
 
 
 def _http_get_json(url: str, headers: dict[str, str], timeout: float = 30) -> object:
@@ -52,7 +60,65 @@ class QuietHandler(SimpleHTTPRequestHandler):
         if path in ("/api/lookup-waypoint", "/api/lookup-waypoint/"):
             self._lookup_waypoint()
             return
+        if path in ("/api/weather-major", "/api/weather-major/"):
+            self._proxy_weather_major()
+            return
         super().do_GET()
+
+    def _wx_get(self, url: str) -> tuple[object | None, str | None]:
+        try:
+            return (
+                _http_get_json(
+                    url,
+                    {"Accept": "application/json,text/plain,*/*", "User-Agent": WX_UA},
+                    timeout=25,
+                ),
+                None,
+            )
+        except (
+            urllib.error.URLError,
+            urllib.error.HTTPError,
+            TimeoutError,
+            ValueError,
+            json.JSONDecodeError,
+        ) as exc:
+            return None, str(exc)
+
+    def _proxy_weather_major(self) -> None:
+        """NHC storms + major SIGMET GeoJSON (client parses + validity-filters)."""
+        errors: list[str] = []
+        nhc, err = self._wx_get(NHC_STORMS)
+        if err:
+            errors.append(f"NHC: {err}")
+        pieces: dict[str, object] = {}
+        for key, url in (
+            ("isigmet", AWC_ISIGMET),
+            ("airsigmet", AWC_AIRSIGMET),
+            ("vaisigmet", AWC_VA_ISIGMET),
+            ("iem", IEM_CONVECTIVE),
+        ):
+            fc, err = self._wx_get(url)
+            if err:
+                errors.append(f"{key}: {err}")
+            elif isinstance(fc, dict):
+                pieces[key] = fc
+        if not nhc and not pieces:
+            self._send_json(
+                502, {"error": "; ".join(errors) or "Weather fetch failed", "source": "proxy"}
+            )
+            return
+        self._send_json(
+            200,
+            {
+                "source": "proxy",
+                "nhc": nhc if isinstance(nhc, dict) else {"activeStorms": []},
+                "isigmet": pieces.get("isigmet"),
+                "airsigmet": pieces.get("airsigmet"),
+                "vaisigmet": pieces.get("vaisigmet"),
+                "iem": pieces.get("iem"),
+                "errors": errors or None,
+            },
+        )
 
     def do_POST(self) -> None:  # noqa: N802
         path = self.path.split("?", 1)[0]
@@ -474,6 +540,7 @@ def main() -> None:
         print(f"  Mac:  http://127.0.0.1:{args.port}/")
         print(f"  iPad: http://{ip}:{args.port}/")
         print(f"  NAT:  http://127.0.0.1:{args.port}/api/nat-tracks")
+        print(f"  WX:   http://127.0.0.1:{args.port}/api/weather-major")
         print("Add to Home Screen from Safari after first load. Then works offline.")
         try:
             httpd.serve_forever()

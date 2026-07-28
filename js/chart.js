@@ -143,6 +143,8 @@ function meanCenter(points) {
 /**
  * Zoom the orthographic view so the programmed route (or default NAT frame)
  * fills most of the panel — not the entire globe.
+ * Pan only moves the view centre; it must NOT change fit radius (otherwise
+ * dragging south makes NAT focus points dominate maxAngle and the globe collapses).
  * @param {number} userZoom  pinch/wheel multiplier (1 = auto-fit)
  * @param {{ dLat?: number, dLon?: number }} pan  user pan offsets (deg) from fitted center
  */
@@ -154,31 +156,24 @@ export function globeLayout(width, height, focusPoints = [], userZoom = 1, pan =
   const points =
     focusPoints.length >= 1 ? focusPoints : DEFAULT_VIEW.frame.slice();
 
-  let { lat0, lon0 } =
+  const fit =
     focusPoints.length >= 1
       ? meanCenter(focusPoints)
       : { lat0: DEFAULT_VIEW.lat0, lon0: DEFAULT_VIEW.lon0 };
 
-  // Allow southern hemisphere centres (was clamped to ≥5°N for NAT-only framing,
-  // which hid S-lat waypoints on the back of the orthographic globe).
-  lat0 = Math.max(-85, Math.min(85, lat0 + (Number(pan.dLat) || 0)));
-  lon0 = lon0 + (Number(pan.dLon) || 0);
-  if (lon0 > 180) lon0 -= 360;
-  if (lon0 < -180) lon0 += 360;
-
+  // Fit angular size to unpanned centre so pan feels like sliding a window
   let maxAngle = 0;
   for (const p of points) {
-    maxAngle = Math.max(maxAngle, centralAngleDeg(lat0, lon0, p.lat, p.lon));
+    maxAngle = Math.max(
+      maxAngle,
+      centralAngleDeg(fit.lat0, fit.lon0, p.lat, p.lon)
+    );
   }
-  // Tight framing — only a little ocean context around the track
   maxAngle = Math.max(maxAngle, focusPoints.length >= 2 ? 5 : 14);
   maxAngle *= focusPoints.length >= 2 ? 1.08 : 1.05;
 
   const sinC = Math.sin(toRad(maxAngle));
-  // Outermost focus point near the panel edge
   let radius = sinC > 1e-6 ? (half * 0.96) / sinC : half * 1.4;
-  // For large arcs (e.g. NAT + deep south), do not force a tight zoom floor —
-  // that pushes endpoints off the panel even when they are on the front hemisphere.
   const minRadius = maxAngle > 35 ? half * 0.55 : half * 1.15;
   radius = Math.max(radius, minRadius);
   radius = Math.min(radius, half * 4.5);
@@ -186,7 +181,13 @@ export function globeLayout(width, height, focusPoints = [], userZoom = 1, pan =
   const zoom = Math.max(0.5, Math.min(5, Number(userZoom) || 1));
   radius *= zoom;
 
-  return { radius, cx, cy, lat0, lon0 };
+  // View centre = fit + pan (full globe reachable)
+  let lat0 = fit.lat0 + (Number(pan.dLat) || 0);
+  let lon0 = fit.lon0 + (Number(pan.dLon) || 0);
+  lat0 = Math.max(-85, Math.min(85, lat0));
+  lon0 = ((((lon0 + 180) % 360) + 360) % 360) - 180;
+
+  return { radius, cx, cy, lat0, lon0, fitLat0: fit.lat0, fitLon0: fit.lon0 };
 }
 
 function drawGlobeBase(ctx, layout, bright, width, height) {
@@ -249,11 +250,128 @@ function drawGlobeBase(ctx, layout, bright, width, height) {
   ctx.stroke();
 }
 
+/**
+ * Orthographic land project with cosc retained.
+ * Uses precomputed centre trig (one per drawLand) for coast-dense rings.
+ * @param {{ sinLat0:number, cosLat0:number, lon0:number, cx:number, cy:number, R:number }} C
+ */
+function projectLandPoint(lat, lon, C) {
+  const φ = toRad(lat);
+  const λ = toRad(lon);
+  const sinφ = Math.sin(φ);
+  const cosφ = Math.cos(φ);
+  const cosc =
+    C.sinLat0 * sinφ + C.cosLat0 * cosφ * Math.cos(λ - C.lon0);
+  const x = C.cx + C.R * cosφ * Math.sin(λ - C.lon0);
+  const y =
+    C.cy -
+    C.R * (C.cosLat0 * sinφ - C.sinLat0 * cosφ * Math.cos(λ - C.lon0));
+  return { x, y, cosc, lat, lon, visible: cosc >= 0 };
+}
+
+/** Interpolate edge to the silhouette (cosc ≈ 0). */
+function horizonCut(a, b, C) {
+  let lo = 0;
+  let hi = 1;
+  let best = a;
+  for (let i = 0; i < 12; i += 1) {
+    const t = (lo + hi) * 0.5;
+    const lat = a.lat + (b.lat - a.lat) * t;
+    let dLon = b.lon - a.lon;
+    if (dLon > 180) dLon -= 360;
+    if (dLon < -180) dLon += 360;
+    const lon = a.lon + dLon * t;
+    const p = projectLandPoint(lat, lon, C);
+    best = p;
+    if (p.cosc >= 0) lo = t;
+    else hi = t;
+  }
+  const ang = Math.atan2(best.y - C.cy, best.x - C.cx);
+  return {
+    x: C.cx + C.R * Math.cos(ang),
+    y: C.cy + C.R * Math.sin(ang),
+    onLimb: true,
+  };
+}
+
+function addLimbArc(ctx, C, from, to) {
+  const a0 = Math.atan2(from.y - C.cy, from.x - C.cx);
+  const a1 = Math.atan2(to.y - C.cy, to.x - C.cx);
+  let delta = a1 - a0;
+  while (delta > Math.PI) delta -= Math.PI * 2;
+  while (delta < -Math.PI) delta += Math.PI * 2;
+  const steps = Math.max(3, Math.ceil(Math.abs(delta) / 0.18));
+  for (let i = 1; i <= steps; i += 1) {
+    const a = a0 + (delta * i) / steps;
+    ctx.lineTo(C.cx + C.R * Math.cos(a), C.cy + C.R * Math.sin(a));
+  }
+}
+
+/**
+ * Clip a coast ring to the near hemisphere. Back-side stretches become
+ * silhouette (limb) points so mega-continents can still be filled green.
+ */
+function clippedLandRing(ring, C, step) {
+  const pts = [];
+  for (let i = 0; i < ring.length; i += step) {
+    const [lon, lat] = ring[i];
+    pts.push(projectLandPoint(lat, lon, C));
+  }
+  if (step > 1 && ring.length) {
+    const [lon, lat] = ring[ring.length - 1];
+    pts.push(projectLandPoint(lat, lon, C));
+  }
+  const n = pts.length;
+  if (n < 3) return null;
+
+  let visCount = 0;
+  for (const p of pts) if (p.visible) visCount += 1;
+  if (visCount < 2) return null;
+
+  if (visCount === n) {
+    return pts.map((p) => ({ x: p.x, y: p.y, onLimb: false }));
+  }
+
+  const clipped = [];
+  for (let i = 0; i < n; i += 1) {
+    const a = pts[i];
+    const b = pts[(i + 1) % n];
+    if (a.visible) clipped.push({ x: a.x, y: a.y, onLimb: false });
+    if (a.visible !== b.visible) {
+      clipped.push(horizonCut(a, b, C));
+    }
+  }
+  return clipped.length >= 3 ? clipped : null;
+}
+
+function strokeLandPoly(ctx, C, poly) {
+  const m = poly.length;
+  ctx.moveTo(poly[0].x, poly[0].y);
+  for (let i = 1; i < m; i += 1) {
+    const prev = poly[i - 1];
+    const cur = poly[i];
+    if (prev.onLimb && cur.onLimb) addLimbArc(ctx, C, prev, cur);
+    else ctx.lineTo(cur.x, cur.y);
+  }
+  const last = poly[m - 1];
+  const first = poly[0];
+  if (last.onLimb && first.onLimb) addLimbArc(ctx, C, last, first);
+  ctx.closePath();
+}
+
 function drawLand(ctx, layout, bright, lite = false) {
   if (!landRings || !landRings.length) return;
   const { radius, cx, cy } = layout;
-  // During pan/pinch, subsample coast points for smoother interaction
-  const step = lite ? 3 : 1;
+  const step = lite ? 4 : 1;
+  const lat0 = toRad(layout.lat0);
+  const C = {
+    sinLat0: Math.sin(lat0),
+    cosLat0: Math.cos(lat0),
+    lon0: toRad(layout.lon0),
+    cx,
+    cy,
+    R: radius,
+  };
 
   ctx.save();
   ctx.beginPath();
@@ -261,68 +379,21 @@ function drawLand(ctx, layout, bright, lite = false) {
   ctx.clip();
 
   ctx.fillStyle = bright ? "rgba(46, 110, 58, 0.92)" : "rgba(52, 88, 62, 0.88)";
-  ctx.strokeStyle = bright ? "rgba(0, 40, 0, 0.65)" : "rgba(160, 200, 170, 0.35)";
-  ctx.lineWidth = bright ? 0.9 : 0.7;
+  ctx.strokeStyle = bright ? "rgba(0, 40, 0, 0.65)" : "rgba(160, 200, 170, 0.5)";
+  ctx.lineWidth = bright ? 0.9 : 0.85;
   ctx.lineJoin = "round";
+  ctx.lineCap = "round";
 
   for (const ring of landRings) {
-    let visibleCount = 0;
-    let total = 0;
-    /** @type {{x:number,y:number,visible:boolean}[]} */
-    const projected = [];
-    for (let i = 0; i < ring.length; i += step) {
-      const [lon, lat] = ring[i];
-      const p = project(lat, lon, 0, 0, layout);
-      projected.push(p);
-      total++;
-      if (p.visible) visibleCount++;
-    }
-    // Keep ring closed when subsampling
-    if (step > 1 && ring.length) {
-      const [lon, lat] = ring[ring.length - 1];
-      const p = project(lat, lon, 0, 0, layout);
-      projected.push(p);
-      total++;
-      if (p.visible) visibleCount++;
-    }
-    if (visibleCount < 3) continue;
-
-    // Prefer full fill when most of the ring is on the near side of the globe
-    if (visibleCount / total >= 0.55) {
-      ctx.beginPath();
-      let started = false;
-      for (const p of projected) {
-        if (!p.visible) continue;
-        if (!started) {
-          ctx.moveTo(p.x, p.y);
-          started = true;
-        } else ctx.lineTo(p.x, p.y);
-      }
-      if (started) {
-        ctx.closePath();
-        ctx.fill();
-        if (!lite) ctx.stroke();
-      }
-    } else if (!lite) {
-      // Partial coastline stroke only (avoids wild fill across the limb)
-      ctx.beginPath();
-      let started = false;
-      for (const p of projected) {
-        if (!p.visible) {
-          started = false;
-          continue;
-        }
-        if (!started) {
-          ctx.moveTo(p.x, p.y);
-          started = true;
-        } else ctx.lineTo(p.x, p.y);
-      }
-      ctx.stroke();
-    }
+    const poly = clippedLandRing(ring, C, step);
+    if (!poly) continue;
+    ctx.beginPath();
+    strokeLandPoly(ctx, C, poly);
+    ctx.fill();
+    if (!lite) ctx.stroke();
   }
 
   if (!lite) {
-    // Terminator / night-side shade for roundness
     const shade = ctx.createLinearGradient(cx - radius, cy, cx + radius, cy);
     if (bright) {
       shade.addColorStop(0, "rgba(255,255,255,0.08)");
@@ -1056,9 +1127,458 @@ function drawOac(ctx, layout, bright, opts = {}) {
   ctx.restore();
 }
 
+function pathRing(ctx, layout, ring) {
+  let started = false;
+  for (const w of ring || []) {
+    const p = project(w.lat, w.lon, 0, 0, layout);
+    if (!p.visible) {
+      started = false;
+      continue;
+    }
+    if (!started) {
+      ctx.moveTo(p.x, p.y);
+      started = true;
+    } else ctx.lineTo(p.x, p.y);
+  }
+  return started;
+}
+
+function ringCentroid(ring) {
+  if (!ring?.length) return null;
+  let lat = 0;
+  let lon = 0;
+  for (const p of ring) {
+    lat += p.lat;
+    lon += p.lon;
+  }
+  return { lat: lat / ring.length, lon: lon / ring.length };
+}
+
+const WX_LABEL_OFFSETS = [
+  { dx: 8, dy: -2, align: "left" },
+  { dx: -8, dy: -2, align: "right" },
+  { dx: 8, dy: 12, align: "left" },
+  { dx: -8, dy: 12, align: "right" },
+  { dx: 14, dy: -16, align: "left" },
+  { dx: -14, dy: -16, align: "right" },
+  { dx: 22, dy: 4, align: "left" },
+  { dx: -22, dy: 4, align: "right" },
+  { dx: 0, dy: -20, align: "left" },
+  { dx: 0, dy: 18, align: "left" },
+];
+
+function pickWxLabelSpot(occupied, ax, ay, w, h, width, height) {
+  let best = null;
+  let bestHits = Infinity;
+  for (const off of WX_LABEL_OFFSETS) {
+    const x = off.align === "right" ? ax + off.dx - w : ax + off.dx;
+    const y = ay + off.dy - h / 2;
+    const box = { x, y, w, h };
+    if (
+      width > 0 &&
+      height > 0 &&
+      (box.x < 2 ||
+        box.y < 2 ||
+        box.x + box.w > width - 2 ||
+        box.y + box.h > height - 2)
+    ) {
+      continue;
+    }
+    let hits = 0;
+    for (const o of occupied) {
+      if (rectsOverlap(box, o, 3)) hits += 1;
+    }
+    if (hits === 0) return { box, align: off.align };
+    if (hits < bestHits) {
+      bestHits = hits;
+      best = { box, align: off.align };
+    }
+  }
+  return (
+    best || {
+      box: { x: ax + 8, y: ay - h / 2, w, h },
+      align: "left",
+    }
+  );
+}
+
+function drawWxLabel(ctx, occupied, ax, ay, text, fill, halo, width, height) {
+  if (!text) return;
+  const w = ctx.measureText(text).width;
+  const h = 12;
+  const spot = pickWxLabelSpot(occupied, ax, ay, w, h, width, height);
+  ctx.textAlign = spot.align === "right" ? "right" : "left";
+  const tx =
+    spot.align === "right" ? spot.box.x + spot.box.w : spot.box.x;
+  const ty = spot.box.y + h / 2;
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = halo;
+  ctx.strokeText(text, tx, ty);
+  ctx.fillStyle = fill;
+  ctx.fillText(text, tx, ty);
+  occupied.push(spot.box);
+}
+
+function drawRadarDetail(ctx, layout, radar, lite, width, height) {
+  const tiles = radar?.tiles;
+  if (!tiles?.length || lite) return;
+  const half = Math.min(width || 1, height || 1) * 0.5;
+  const ang =
+    (Math.asin(Math.min(0.999, half / Math.max(layout.radius, 1))) * 180) /
+    Math.PI;
+  // Match weather.js regional gate — no radar on full-globe disc
+  if (ang > 48) return;
+  // Scale pixel size with zoom so intensity reads clearly (MPilot-like blocks)
+  const cell = Math.max(3.2, Math.min(8, (layout.radius / half) * 2.4));
+  const step = cell >= 5 ? 2 : 1;
+  for (const tile of tiles) {
+    const { data, w, h } = tile;
+    for (let py = 0; py < h; py += step) {
+      for (let px = 0; px < w; px += step) {
+        const i = (py * w + px) * 4;
+        const a = data[i + 3];
+        if (a < 28) continue;
+        const lon = ((tile.x + px / w) / 2 ** tile.z) * 360 - 180;
+        const n = Math.PI - (2 * Math.PI * (tile.y + py / h)) / 2 ** tile.z;
+        const lat =
+          (180 / Math.PI) * Math.atan(0.5 * (Math.exp(n) - Math.exp(-n)));
+        const p = project(lat, lon, 0, 0, layout);
+        if (!p.visible) continue;
+        if (width && height && !inCanvas(p, width, height, 0)) continue;
+        ctx.fillStyle = `rgba(${data[i]},${data[i + 1]},${data[i + 2]},${Math.min(0.92, (a / 255) * 0.95)})`;
+        ctx.fillRect(p.x - cell / 2, p.y - cell / 2, cell, cell);
+      }
+    }
+  }
+}
+
+function drawVolcanoIcon(ctx, x, y, bright) {
+  ctx.save();
+  // Cone
+  ctx.beginPath();
+  ctx.moveTo(x, y - 8);
+  ctx.lineTo(x - 7, y + 5);
+  ctx.lineTo(x + 7, y + 5);
+  ctx.closePath();
+  ctx.fillStyle = bright ? "#6b3a12" : "rgba(220, 140, 70, 0.95)";
+  ctx.strokeStyle = bright ? "#ffffff" : "rgba(20, 10, 10, 0.85)";
+  ctx.lineWidth = 1.5;
+  ctx.fill();
+  ctx.stroke();
+  // Crater notch
+  ctx.beginPath();
+  ctx.moveTo(x - 2.2, y - 5);
+  ctx.lineTo(x, y - 2);
+  ctx.lineTo(x + 2.2, y - 5);
+  ctx.strokeStyle = bright ? "#3a1a08" : "rgba(40, 15, 5, 0.9)";
+  ctx.lineWidth = 1.2;
+  ctx.stroke();
+  // Ash puff
+  ctx.beginPath();
+  ctx.arc(x - 1.5, y - 10, 2.2, 0, Math.PI * 2);
+  ctx.arc(x + 2, y - 11.5, 2.6, 0, Math.PI * 2);
+  ctx.fillStyle = bright ? "rgba(80, 80, 80, 0.55)" : "rgba(200, 200, 210, 0.55)";
+  ctx.fill();
+  ctx.restore();
+}
+
+/**
+ * Text SIGMETs (Storms+SIGMET) + optional radar pixels (Live TS) + storm/volcano marks.
+ * @param {{ occupied?: {x:number,y:number,w:number,h:number}[], width?: number, height?: number, radar?: object }} [opts]
+ */
+function drawWeatherLayers(ctx, layout, bright, lite, stormSystems, opts = {}) {
+  const sigmets = stormSystems?.sigmets || [];
+  const storms = stormSystems?.storms || [];
+  const volcanoes = stormSystems?.volcanoes || [];
+  const radar = opts.radar;
+  const occupied = Array.isArray(opts.occupied) ? opts.occupied : [];
+  const width = opts.width || 0;
+  const height = opts.height || 0;
+  if (
+    !sigmets.length &&
+    !storms.length &&
+    !volcanoes.length &&
+    !radar?.tiles?.length
+  ) {
+    return;
+  }
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(layout.cx, layout.cy, layout.radius - 0.5, 0, Math.PI * 2);
+  ctx.clip();
+
+  const hasRadar = !!(radar?.tiles?.length);
+  const isThunderPoly = (poly) => {
+    const haz = String(poly.hazard || "").toUpperCase();
+    const raw = String(poly.raw || "").toUpperCase();
+    return (
+      haz === "TS" ||
+      haz === "CONVECTIVE" ||
+      raw.includes("THUNDER") ||
+      raw.includes("CONVECTIVE") ||
+      /\bTS\b/.test(raw)
+    );
+  };
+  const thunder = [];
+  const other = [];
+  for (const poly of sigmets) {
+    if (isThunderPoly(poly)) thunder.push(poly);
+    else other.push(poly);
+  }
+
+  const drawPolys = (list, fill, stroke, dash, lineWidth) => {
+    for (const poly of list) {
+      for (const ring of poly.rings || []) {
+        ctx.beginPath();
+        if (!pathRing(ctx, layout, ring)) continue;
+        ctx.closePath();
+        ctx.fillStyle = fill;
+        ctx.fill();
+        ctx.strokeStyle = stroke;
+        ctx.lineWidth = lineWidth;
+        ctx.setLineDash(dash);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+    }
+  };
+
+  // Non-convective / VA text SIGMETs (amber)
+  drawPolys(
+    other,
+    bright ? "rgba(180, 110, 20, 0.10)" : "rgba(255, 180, 60, 0.12)",
+    bright ? "rgba(140, 80, 10, 0.65)" : "rgba(255, 190, 80, 0.7)",
+    [5, 4],
+    bright ? 1.4 : 1.3
+  );
+
+  // Convective text SIGMETs (rose) — on Storms+SIGMET; light fill when radar is on
+  drawPolys(
+    thunder,
+    hasRadar
+      ? bright
+        ? "rgba(160, 40, 90, 0.04)"
+        : "rgba(255, 90, 140, 0.05)"
+      : bright
+        ? "rgba(160, 40, 90, 0.10)"
+        : "rgba(255, 90, 140, 0.12)",
+    bright ? "rgba(130, 20, 70, 0.7)" : "rgba(255, 120, 160, 0.8)",
+    [4, 3],
+    bright ? 1.5 : 1.4
+  );
+
+  // Live TS = regional radar intensity only
+  drawRadarDetail(ctx, layout, radar, lite, width, height);
+
+  if (!lite) {
+    ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
+    ctx.font = "700 10px ui-monospace, SFMono-Regular, Menlo, monospace";
+    const stormFill = bright ? "#5a1010" : "rgba(255, 200, 180, 0.95)";
+    const stormHalo = bright ? "rgba(255,255,255,0.85)" : "rgba(10,10,20,0.75)";
+    const sigFill = bright ? "#6a3a00" : "rgba(255, 220, 140, 0.95)";
+    const tsFill = bright ? "#6a1040" : "rgba(255, 180, 210, 0.95)";
+    const volFill = bright ? "#5a2a08" : "rgba(255, 200, 140, 0.95)";
+
+    for (const s of storms) {
+      const p = project(s.lat, s.lon, 0, 0, layout);
+      if (!p.visible) continue;
+      if (width && height && !inCanvas(p, width, height, 4)) continue;
+      ctx.beginPath();
+      ctx.fillStyle = bright ? "#8b1a1a" : "rgba(255, 120, 100, 0.95)";
+      ctx.strokeStyle = bright ? "#ffffff" : "rgba(20, 10, 10, 0.8)";
+      ctx.lineWidth = 2;
+      ctx.arc(p.x, p.y, 5.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      occupied.push({ x: p.x - 6, y: p.y - 6, w: 12, h: 12 });
+      if (Number.isFinite(s.movementDir)) {
+        const rad = ((s.movementDir - 90) * Math.PI) / 180;
+        ctx.beginPath();
+        ctx.strokeStyle = bright ? "#8b1a1a" : "rgba(255, 160, 120, 0.9)";
+        ctx.lineWidth = 1.5;
+        ctx.moveTo(p.x, p.y);
+        ctx.lineTo(p.x + Math.cos(rad) * 14, p.y + Math.sin(rad) * 14);
+        ctx.stroke();
+      }
+      const label = `${s.name}${s.classification ? " " + s.classification : ""}`;
+      drawWxLabel(ctx, occupied, p.x, p.y, label, stormFill, stormHalo, width, height);
+    }
+
+    for (const v of volcanoes) {
+      const p = project(v.lat, v.lon, 0, 0, layout);
+      if (!p.visible) continue;
+      if (width && height && !inCanvas(p, width, height, 6)) continue;
+      drawVolcanoIcon(ctx, p.x, p.y, bright);
+      occupied.push({ x: p.x - 8, y: p.y - 12, w: 16, h: 20 });
+      drawWxLabel(
+        ctx,
+        occupied,
+        p.x,
+        p.y,
+        String(v.name || "VA").slice(0, 16),
+        volFill,
+        stormHalo,
+        width,
+        height
+      );
+    }
+
+    const labelCandidates = [];
+    const seenLabel = new Set(
+      volcanoes.map((v) =>
+        String(v.name || "")
+          .toUpperCase()
+          .replace(/\s+/g, " ")
+          .trim()
+      )
+    );
+    const pushLabel = (poly, fill, halo) => {
+      const haz = String(poly.hazard || "").toUpperCase();
+      const raw = String(poly.raw || "").toUpperCase();
+      const isVa =
+        haz === "VA" ||
+        /\bVA\b/.test(raw) ||
+        raw.includes("VOLCANIC ASH") ||
+        raw.includes("ERUPTION MT");
+      if (isVa && volcanoes.length) return;
+      const text = String(poly.label || poly.hazard || "SIGMET")
+        .toUpperCase()
+        .replace(/\s+/g, " ")
+        .trim()
+        .slice(0, 14);
+      if (!text || seenLabel.has(text)) return;
+      const c = ringCentroid(poly.rings?.[0]);
+      if (!c) return;
+      const p = project(c.lat, c.lon, 0, 0, layout);
+      if (!p.visible) return;
+      if (width && height && !inCanvas(p, width, height, 8)) return;
+      seenLabel.add(text);
+      labelCandidates.push({
+        p,
+        text,
+        fill,
+        halo,
+        d: Math.hypot(p.x - layout.cx, p.y - layout.cy),
+      });
+    };
+    for (const poly of thunder) pushLabel(poly, tsFill, stormHalo);
+    for (const poly of other) pushLabel(poly, sigFill, stormHalo);
+    labelCandidates.sort((a, b) => a.d - b.d);
+    const maxLabels = 12;
+    for (let i = 0; i < labelCandidates.length && i < maxLabels; i += 1) {
+      const L = labelCandidates[i];
+      drawWxLabel(ctx, occupied, L.p.x, L.p.y, L.text, L.fill, L.halo, width, height);
+    }
+  }
+
+  ctx.restore();
+}
+
+function pointInRing(lat, lon, ring) {
+  if (!ring || ring.length < 3) return false;
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const yi = ring[i].lat;
+    const xi = ring[i].lon;
+    const yj = ring[j].lat;
+    const xj = ring[j].lon;
+    const intersect =
+      yi > lat !== yj > lat &&
+      lon < ((xj - xi) * (lat - yi)) / (yj - yi + 1e-12) + xi;
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
+
+function pointInPoly(lat, lon, poly) {
+  for (const ring of poly?.rings || []) {
+    if (pointInRing(lat, lon, ring)) return true;
+  }
+  return false;
+}
+
+/**
+ * Inverse orthographic: canvas pixel → lat/lon (front hemisphere only).
+ */
+export function unproject(x, y, layout) {
+  if (!layout) return null;
+  const R = layout.radius;
+  const dx = (x - layout.cx) / R;
+  const dy = (layout.cy - y) / R;
+  const rho2 = dx * dx + dy * dy;
+  if (rho2 > 1) return null;
+  const rho = Math.sqrt(rho2);
+  const c = Math.asin(Math.min(1, rho));
+  const sinC = Math.sin(c);
+  const cosC = Math.cos(c);
+  const lat0 = toRad(layout.lat0);
+  const lon0 = toRad(layout.lon0);
+  if (rho < 1e-9) {
+    return { lat: layout.lat0, lon: layout.lon0 };
+  }
+  const lat = Math.asin(
+    cosC * Math.sin(lat0) + (dy * sinC * Math.cos(lat0)) / rho
+  );
+  const lon =
+    lon0 +
+    Math.atan2(
+      dx * sinC,
+      rho * Math.cos(lat0) * cosC - dy * Math.sin(lat0) * sinC
+    );
+  return { lat: (lat * 180) / Math.PI, lon: (((lon * 180) / Math.PI + 540) % 360) - 180 };
+}
+
+/**
+ * Nearest / containing weather advisory under a canvas point.
+ * @returns {object|null}
+ */
+export function hitTestWeather(layout, x, y, stormSystems) {
+  if (!layout) return null;
+
+  // Prefer volcano icon tap (small target)
+  for (const v of stormSystems?.volcanoes || []) {
+    const p = project(v.lat, v.lon, 0, 0, layout);
+    if (!p.visible) continue;
+    if (Math.hypot(p.x - x, p.y - y) <= 22) return v;
+  }
+
+  const ll = unproject(x, y, layout);
+  if (!ll) return null;
+  const candidates = [];
+  for (const poly of stormSystems?.sigmets || []) {
+    if (pointInPoly(ll.lat, ll.lon, poly)) candidates.push(poly);
+  }
+  if (!candidates.length) return null;
+  // Prefer smallest area (most specific box)
+  let best = candidates[0];
+  let bestArea = Infinity;
+  for (const poly of candidates) {
+    const ring = poly.rings?.[0];
+    if (!ring?.length) continue;
+    let minLat = 90;
+    let maxLat = -90;
+    let minLon = 180;
+    let maxLon = -180;
+    for (const p of ring) {
+      minLat = Math.min(minLat, p.lat);
+      maxLat = Math.max(maxLat, p.lat);
+      minLon = Math.min(minLon, p.lon);
+      maxLon = Math.max(maxLon, p.lon);
+    }
+    const area = Math.max(0.01, maxLat - minLat) * Math.max(0.01, maxLon - minLon);
+    if (area < bestArea) {
+      bestArea = area;
+      best = poly;
+    }
+  }
+  return best;
+}
+
 /**
  * @param {HTMLCanvasElement} canvas
- * @param {{ route: any[], natTracks?: any[], bright?: boolean, showNatTracks?: boolean, zoom?: number, pan?: {dLat?:number,dLon?:number}, lite?: boolean }} data
+ * @param {{ route: any[], natTracks?: any[], bright?: boolean, showNatTracks?: boolean, zoom?: number, pan?: {dLat?:number,dLon?:number}, lite?: boolean, stormSystems?: object, liveRadar?: object }} data
  */
 export function drawChart(canvas, data) {
   const lite = data.lite === true;
@@ -1087,8 +1607,23 @@ export function drawChart(canvas, data) {
       focusPoints.push({ lat: w.lat, lon: w.lon });
     }
   }
-  if (!focusPoints.length && data.gcPlan) {
-    for (const end of [data.gcPlan.dep, data.gcPlan.arr]) {
+  if (!focusPoints.length && data.gcPlan?.points?.length) {
+    // Frame the great-circle arc (not just endpoints) so long GCs stay in view
+    const pts = data.gcPlan.points;
+    const step = Math.max(1, Math.floor(pts.length / 24));
+    for (let i = 0; i < pts.length; i += step) {
+      const p = pts[i];
+      if (p && Number.isFinite(p.lat) && Number.isFinite(p.lon)) {
+        focusPoints.push({ lat: p.lat, lon: p.lon });
+      }
+    }
+    const last = pts[pts.length - 1];
+    if (last && Number.isFinite(last.lat) && Number.isFinite(last.lon)) {
+      focusPoints.push({ lat: last.lat, lon: last.lon });
+    }
+  }
+  if (!focusPoints.length && data.gcFocusAirports?.length) {
+    for (const end of data.gcFocusAirports) {
       if (end && Number.isFinite(end.lat) && Number.isFinite(end.lon)) {
         focusPoints.push({ lat: end.lat, lon: end.lon });
       }
@@ -1107,7 +1642,14 @@ export function drawChart(canvas, data) {
   drawGrid(ctx, layout, bright, width, height, lite);
   // Airspace lines under airports; labels after so they can dodge ICAO text
   if (data.showAirspace !== false) {
-    drawOac(ctx, layout, bright, { lite, skipLabels: true, width, height });
+    drawOac(ctx, layout, bright, {
+      lite,
+      skipLabels: true,
+      // During gesture, skip heavy FIR polylines too
+      skipLines: lite,
+      width,
+      height,
+    });
   }
   const airportBoxes = drawDiversionAirports(
     ctx,
@@ -1119,13 +1661,23 @@ export function drawChart(canvas, data) {
     lite,
     data.show747Airports === true
   );
-  if (data.showAirspace !== false) {
+  if (data.showAirspace !== false && !lite) {
     drawOac(ctx, layout, bright, {
       lite,
       skipLines: true,
       occupied: airportBoxes,
       width,
       height,
+    });
+  }
+
+  // Skip weather while gesturing — biggest fill-rate cost after land
+  if (!lite && (data.stormSystems || data.liveRadar)) {
+    drawWeatherLayers(ctx, layout, bright, lite, data.stormSystems, {
+      occupied: airportBoxes,
+      width,
+      height,
+      radar: data.liveRadar,
     });
   }
 
