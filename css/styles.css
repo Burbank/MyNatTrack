@@ -836,6 +836,15 @@ body.viewport-a2903 .gps-ref-icao {
   color: var(--muted);
 }
 
+/* GPS fix time vs iPad clock (possible jam / spoof / wrong system time) */
+.utc-chip-label.is-utc-warn {
+  color: #f0c060;
+}
+
+html.theme-bright .utc-chip-label.is-utc-warn {
+  color: #8a4a00;
+}
+
 .utc-chip-time {
   font-size: 0.95rem;
   font-weight: 700;

@@ -2093,6 +2093,136 @@
       "region": "learned",
       "accuracy": "approximate",
       "notes": "Learned from NAT tracks message"
+    },
+    {
+      "id": "5130/30",
+      "name": "5130/30",
+      "lat": 51.5,
+      "lon": -30.0,
+      "category": "nat-track",
+      "region": "learned",
+      "accuracy": "approximate",
+      "notes": "Learned from NAT tracks message"
+    },
+    {
+      "id": "5130/40",
+      "name": "5130/40",
+      "lat": 51.5,
+      "lon": -40.0,
+      "category": "nat-track",
+      "region": "learned",
+      "accuracy": "approximate",
+      "notes": "Learned from NAT tracks message"
+    },
+    {
+      "id": "5030/30",
+      "name": "5030/30",
+      "lat": 50.5,
+      "lon": -30.0,
+      "category": "nat-track",
+      "region": "learned",
+      "accuracy": "approximate",
+      "notes": "Learned from NAT tracks message"
+    },
+    {
+      "id": "5030/40",
+      "name": "5030/40",
+      "lat": 50.5,
+      "lon": -40.0,
+      "category": "nat-track",
+      "region": "learned",
+      "accuracy": "approximate",
+      "notes": "Learned from NAT tracks message"
+    },
+    {
+      "id": "5030/50",
+      "name": "5030/50",
+      "lat": 50.5,
+      "lon": -50.0,
+      "category": "nat-track",
+      "region": "learned",
+      "accuracy": "approximate",
+      "notes": "Learned from NAT tracks message"
+    },
+    {
+      "id": "4930/20",
+      "name": "4930/20",
+      "lat": 49.5,
+      "lon": -20.0,
+      "category": "nat-track",
+      "region": "learned",
+      "accuracy": "approximate",
+      "notes": "Learned from NAT tracks message"
+    },
+    {
+      "id": "4930/30",
+      "name": "4930/30",
+      "lat": 49.5,
+      "lon": -30.0,
+      "category": "nat-track",
+      "region": "learned",
+      "accuracy": "approximate",
+      "notes": "Learned from NAT tracks message"
+    },
+    {
+      "id": "4930/40",
+      "name": "4930/40",
+      "lat": 49.5,
+      "lon": -40.0,
+      "category": "nat-track",
+      "region": "learned",
+      "accuracy": "approximate",
+      "notes": "Learned from NAT tracks message"
+    },
+    {
+      "id": "4930/50",
+      "name": "4930/50",
+      "lat": 49.5,
+      "lon": -50.0,
+      "category": "nat-track",
+      "region": "learned",
+      "accuracy": "approximate",
+      "notes": "Learned from NAT tracks message"
+    },
+    {
+      "id": "48/15",
+      "name": "48/15",
+      "lat": 48.0,
+      "lon": -15.0,
+      "category": "nat-track",
+      "region": "learned",
+      "accuracy": "approximate",
+      "notes": "Learned from NAT tracks message"
+    },
+    {
+      "id": "4830/20",
+      "name": "4830/20",
+      "lat": 48.5,
+      "lon": -20.0,
+      "category": "nat-track",
+      "region": "learned",
+      "accuracy": "approximate",
+      "notes": "Learned from NAT tracks message"
+    },
+    {
+      "id": "47/15",
+      "name": "47/15",
+      "lat": 47.0,
+      "lon": -15.0,
+      "category": "nat-track",
+      "region": "learned",
+      "accuracy": "approximate",
+      "notes": "Learned from NAT tracks message"
+    },
+    {
+      "id": "4730/20",
+      "name": "4730/20",
+      "lat": 47.5,
+      "lon": -20.0,
+      "category": "nat-track",
+      "region": "learned",
+      "accuracy": "approximate",
+      "notes": "Learned from NAT tracks message"
     }
   ]
 }

@@ -111,6 +111,10 @@ const state = {
   gpsWatchId: null,
   /** Last frozen stationary cockpit coords (null while moving / unknown) */
   gpsStationary: null,
+  /** True when last GPS fix time vs system clock exceeded GPS_TIME_WARN_SEC */
+  gpsTimeWarn: false,
+  /** Last |fix − system| seconds at fix (for tooltip); null when no fix */
+  gpsTimeSkewSec: null,
   /** edit = route+chart+legs; fly = chart left, legs right */
   uiMode: "edit",
   /**
@@ -242,6 +246,8 @@ const el = {
   natClockEast: document.getElementById("nat-clock-east"),
   natClockWest: document.getElementById("nat-clock-west"),
   chartUtcClock: document.getElementById("chart-utc-clock"),
+  chartUtcLabel: document.getElementById("chart-utc-label"),
+  chartUtcChip: document.getElementById("chart-utc-chip"),
   chartGpsCoords: document.getElementById("chart-gps-coords"),
   chartGpsLat: document.getElementById("chart-gps-lat"),
   chartGpsLon: document.getElementById("chart-gps-lon"),
@@ -252,6 +258,8 @@ const el = {
   gpsRefLon: document.getElementById("gps-ref-lon"),
   gpsRefDelta: document.getElementById("gps-ref-delta"),
   natUtcClock: document.getElementById("nat-utc-clock"),
+  natUtcLabel: document.getElementById("nat-utc-label"),
+  natUtcChip: document.getElementById("nat-utc-chip"),
   themeBtn: document.getElementById("theme-btn"),
   chartFullscreenBtn: document.getElementById("chart-fullscreen-btn"),
   chartRouteSummary: document.getElementById("chart-route-summary"),
@@ -2734,10 +2742,11 @@ function loadUiMode() {
 /**
  * Coarse location is enough for Atlantic chart ownship (≈1 NM / cell-WiFi class).
  * enableHighAccuracy:true maps to iOS “Precise Location” and re-prompts more often.
+ * maximumAge kept well under GPS_TIME_WARN_SEC so a cached fix does not look like clock skew.
  */
 const GPS_WATCH_OPTS = {
   enableHighAccuracy: false,
-  maximumAge: 30000,
+  maximumAge: 5000,
   timeout: 20000,
 };
 
@@ -2753,6 +2762,8 @@ const GPS_INTEGRITY_WARN_NM = 4;
  * Mid-ocean “nearest airport 420 NM” must not amber the GPS chip.
  */
 const GPS_INTEGRITY_NEAR_FIELD_NM = 25;
+/** GPS fix timestamp vs iPad clock → amber UTC letters (works while moving) */
+const GPS_TIME_WARN_SEC = 10;
 
 let gpsWasStationary = true;
 let gpsCoordsCopiedTimer = 0;
@@ -2819,6 +2830,46 @@ function hideGpsCoordsChip() {
   if (el.gpsRefChip) {
     el.gpsRefChip.hidden = true;
     el.gpsRefChip.classList.remove("is-warn", "is-far");
+  }
+}
+
+const UTC_CHIP_TITLE_OK = "Coordinated Universal Time";
+
+function clearUtcTimeIntegrityWarn() {
+  state.gpsTimeWarn = false;
+  state.gpsTimeSkewSec = null;
+  for (const label of [el.chartUtcLabel, el.natUtcLabel]) {
+    if (!label) continue;
+    label.classList.remove("is-utc-warn");
+  }
+  for (const chip of [el.chartUtcChip, el.natUtcChip]) {
+    if (chip) chip.title = UTC_CHIP_TITLE_OK;
+  }
+}
+
+/**
+ * Compare GeolocationPosition.timestamp with the iPad clock.
+ * Evaluated at fix receipt only (not on the 1 Hz clock tick) so age does not drift into a false warn.
+ * Works while moving — only the UTC letters go amber.
+ */
+function updateUtcTimeIntegrityUi(fixTimestampMs, systemNowMs = Date.now()) {
+  if (!Number.isFinite(fixTimestampMs)) {
+    clearUtcTimeIntegrityWarn();
+    return;
+  }
+  const skewSec = Math.abs(fixTimestampMs - systemNowMs) / 1000;
+  state.gpsTimeSkewSec = skewSec;
+  const warn = skewSec > GPS_TIME_WARN_SEC;
+  state.gpsTimeWarn = warn;
+  const tip = warn
+    ? `GPS fix time differs from iPad clock by ${skewSec.toFixed(0)} s (threshold ${GPS_TIME_WARN_SEC} s) — check for jam/spoof or wrong system time`
+    : UTC_CHIP_TITLE_OK;
+  for (const label of [el.chartUtcLabel, el.natUtcLabel]) {
+    if (!label) continue;
+    label.classList.toggle("is-utc-warn", warn);
+  }
+  for (const chip of [el.chartUtcChip, el.natUtcChip]) {
+    if (chip) chip.title = tip;
   }
 }
 
@@ -2981,7 +3032,9 @@ function startGpsWatch() {
         accuracy: c.accuracy,
         heading: Number.isFinite(c.heading) ? c.heading : null,
         speed: Number.isFinite(c.speed) ? c.speed : null,
+        timestamp: pos.timestamp,
       };
+      updateUtcTimeIntegrityUi(pos.timestamp);
       refreshTotalsFromGps();
       paintOwnshipOnly();
       updateGpsCoordsChip();
@@ -2994,6 +3047,7 @@ function startGpsWatch() {
         paintOwnshipOnly();
       }
       hideGpsCoordsChip();
+      clearUtcTimeIntegrityWarn();
     },
     GPS_WATCH_OPTS
   );

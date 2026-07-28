@@ -212,9 +212,9 @@
           <div class="panel-head chart-toolbar">
             <div class="chart-toolbar-top">
               <div class="chart-time-block">
-                <div class="utc-chip" title="Coordinated Universal Time" aria-live="polite">
+                <div class="utc-chip" id="chart-utc-chip" title="Coordinated Universal Time" aria-live="polite">
                   <span class="utc-chip-time mono" id="chart-utc-clock">——:——:——</span>
-                  <span class="utc-chip-label">UTC</span>
+                  <span class="utc-chip-label" id="chart-utc-label">UTC</span>
                 </div>
                 <div class="gps-integrity" id="gps-integrity" hidden>
                   <button
@@ -391,12 +391,18 @@
             Ownship (Fly): coarse location only — Precise Location is not required.
             When stationary, cockpit lat/lon appears beside the UTC clock (mini and full screen);
             tap to copy an FMS paste string (e.g. N2546.3W08011.4) and centre the chart. Hidden while moving.
-            A twin chip shows the nearest airport ARP (vertical IATA when known, else ICAO + coords + NM). If you are within
-            ~25 NM of that field and GPS is more than 4 NM from the ARP, present position turns amber
-            (educational jam/spoof cue — not certified).
             To stop Safari asking each visit: iPad <strong>Settings → Apps → Safari → Location → Allow</strong>
             (or Settings → Safari → Location). Sites cannot store a lasting “permission cookie” for GPS;
             that choice lives in Safari/iOS settings.
+          </p>
+          <p class="muted settings-integrity-note">
+            <strong>Educational jam / spoof cues (not certified):</strong>
+            (1) <em>Position</em> — while stationary, a twin chip shows the nearest airport ARP (vertical IATA when known, else ICAO)
+            with ARP coords and NM. If you are within ~25&nbsp;NM of that field and GPS is more than 4&nbsp;NM from the ARP,
+            present position and the ARP chip turn amber. Mid-ocean “nearest airport hundreds of NM away” does not amber.
+            (2) <em>Time</em> — whenever a GPS fix is available (including while moving), the app compares the fix timestamp
+            with the iPad system clock. If they differ by more than 10&nbsp;seconds, the <strong>UTC</strong> letters on the clock
+            turn amber (digits stay normal). Clear when GPS is lost. Browser location time is OS fix time, not certified GNSS time.
           </p>
           <p class="muted settings-gc-note">
             Full-screen with no route: 747-8 airports appear on the chart; tap or type two for a great-circle plan (NM + rough time with westerlies).
@@ -796,9 +802,9 @@
             <h2 id="nat-title">Atlantic tracks message</h2>
             <div class="nat-tmi-row">
               <div class="nat-tmi" id="nat-tmi" aria-live="polite">TMI —</div>
-              <div class="utc-chip utc-chip-inline" title="Coordinated Universal Time" aria-live="polite">
+              <div class="utc-chip utc-chip-inline" id="nat-utc-chip" title="Coordinated Universal Time" aria-live="polite">
                 <span class="utc-chip-time mono" id="nat-utc-clock">———:——:——:——</span>
-                <span class="utc-chip-label">UTC</span>
+                <span class="utc-chip-label" id="nat-utc-label">UTC</span>
               </div>
             </div>
             <span class="muted" id="nat-status">Not loaded</span>
