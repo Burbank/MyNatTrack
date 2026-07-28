@@ -725,7 +725,7 @@ html.theme-bright .gps-coords-chip.is-gps-warn .gps-coords-lon {
   cursor: pointer;
   line-height: 1.1;
   -webkit-tap-highlight-color: transparent;
-  max-width: 7.2rem;
+  max-width: 6.8rem;
 }
 
 .gps-ref-chip[hidden] {
@@ -743,11 +743,11 @@ html.theme-bright .gps-coords-chip.is-gps-warn .gps-coords-lon {
   justify-content: center;
   align-items: center;
   gap: 0;
-  min-width: 0.72rem;
-  padding: 0.05rem 0.05rem;
-  font: 700 0.52rem ui-monospace, SFMono-Regular, Menlo, monospace;
+  min-width: 0.78rem;
+  padding: 0.05rem 0.08rem;
+  font: 700 0.58rem ui-monospace, SFMono-Regular, Menlo, monospace;
   letter-spacing: 0.02em;
-  line-height: 1.05;
+  line-height: 1.08;
   color: var(--muted, #8a9bb0);
   text-transform: uppercase;
   border-right: 1px solid rgba(140, 170, 200, 0.22);
@@ -820,13 +820,13 @@ body.chart-fullscreen .gps-ref-lon {
 }
 
 body.viewport-a2903 .gps-ref-chip {
-  max-width: 6.6rem;
+  max-width: 6.2rem;
   padding: 0.1rem 0.26rem 0.1rem 0.18rem;
 }
 
 body.viewport-a2903 .gps-ref-icao {
-  font-size: 0.48rem;
-  min-width: 0.62rem;
+  font-size: 0.54rem;
+  min-width: 0.7rem;
 }
 
 .utc-chip-label {

@@ -27,6 +27,7 @@ import {
 } from "./magvar.js";
 import { drawChart, loadLandData, paintOwnshipOverlay, hitTestChartAirport, hitTestWeather } from "./chart.js";
 import { lookupAirport747, airports747List } from "./airports747.js";
+import { airportDisplayCode } from "./airportIata.js";
 import {
   loadStormSystemsAndSigmets,
   refreshStormSystemsInBackground,
@@ -2821,12 +2822,9 @@ function hideGpsCoordsChip() {
   }
 }
 
-function setGpsRefIcaoLetters(icao) {
+function setGpsRefCodeLetters(icao) {
   if (!el.gpsRefIcao) return;
-  const code = String(icao || "")
-    .trim()
-    .toUpperCase()
-    .slice(0, 4);
+  const code = airportDisplayCode(icao).slice(0, 4);
   el.gpsRefIcao.innerHTML = code
     ? [...code].map((ch) => `<span class="icao-ch">${ch}</span>`).join("")
     : "";
@@ -2843,8 +2841,9 @@ function updateGpsIntegrityUi(gpsLat, gpsLon) {
   const nearField = nearest.distanceNm <= GPS_INTEGRITY_NEAR_FIELD_NM;
   const mismatch =
     nearField && nearest.distanceNm > GPS_INTEGRITY_WARN_NM;
+  const displayCode = airportDisplayCode(nearest.icao);
 
-  setGpsRefIcaoLetters(nearest.icao);
+  setGpsRefCodeLetters(nearest.icao);
   if (el.gpsRefLat) el.gpsRefLat.textContent = formatCockpitLat(nearest.lat);
   if (el.gpsRefLon) el.gpsRefLon.textContent = formatCockpitLon(nearest.lon);
   if (el.gpsRefDelta) {
@@ -2863,15 +2862,19 @@ function updateGpsIntegrityUi(gpsLat, gpsLon) {
     lookupAirport747(nearest.icao)?.shortName ||
     DIVERSION_AIRPORTS.find((a) => a.icao === nearest.icao)?.name ||
     nearest.icao;
+  const idLabel =
+    displayCode !== nearest.icao
+      ? `${displayCode}/${nearest.icao}`
+      : nearest.icao;
   const tip = mismatch
-    ? `GPS ${nearest.distanceNm.toFixed(1)} NM from ${nearest.icao} ARP (${short}) — check for jam/spoof`
+    ? `GPS ${nearest.distanceNm.toFixed(1)} NM from ${idLabel} ARP (${short}) — check for jam/spoof`
     : nearField
-      ? `${nearest.icao} ARP (${short}) · ${nearest.distanceNm.toFixed(1)} NM — GPS integrity OK`
-      : `Nearest ${nearest.icao} (${short}) · ${Math.round(nearest.distanceNm)} NM — integrity warn only within ${GPS_INTEGRITY_NEAR_FIELD_NM} NM of a field`;
+      ? `${idLabel} ARP (${short}) · ${nearest.distanceNm.toFixed(1)} NM — GPS integrity OK`
+      : `Nearest ${idLabel} (${short}) · ${Math.round(nearest.distanceNm)} NM — integrity warn only within ${GPS_INTEGRITY_NEAR_FIELD_NM} NM of a field`;
   el.gpsRefChip.title = tip;
   el.gpsRefChip.setAttribute(
     "aria-label",
-    `${nearest.icao} airport reference, ${nearest.distanceNm.toFixed(1)} nautical miles`
+    `${idLabel} airport reference, ${nearest.distanceNm.toFixed(1)} nautical miles`
   );
   if (el.chartGpsCoords) {
     el.chartGpsCoords.title = mismatch
@@ -2879,7 +2882,7 @@ function updateGpsIntegrityUi(gpsLat, gpsLon) {
       : "Present position (stationary). Tap to copy FMS coords for route paste and centre chart.";
   }
 
-  return { ...nearest, nearField, mismatch, short };
+  return { ...nearest, nearField, mismatch, short, displayCode };
 }
 
 function updateGpsCoordsChip() {
