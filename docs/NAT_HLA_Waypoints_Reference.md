@@ -318,13 +318,19 @@ Coordinate fixes absorbed from downloaded OTS track routings (approximate; educa
 | 42/60 | N42 00.0 | W060 00.0 | Learned from NAT tracks message |
 | 44/50 | N44 00.0 | W050 00.0 | Learned from NAT tracks message |
 | 45/40 | N45 00.0 | W040 00.0 | Learned from NAT tracks message |
+| 45/50 | N45 00.0 | W050 00.0 | Learned from NAT tracks message |
 | 46/50 | N46 00.0 | W050 00.0 | Learned from NAT tracks message |
+| 47/40 | N47 00.0 | W040 00.0 | Learned from NAT tracks message |
 | 47/50 | N47 00.0 | W050 00.0 | Learned from NAT tracks message |
 | 48/30 | N48 00.0 | W030 00.0 | Learned from NAT tracks message |
+| 48/40 | N48 00.0 | W040 00.0 | Learned from NAT tracks message |
 | 48/50 | N48 00.0 | W050 00.0 | Learned from NAT tracks message |
 | 49/20 | N49 00.0 | W020 00.0 | Learned from NAT tracks message |
+| 49/30 | N49 00.0 | W030 00.0 | Learned from NAT tracks message |
 | 49/40 | N49 00.0 | W040 00.0 | Learned from NAT tracks message |
 | 49/50 | N49 00.0 | W050 00.0 | Learned from NAT tracks message |
+| 50/20 | N50 00.0 | W020 00.0 | Learned from NAT tracks message |
+| 50/30 | N50 00.0 | W030 00.0 | Learned from NAT tracks message |
 | 50/40 | N50 00.0 | W040 00.0 | Learned from NAT tracks message |
 | 50/50 | N50 00.0 | W050 00.0 | Learned from NAT tracks message |
 | 51/20 | N51 00.0 | W020 00.0 | Learned from NAT tracks message |
@@ -362,8 +368,16 @@ Coordinate fixes absorbed from downloaded OTS track routings (approximate; educa
 | 57/30 | N57 00.0 | W030 00.0 | Learned from NAT tracks message |
 | 57/40 | N57 00.0 | W040 00.0 | Learned from NAT tracks message |
 | 57/50 | N57 00.0 | W050 00.0 | Learned from NAT tracks message |
+| 5730/20 | N57 30.0 | W020 00.0 | Learned from NAT tracks message |
 | 5730/30 | N57 30.0 | W030 00.0 | Learned from NAT tracks message |
+| 58/20 | N58 00.0 | W020 00.0 | Learned from NAT tracks message |
 | 58/30 | N58 00.0 | W030 00.0 | Learned from NAT tracks message |
+| 58/40 | N58 00.0 | W040 00.0 | Learned from NAT tracks message |
+| 59/20 | N59 00.0 | W020 00.0 | Learned from NAT tracks message |
+| 59/30 | N59 00.0 | W030 00.0 | Learned from NAT tracks message |
+| 59/40 | N59 00.0 | W040 00.0 | Learned from NAT tracks message |
+| 60/20 | N60 00.0 | W020 00.0 | Learned from NAT tracks message |
+| 60/30 | N60 00.0 | W030 00.0 | Learned from NAT tracks message |
 | ONZIN | S85 00.0 | E000 00.0 | Learned from NAT tracks message |
 | SOCCO | N21 07.0 | W063 03.7 | Learned from NAT tracks message |
 

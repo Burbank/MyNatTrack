@@ -1,7 +1,21 @@
 {
   "version": "2026-07-26-2200Z",
-  "accuracyVerifiedOn": "2026-07-27",
+  "accuracyVerifiedOn": "2026-07-28",
   "disclaimer": "Reference compilation only – NOT for navigation. Always verify with current official AIPs, NOTAMs, and certified FMS/nav database before flight.",
+  "sourceDoc": "NAT_HLA_Waypoints_Reference.md + NAT_HLA_Named_Waypoints_Sample.md + OpenNav + TC AIM NAT",
+  "coordinateSources": {
+    "priority": [
+      "Transport Canada AIM NAT Table 1.1 (Gander 050°W OEPs)",
+      "Transport Canada AIM NAT explicit coordinates (e.g. LIBOR 6101N06241W)",
+      "AirNav Ireland AIP ENR 4.4 (oceanic entry/exit points)",
+      "FAA NFDC Location ID — Fixes/Waypoints (official US / many oceanic fixes)",
+      "Manual Teach (user) — never overwritten by online lookup"
+    ],
+    "notAuthoritative": [
+      "OpenNav"
+    ],
+    "note": "Eurocontrol EAD (EASA-certified AIS) requires registration; not used for automated bulk download. Official AIM/AIP/FAA overrule OpenNav. FAA LID coordinates for Gander 050°W OEP names disagree with TC AIM Table 1.1 — AIM wins for those OEPs."
+  },
   "waypoints": [
     {
       "id": "ALLRY",
@@ -11,7 +25,8 @@
       "category": "oceanic_oep",
       "region": "west",
       "accuracy": "exact",
-      "notes": "Transport Canada AIM NAT Table 1.1 / OEP association (5100… / 050W family). Educational — verify current AIM/AIP."
+      "notes": "Transport Canada AIM NAT Table 1.1 — 5100N05000W. Locked against OpenNav (often wrong 052°W). Educational — verify current AIM.",
+      "source": "tc-aim-nat-table-1.1"
     },
     {
       "id": "ATSUR",
@@ -41,7 +56,8 @@
       "category": "oceanic_oep",
       "region": "west",
       "accuracy": "exact",
-      "notes": "Transport Canada AIM NAT Table 1.1 / OEP association (5030… / 050W family). Educational — verify current AIM/AIP."
+      "notes": "Transport Canada AIM NAT Table 1.1 — 5030N05000W. Locked against OpenNav (often wrong 052°W). Educational — verify current AIM.",
+      "source": "tc-aim-nat-table-1.1"
     },
     {
       "id": "CUDDY",
@@ -51,7 +67,8 @@
       "category": "oceanic_oep",
       "region": "west",
       "accuracy": "exact",
-      "notes": "Transport Canada AIM NAT Table 1.1 / OEP association (5800… / 050W family). Educational — verify current AIM/AIP."
+      "notes": "Transport Canada AIM NAT Table 1.1 — 5800N05000W. Locked against OpenNav (often wrong 052°W). Educational — verify current AIM.",
+      "source": "tc-aim-nat-table-1.1"
     },
     {
       "id": "DOGAL",
@@ -61,7 +78,8 @@
       "category": "oceanic_oep",
       "region": "east",
       "accuracy": "exact",
-      "notes": "Confirmed OpenNav (UK). Frequent OTS point."
+      "notes": "AirNav Ireland AIP ENR 4.4 — 540000N 0150000W (Oceanic Entry & Exit). Educational — verify current AIP.",
+      "source": "ie-aip-enr-4.4"
     },
     {
       "id": "DORYY",
@@ -71,7 +89,8 @@
       "category": "oceanic_oep",
       "region": "west",
       "accuracy": "exact",
-      "notes": "Transport Canada AIM NAT Table 1.1 / OEP association (5800… / 050W family). Educational — verify current AIM/AIP."
+      "notes": "Transport Canada AIM NAT Table 1.1 — 5800N05000W. Locked against OpenNav (often wrong 052°W). Educational — verify current AIM.",
+      "source": "tc-aim-nat-table-1.1"
     },
     {
       "id": "ELSIR",
@@ -81,7 +100,8 @@
       "category": "oceanic_oep",
       "region": "west",
       "accuracy": "exact",
-      "notes": "Transport Canada AIM NAT Table 1.1 / OEP association (5000… / 050W family). Educational — verify current AIM/AIP."
+      "notes": "Transport Canada AIM NAT Table 1.1 — 5000N05000W. Locked against OpenNav (often wrong 052°W). Educational — verify current AIM.",
+      "source": "tc-aim-nat-table-1.1"
     },
     {
       "id": "ENNSO",
@@ -91,7 +111,8 @@
       "category": "oceanic_oep",
       "region": "west",
       "accuracy": "exact",
-      "notes": "Transport Canada AIM NAT Table 1.1 / OEP association (5730… / 050W family). Educational — verify current AIM/AIP."
+      "notes": "Transport Canada AIM NAT Table 1.1 — 5730N05000W. Locked against OpenNav (often wrong 052°W). Educational — verify current AIM.",
+      "source": "tc-aim-nat-table-1.1"
     },
     {
       "id": "ETIKI",
@@ -101,7 +122,8 @@
       "category": "oceanic_oep",
       "region": "east",
       "accuracy": "approximate",
-      "notes": "OpenNav/UK lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+      "notes": "Pending official AIP (was OpenNav/UK) from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC.",
+      "source": "pending-aip"
     },
     {
       "id": "HOIST",
@@ -111,7 +133,8 @@
       "category": "oceanic_oep",
       "region": "west",
       "accuracy": "exact",
-      "notes": "Transport Canada AIM NAT Table 1.1 / OEP association (5700… / 050W family). Educational — verify current AIM/AIP."
+      "notes": "Transport Canada AIM NAT Table 1.1 — 5700N05000W. Locked against OpenNav (often wrong 052°W). Educational — verify current AIM.",
+      "source": "tc-aim-nat-table-1.1"
     },
     {
       "id": "IBERG",
@@ -121,7 +144,8 @@
       "category": "oceanic_oep",
       "region": "west",
       "accuracy": "exact",
-      "notes": "Transport Canada AIM NAT Table 1.1 / OEP association (4930… / 050W family). Educational — verify current AIM/AIP."
+      "notes": "Transport Canada AIM NAT Table 1.1 — 4930N05000W. Locked against OpenNav (often wrong 052°W). Educational — verify current AIM.",
+      "source": "tc-aim-nat-table-1.1"
     },
     {
       "id": "IRLOK",
@@ -131,7 +155,8 @@
       "category": "oceanic_oep",
       "region": "west",
       "accuracy": "exact",
-      "notes": "Transport Canada AIM NAT Table 1.1 / OEP association (5630… / 050W family). Educational — verify current AIM/AIP."
+      "notes": "Transport Canada AIM NAT Table 1.1 — 5630N05000W. Locked against OpenNav (often wrong 052°W). Educational — verify current AIM.",
+      "source": "tc-aim-nat-table-1.1"
     },
     {
       "id": "JANJO",
@@ -141,7 +166,8 @@
       "category": "oceanic_oep",
       "region": "west",
       "accuracy": "exact",
-      "notes": "Transport Canada AIM NAT Table 1.1 / OEP association (5600… / 050W family). Educational — verify current AIM/AIP."
+      "notes": "Transport Canada AIM NAT Table 1.1 — 5600N05000W. Locked against OpenNav (often wrong 052°W). Educational — verify current AIM.",
+      "source": "tc-aim-nat-table-1.1"
     },
     {
       "id": "JOOPY",
@@ -151,7 +177,8 @@
       "category": "oceanic_oep",
       "region": "west",
       "accuracy": "exact",
-      "notes": "Transport Canada AIM NAT Table 1.1 / OEP association (4900… / 050W family). Educational — verify current AIM/AIP."
+      "notes": "Transport Canada AIM NAT Table 1.1 — 4900N05000W. Locked against OpenNav (often wrong 052°W). Educational — verify current AIM.",
+      "source": "tc-aim-nat-table-1.1"
     },
     {
       "id": "KODIK",
@@ -161,7 +188,8 @@
       "category": "oceanic_oep",
       "region": "west",
       "accuracy": "exact",
-      "notes": "Transport Canada AIM NAT Table 1.1 / OEP association (5530… / 050W family). Educational — verify current AIM/AIP."
+      "notes": "Transport Canada AIM NAT Table 1.1 — 5530N05000W. Locked against OpenNav (often wrong 052°W). Educational — verify current AIM.",
+      "source": "tc-aim-nat-table-1.1"
     },
     {
       "id": "LIBOR",
@@ -171,7 +199,8 @@
       "category": "oceanic_oep",
       "region": "west",
       "accuracy": "exact",
-      "notes": "Transport Canada AIM NAT Table 1.1 / OEP association (6101… / 050W family). Educational — verify current AIM/AIP."
+      "notes": "Transport Canada AIM NAT §1.17.2.1 westbound — LIBOR 6101N 06241W (not FAA LID 058°W). Educational — verify current AIM.",
+      "source": "tc-aim-nat"
     },
     {
       "id": "LIMRI",
@@ -181,7 +210,8 @@
       "category": "oceanic_oep",
       "region": "east",
       "accuracy": "exact",
-      "notes": "Confirmed OpenNav (IE). Common landfall / OEP-related."
+      "notes": "AirNav Ireland AIP ENR 4.4 — 520000N 0150000W (Oceanic Entry & Exit). Educational — verify current AIP.",
+      "source": "ie-aip-enr-4.4"
     },
     {
       "id": "LOMSI",
@@ -191,7 +221,8 @@
       "category": "oceanic_oep",
       "region": "west",
       "accuracy": "exact",
-      "notes": "Transport Canada AIM NAT Table 1.1 / OEP association (5500… / 050W family). Educational — verify current AIM/AIP."
+      "notes": "Transport Canada AIM NAT Table 1.1 — 5500N05000W. Locked against OpenNav (often wrong 052°W). Educational — verify current AIM.",
+      "source": "tc-aim-nat-table-1.1"
     },
     {
       "id": "MALOT",
@@ -201,7 +232,8 @@
       "category": "oceanic_oep",
       "region": "east",
       "accuracy": "exact",
-      "notes": "Confirmed OpenNav (IE). Frequent OTS point."
+      "notes": "AirNav Ireland AIP ENR 4.4 — 530000N 0150000W (Oceanic Entry & Exit). Educational — verify current AIP.",
+      "source": "ie-aip-enr-4.4"
     },
     {
       "id": "MELDI",
@@ -211,7 +243,8 @@
       "category": "oceanic_oep",
       "region": "west",
       "accuracy": "exact",
-      "notes": "Transport Canada AIM NAT Table 1.1 / OEP association (5430… / 050W family). Educational — verify current AIM/AIP."
+      "notes": "Transport Canada AIM NAT Table 1.1 — 5430N05000W. Locked against OpenNav (often wrong 052°W). Educational — verify current AIM.",
+      "source": "tc-aim-nat-table-1.1"
     },
     {
       "id": "MUSAK",
@@ -221,7 +254,8 @@
       "category": "oceanic_oep",
       "region": "west",
       "accuracy": "exact",
-      "notes": "Transport Canada AIM NAT Table 1.1 / OEP association (4830… / 050W family). Educational — verify current AIM/AIP."
+      "notes": "Transport Canada AIM NAT Table 1.1 — 4830N05000W. Locked against OpenNav (often wrong 052°W). Educational — verify current AIM.",
+      "source": "tc-aim-nat-table-1.1"
     },
     {
       "id": "NASBA",
@@ -241,7 +275,8 @@
       "category": "oceanic_oep",
       "region": "west",
       "accuracy": "exact",
-      "notes": "Transport Canada AIM NAT Table 1.1 / OEP association (5400… / 050W family). Educational — verify current AIM/AIP."
+      "notes": "Transport Canada AIM NAT Table 1.1 — 5400N05000W. Locked against OpenNav (often wrong 052°W). Educational — verify current AIM.",
+      "source": "tc-aim-nat-table-1.1"
     },
     {
       "id": "NICSO",
@@ -251,7 +286,8 @@
       "category": "oceanic_oep",
       "region": "west",
       "accuracy": "exact",
-      "notes": "Transport Canada AIM NAT Table 1.1 / OEP association (4800… / 050W family). Educational — verify current AIM/AIP."
+      "notes": "Transport Canada AIM NAT Table 1.1 — 4800N05000W. Locked against OpenNav (often wrong 052°W). Educational — verify current AIM.",
+      "source": "tc-aim-nat-table-1.1"
     },
     {
       "id": "NIFTY",
@@ -260,8 +296,9 @@
       "lon": -58.0,
       "category": "oceanic_oep",
       "region": "west",
-      "accuracy": "approximate",
-      "notes": "OpenNav CA (605800N/0580000W). Northern Gander-related OEP — verify AIM/AIP."
+      "accuracy": "exact",
+      "notes": "FAA NFDC Fixes/Waypoints (60-58-00.0000N 058-00-00.0000W). Educational — verify current NASR/AIP.",
+      "source": "faa-nfdc-lid"
     },
     {
       "id": "OMSAT",
@@ -271,7 +308,8 @@
       "category": "oceanic_oep",
       "region": "west",
       "accuracy": "exact",
-      "notes": "Transport Canada AIM NAT Table 1.1 / OEP association (4730… / 050W family). Educational — verify current AIM/AIP."
+      "notes": "Transport Canada AIM NAT Table 1.1 — 4730N05000W. Locked against OpenNav (often wrong 052°W). Educational — verify current AIM.",
+      "source": "tc-aim-nat-table-1.1"
     },
     {
       "id": "PELTU",
@@ -281,7 +319,8 @@
       "category": "oceanic_oep",
       "region": "west",
       "accuracy": "exact",
-      "notes": "Transport Canada AIM NAT Table 1.1 / OEP association (5330… / 050W family). Educational — verify current AIM/AIP."
+      "notes": "Transport Canada AIM NAT Table 1.1 — 5330N05000W. Locked against OpenNav (often wrong 052°W). Educational — verify current AIM.",
+      "source": "tc-aim-nat-table-1.1"
     },
     {
       "id": "PIKIL",
@@ -301,7 +340,8 @@
       "category": "oceanic_oep",
       "region": "west",
       "accuracy": "exact",
-      "notes": "Transport Canada AIM NAT Table 1.1 / OEP association (4700… / 050W family). Educational — verify current AIM/AIP."
+      "notes": "Transport Canada AIM NAT Table 1.1 — 4700N05000W. Locked against OpenNav (often wrong 052°W). Educational — verify current AIM.",
+      "source": "tc-aim-nat-table-1.1"
     },
     {
       "id": "RAFIN",
@@ -311,7 +351,8 @@
       "category": "oceanic_oep",
       "region": "west",
       "accuracy": "exact",
-      "notes": "Transport Canada AIM NAT Table 1.1 / OEP association (4500… / 050W family). Educational — verify current AIM/AIP."
+      "notes": "Transport Canada AIM NAT Table 1.1 — 4500N05000W. Locked against OpenNav (often wrong 052°W). Educational — verify current AIM.",
+      "source": "tc-aim-nat-table-1.1"
     },
     {
       "id": "RELIC",
@@ -321,7 +362,8 @@
       "category": "oceanic_oep",
       "region": "west",
       "accuracy": "exact",
-      "notes": "Transport Canada AIM NAT Table 1.1 / OEP association (4630… / 050W family). Educational — verify current AIM/AIP."
+      "notes": "Transport Canada AIM NAT Table 1.1 — 4630N05000W. Locked against OpenNav (often wrong 052°W). Educational — verify current AIM.",
+      "source": "tc-aim-nat-table-1.1"
     },
     {
       "id": "RESNO",
@@ -341,7 +383,8 @@
       "category": "oceanic_oep",
       "region": "west",
       "accuracy": "exact",
-      "notes": "Transport Canada AIM NAT Table 1.1 / OEP association (5300… / 050W family). Educational — verify current AIM/AIP."
+      "notes": "Transport Canada AIM NAT Table 1.1 — 5300N05000W. Locked against OpenNav (often wrong 052°W). Educational — verify current AIM.",
+      "source": "tc-aim-nat-table-1.1"
     },
     {
       "id": "SAXAN",
@@ -351,7 +394,8 @@
       "category": "oceanic_oep",
       "region": "west",
       "accuracy": "exact",
-      "notes": "Transport Canada AIM NAT Table 1.1 / OEP association (5230… / 050W family). Educational — verify current AIM/AIP."
+      "notes": "Transport Canada AIM NAT Table 1.1 — 5230N05000W. Locked against OpenNav (often wrong 052°W). Educational — verify current AIM.",
+      "source": "tc-aim-nat-table-1.1"
     },
     {
       "id": "SEPAL",
@@ -361,7 +405,8 @@
       "category": "oceanic_oep",
       "region": "east",
       "accuracy": "approximate",
-      "notes": "OpenNav/UK lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+      "notes": "Pending official AIP (was OpenNav/UK) from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC.",
+      "source": "pending-aip"
     },
     {
       "id": "SOMAX",
@@ -371,17 +416,19 @@
       "category": "oceanic_oep",
       "region": "east",
       "accuracy": "exact",
-      "notes": "Confirmed OpenNav (IE). Common eastbound exit / landfall."
+      "notes": "AirNav Ireland AIP ENR 4.4 — 500000N 0150000W (Oceanic Entry & Exit). Educational — verify current AIP.",
+      "source": "ie-aip-enr-4.4"
     },
     {
       "id": "SOORY",
       "name": "SOORY",
       "lat": 38.5,
-      "lon": -60.267583333,
+      "lon": -60.267583,
       "category": "oceanic_oep",
       "region": "west",
       "accuracy": "exact",
-      "notes": "Confirmed OpenNav (US). Used on southern tracks / random routes."
+      "notes": "FAA NFDC Fixes/Waypoints (38-30-00.0000N 060-16-03.3000W; OFFSHORE ATLANTIC). Educational — verify current NASR/AIP.",
+      "source": "faa-nfdc-lid"
     },
     {
       "id": "SUNOT",
@@ -401,7 +448,8 @@
       "category": "oceanic_oep",
       "region": "west",
       "accuracy": "exact",
-      "notes": "Transport Canada AIM NAT Table 1.1 / OEP association (4600… / 050W family). Educational — verify current AIM/AIP."
+      "notes": "Transport Canada AIM NAT Table 1.1 — 4600N05000W. Locked against OpenNav (often wrong 052°W). Educational — verify current AIM.",
+      "source": "tc-aim-nat-table-1.1"
     },
     {
       "id": "TUDEP",
@@ -411,7 +459,8 @@
       "category": "oceanic_oep",
       "region": "west",
       "accuracy": "exact",
-      "notes": "Transport Canada AIM NAT Table 1.1 / OEP association (5200… / 050W family). Educational — verify current AIM/AIP."
+      "notes": "Transport Canada AIM NAT Table 1.1 — 5200N05000W. Locked against OpenNav (often wrong 052°W). Educational — verify current AIM.",
+      "source": "tc-aim-nat-table-1.1"
     },
     {
       "id": "UMESI",
@@ -421,7 +470,8 @@
       "category": "oceanic_oep",
       "region": "west",
       "accuracy": "exact",
-      "notes": "Transport Canada AIM NAT Table 1.1 / OEP association (5130… / 050W family). Educational — verify current AIM/AIP."
+      "notes": "Transport Canada AIM NAT Table 1.1 — 5130N05000W. Locked against OpenNav (often wrong 052°W). Educational — verify current AIM.",
+      "source": "tc-aim-nat-table-1.1"
     },
     {
       "id": "ANVER",
@@ -430,8 +480,9 @@
       "lon": -65.687792,
       "category": "nat-named",
       "region": "watrs",
-      "accuracy": "approximate",
-      "notes": "OpenNav BM ANVER (hemisphere corrected E→W for WATRS). Verify NFDC/AIP."
+      "accuracy": "exact",
+      "notes": "FAA NFDC Fixes/Waypoints (35-15-07.3000N 065-41-16.0500W; OFFSHORE ATLANTIC). Educational — verify current NASR/AIP.",
+      "source": "faa-nfdc-lid"
     },
     {
       "id": "ATUGI",
@@ -440,8 +491,9 @@
       "lon": -71.52675,
       "category": "nat-named",
       "region": "watrs",
-      "accuracy": "approximate",
-      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+      "accuracy": "exact",
+      "notes": "FAA NFDC Fixes/Waypoints (35-38-18.4800N 071-31-36.3000W; OFFSHORE ATLANTIC). Educational — verify current NASR/AIP.",
+      "source": "faa-nfdc-lid"
     },
     {
       "id": "BEXUM",
@@ -450,8 +502,9 @@
       "lon": -69.812475,
       "category": "nat-named",
       "region": "watrs",
-      "accuracy": "approximate",
-      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+      "accuracy": "exact",
+      "notes": "FAA NFDC Fixes/Waypoints (33-18-08.3300N 069-48-44.9100W; OFFSHORE ATLANTIC). Educational — verify current NASR/AIP.",
+      "source": "faa-nfdc-lid"
     },
     {
       "id": "BOBTU",
@@ -460,18 +513,20 @@
       "lon": -52.822222,
       "category": "nat-named",
       "region": "watrs",
-      "accuracy": "approximate",
-      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+      "accuracy": "exact",
+      "notes": "FAA NFDC Fixes/Waypoints (44-07-02.0000N 052-49-20.0000W). Educational — verify current NASR/AIP.",
+      "source": "faa-nfdc-lid"
     },
     {
       "id": "BOKTO",
       "name": "BOKTO",
-      "lat": 51.2375,
-      "lon": -58.664444,
+      "lat": 56.966667,
+      "lon": -58.0,
       "category": "nat-named",
       "region": "west",
-      "accuracy": "approximate",
-      "notes": "OpenNav/CA lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+      "accuracy": "exact",
+      "notes": "FAA NFDC Fixes/Waypoints (56-58-00.0000N 058-00-00.0000W). Educational — verify current NASR/AIP.",
+      "source": "faa-nfdc-lid"
     },
     {
       "id": "BOREX",
@@ -480,8 +535,9 @@
       "lon": -70.966789,
       "category": "nat-named",
       "region": "watrs",
-      "accuracy": "approximate",
-      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+      "accuracy": "exact",
+      "notes": "FAA NFDC Fixes/Waypoints (28-51-05.1000N 070-58-00.4400W; OFFSHORE ATLANTIC). Educational — verify current NASR/AIP.",
+      "source": "faa-nfdc-lid"
     },
     {
       "id": "BOVIC",
@@ -490,8 +546,9 @@
       "lon": -66.667581,
       "category": "nat-named",
       "region": "watrs",
-      "accuracy": "approximate",
-      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+      "accuracy": "exact",
+      "notes": "FAA NFDC Fixes/Waypoints (34-52-24.5400N 066-40-03.2900W; OFFSHORE ATLANTIC). Educational — verify current NASR/AIP.",
+      "source": "faa-nfdc-lid"
     },
     {
       "id": "BRKZZ",
@@ -500,8 +557,9 @@
       "lon": -64.962347,
       "category": "nat-named",
       "region": "watrs",
-      "accuracy": "approximate",
-      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+      "accuracy": "exact",
+      "notes": "FAA NFDC Fixes/Waypoints (27-19-13.8700N 064-57-44.4500W; OFFSHORE ATLANTIC). Educational — verify current NASR/AIP.",
+      "source": "faa-nfdc-lid"
     },
     {
       "id": "BUTUX",
@@ -510,8 +568,9 @@
       "lon": -45.38,
       "category": "nat-named",
       "region": "watrs",
-      "accuracy": "approximate",
-      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+      "accuracy": "exact",
+      "notes": "FAA NFDC Fixes/Waypoints (18-00-00.0000N 045-22-48.0000W; OFFSHORE ATLANTIC). Educational — verify current NASR/AIP.",
+      "source": "faa-nfdc-lid"
     },
     {
       "id": "CHEDR",
@@ -520,8 +579,9 @@
       "lon": -66.009619,
       "category": "nat-named",
       "region": "watrs",
-      "accuracy": "approximate",
-      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+      "accuracy": "exact",
+      "notes": "FAA NFDC Fixes/Waypoints (22-02-48.1100N 066-00-34.6300W; OFFSHORE ATLANTIC). Educational — verify current NASR/AIP.",
+      "source": "faa-nfdc-lid"
     },
     {
       "id": "CITRS",
@@ -530,8 +590,9 @@
       "lon": -59.0,
       "category": "nat-named",
       "region": "watrs",
-      "accuracy": "approximate",
-      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+      "accuracy": "exact",
+      "notes": "FAA NFDC Fixes/Waypoints (18-00-00.0000N 059-00-00.0000W; OFFSHORE ATLANTIC). Educational — verify current NASR/AIP.",
+      "source": "faa-nfdc-lid"
     },
     {
       "id": "CRUPE",
@@ -540,8 +601,9 @@
       "lon": -66.061208,
       "category": "nat-named",
       "region": "watrs",
-      "accuracy": "approximate",
-      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+      "accuracy": "exact",
+      "notes": "FAA NFDC Fixes/Waypoints (22-02-35.1200N 066-03-40.3500W; PUERTO RICO). Educational — verify current NASR/AIP.",
+      "source": "faa-nfdc-lid"
     },
     {
       "id": "DABAK",
@@ -550,8 +612,9 @@
       "lon": -51.325,
       "category": "nat-named",
       "region": "watrs",
-      "accuracy": "approximate",
-      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+      "accuracy": "exact",
+      "notes": "FAA NFDC Fixes/Waypoints (18-00-00.0000N 051-19-30.0000W; OFFSHORE ATLANTIC). Educational — verify current NASR/AIP.",
+      "source": "faa-nfdc-lid"
     },
     {
       "id": "DARUX",
@@ -560,8 +623,9 @@
       "lon": -69.455086,
       "category": "nat-named",
       "region": "watrs",
-      "accuracy": "approximate",
-      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+      "accuracy": "exact",
+      "notes": "FAA NFDC Fixes/Waypoints (36-09-35.5600N 069-27-18.3100W; OFFSHORE ATLANTIC). Educational — verify current NASR/AIP.",
+      "source": "faa-nfdc-lid"
     },
     {
       "id": "DASER",
@@ -570,8 +634,9 @@
       "lon": -67.577622,
       "category": "nat-named",
       "region": "watrs",
-      "accuracy": "approximate",
-      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+      "accuracy": "exact",
+      "notes": "FAA NFDC Fixes/Waypoints (34-08-18.6300N 067-34-39.4400W; OFFSHORE ATLANTIC). Educational — verify current NASR/AIP.",
+      "source": "faa-nfdc-lid"
     },
     {
       "id": "DAWIN",
@@ -580,8 +645,9 @@
       "lon": -62.457578,
       "category": "nat-named",
       "region": "watrs",
-      "accuracy": "approximate",
-      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+      "accuracy": "exact",
+      "notes": "FAA NFDC Fixes/Waypoints (20-32-19.5700N 062-27-27.2800W; OFFSHORE ATLANTIC). Educational — verify current NASR/AIP.",
+      "source": "faa-nfdc-lid"
     },
     {
       "id": "DOVEY",
@@ -590,8 +656,9 @@
       "lon": -67.0,
       "category": "nat-named",
       "region": "watrs",
-      "accuracy": "approximate",
-      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+      "accuracy": "exact",
+      "notes": "FAA NFDC Fixes/Waypoints (41-07-00.0000N 067-00-00.0000W; OFFSHORE ATLANTIC). Educational — verify current NASR/AIP.",
+      "source": "faa-nfdc-lid"
     },
     {
       "id": "DRYED",
@@ -600,8 +667,9 @@
       "lon": -66.667461,
       "category": "nat-named",
       "region": "watrs",
-      "accuracy": "approximate",
-      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+      "accuracy": "exact",
+      "notes": "FAA NFDC Fixes/Waypoints (38-37-56.2000N 066-40-02.8600W; OFFSHORE ATLANTIC). Educational — verify current NASR/AIP.",
+      "source": "faa-nfdc-lid"
     },
     {
       "id": "DUPOX",
@@ -610,8 +678,9 @@
       "lon": -68.541106,
       "category": "nat-named",
       "region": "watrs",
-      "accuracy": "approximate",
-      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+      "accuracy": "exact",
+      "notes": "FAA NFDC Fixes/Waypoints (27-56-27.4900N 068-32-27.9800W; OFFSHORE ATLANTIC). Educational — verify current NASR/AIP.",
+      "source": "faa-nfdc-lid"
     },
     {
       "id": "EMAKO",
@@ -620,8 +689,9 @@
       "lon": -68.238683,
       "category": "nat-named",
       "region": "watrs",
-      "accuracy": "approximate",
-      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+      "accuracy": "exact",
+      "notes": "FAA NFDC Fixes/Waypoints (31-23-47.0900N 068-14-19.2600W; OFFSHORE ATLANTIC). Educational — verify current NASR/AIP.",
+      "source": "faa-nfdc-lid"
     },
     {
       "id": "ENAPI",
@@ -630,8 +700,9 @@
       "lon": -68.105992,
       "category": "nat-named",
       "region": "watrs",
-      "accuracy": "approximate",
-      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+      "accuracy": "exact",
+      "notes": "FAA NFDC Fixes/Waypoints (33-12-21.6900N 068-06-21.5700W; OFFSHORE ATLANTIC). Educational — verify current NASR/AIP.",
+      "source": "faa-nfdc-lid"
     },
     {
       "id": "FIVZE",
@@ -640,8 +711,9 @@
       "lon": -60.0,
       "category": "nat-named",
       "region": "watrs",
-      "accuracy": "approximate",
-      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+      "accuracy": "exact",
+      "notes": "FAA NFDC Fixes/Waypoints (25-00-00.0000N 060-00-00.0000W; OFFSHORE ATLANTIC). Educational — verify current NASR/AIP.",
+      "source": "faa-nfdc-lid"
     },
     {
       "id": "GALVN",
@@ -650,8 +722,9 @@
       "lon": -72.447594,
       "category": "nat-named",
       "region": "watrs",
-      "accuracy": "approximate",
-      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+      "accuracy": "exact",
+      "notes": "FAA NFDC Fixes/Waypoints (30-09-32.3500N 072-26-51.3400W; OFFSHORE ATLANTIC). Educational — verify current NASR/AIP.",
+      "source": "faa-nfdc-lid"
     },
     {
       "id": "GECAL",
@@ -660,8 +733,9 @@
       "lon": -65.421364,
       "category": "nat-named",
       "region": "watrs",
-      "accuracy": "approximate",
-      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+      "accuracy": "exact",
+      "notes": "FAA NFDC Fixes/Waypoints (29-25-28.1700N 065-25-16.9100W; OFFSHORE ATLANTIC). Educational — verify current NASR/AIP.",
+      "source": "faa-nfdc-lid"
     },
     {
       "id": "GRAMN",
@@ -670,8 +744,9 @@
       "lon": -70.253883,
       "category": "nat-named",
       "region": "watrs",
-      "accuracy": "approximate",
-      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+      "accuracy": "exact",
+      "notes": "FAA NFDC Fixes/Waypoints (30-22-08.7300N 070-15-13.9800W; OFFSHORE ATLANTIC). Educational — verify current NASR/AIP.",
+      "source": "faa-nfdc-lid"
     },
     {
       "id": "HANCY",
@@ -680,8 +755,9 @@
       "lon": -66.170619,
       "category": "nat-named",
       "region": "watrs",
-      "accuracy": "approximate",
-      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+      "accuracy": "exact",
+      "notes": "FAA NFDC Fixes/Waypoints (22-02-12.7900N 066-10-14.2300W; OFFSHORE ATLANTIC). Educational — verify current NASR/AIP.",
+      "source": "faa-nfdc-lid"
     },
     {
       "id": "ILIDO",
@@ -690,8 +766,9 @@
       "lon": -74.123925,
       "category": "nat-named",
       "region": "watrs",
-      "accuracy": "approximate",
-      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+      "accuracy": "exact",
+      "notes": "FAA NFDC Fixes/Waypoints (28-14-40.7000N 074-07-26.1300W; OFFSHORE ATLANTIC). Educational — verify current NASR/AIP.",
+      "source": "faa-nfdc-lid"
     },
     {
       "id": "JAINS",
@@ -700,8 +777,9 @@
       "lon": -77.000036,
       "category": "nat-named",
       "region": "watrs",
-      "accuracy": "approximate",
-      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+      "accuracy": "exact",
+      "notes": "FAA NFDC Fixes/Waypoints (31-21-20.0500N 077-00-00.1300W; OFFSHORE ATLANTIC). Educational — verify current NASR/AIP.",
+      "source": "faa-nfdc-lid"
     },
     {
       "id": "JEBBY",
@@ -710,8 +788,9 @@
       "lon": -57.868056,
       "category": "nat-named",
       "region": "watrs",
-      "accuracy": "approximate",
-      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+      "accuracy": "exact",
+      "notes": "FAA NFDC Fixes/Waypoints (43-04-20.0000N 057-52-05.0000W). Educational — verify current NASR/AIP.",
+      "source": "faa-nfdc-lid"
     },
     {
       "id": "JOBOC",
@@ -720,8 +799,9 @@
       "lon": -67.0,
       "category": "nat-named",
       "region": "watrs",
-      "accuracy": "approximate",
-      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+      "accuracy": "exact",
+      "notes": "FAA NFDC Fixes/Waypoints (40-07-00.0000N 067-00-00.0000W; OFFSHORE ATLANTIC). Educational — verify current NASR/AIP.",
+      "source": "faa-nfdc-lid"
     },
     {
       "id": "KAYYT",
@@ -730,8 +810,9 @@
       "lon": -67.572856,
       "category": "nat-named",
       "region": "watrs",
-      "accuracy": "approximate",
-      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+      "accuracy": "exact",
+      "notes": "FAA NFDC Fixes/Waypoints (38-52-37.8300N 067-34-22.2800W; OFFSHORE ATLANTIC). Educational — verify current NASR/AIP.",
+      "source": "faa-nfdc-lid"
     },
     {
       "id": "KEEKA",
@@ -740,8 +821,9 @@
       "lon": -65.134825,
       "category": "nat-named",
       "region": "watrs",
-      "accuracy": "approximate",
-      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+      "accuracy": "exact",
+      "notes": "FAA NFDC Fixes/Waypoints (22-05-49.4500N 065-08-05.3700W; OFFSHORE ATLANTIC). Educational — verify current NASR/AIP.",
+      "source": "faa-nfdc-lid"
     },
     {
       "id": "KINCH",
@@ -750,8 +832,9 @@
       "lon": -67.197817,
       "category": "nat-named",
       "region": "watrs",
-      "accuracy": "approximate",
-      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+      "accuracy": "exact",
+      "notes": "FAA NFDC Fixes/Waypoints (21-37-17.3200N 067-11-52.1400W; OFFSHORE ATLANTIC). Educational — verify current NASR/AIP.",
+      "source": "faa-nfdc-lid"
     },
     {
       "id": "KINER",
@@ -760,8 +843,9 @@
       "lon": -68.287447,
       "category": "nat-named",
       "region": "watrs",
-      "accuracy": "approximate",
-      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+      "accuracy": "exact",
+      "notes": "FAA NFDC Fixes/Waypoints (36-34-27.2300N 068-17-14.8100W; OFFSHORE ATLANTIC). Educational — verify current NASR/AIP.",
+      "source": "faa-nfdc-lid"
     },
     {
       "id": "LAMER",
@@ -770,8 +854,9 @@
       "lon": -70.051528,
       "category": "nat-named",
       "region": "watrs",
-      "accuracy": "approximate",
-      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+      "accuracy": "exact",
+      "notes": "FAA NFDC Fixes/Waypoints (25-00-00.0000N 070-03-05.5000W; OFFSHORE ATLANTIC). Educational — verify current NASR/AIP.",
+      "source": "faa-nfdc-lid"
     },
     {
       "id": "LETON",
@@ -780,8 +865,9 @@
       "lon": -71.994111,
       "category": "nat-named",
       "region": "watrs",
-      "accuracy": "approximate",
-      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+      "accuracy": "exact",
+      "notes": "FAA NFDC Fixes/Waypoints (25-00-00.0000N 071-59-38.8000W; OFFSHORE ATLANTIC). Educational — verify current NASR/AIP.",
+      "source": "faa-nfdc-lid"
     },
     {
       "id": "LNHOM",
@@ -790,8 +876,9 @@
       "lon": -71.01,
       "category": "nat-named",
       "region": "watrs",
-      "accuracy": "approximate",
-      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+      "accuracy": "exact",
+      "notes": "FAA NFDC Fixes/Waypoints (25-00-00.0000N 071-00-36.0000W; OFFSHORE ATLANTIC). Educational — verify current NASR/AIP.",
+      "source": "faa-nfdc-lid"
     },
     {
       "id": "LUCTI",
@@ -800,8 +887,9 @@
       "lon": -69.093722,
       "category": "nat-named",
       "region": "watrs",
-      "accuracy": "approximate",
-      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+      "accuracy": "exact",
+      "notes": "FAA NFDC Fixes/Waypoints (25-00-00.0000N 069-05-37.4000W; OFFSHORE ATLANTIC). Educational — verify current NASR/AIP.",
+      "source": "faa-nfdc-lid"
     },
     {
       "id": "LUNKR",
@@ -810,8 +898,9 @@
       "lon": -66.383364,
       "category": "nat-named",
       "region": "watrs",
-      "accuracy": "approximate",
-      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+      "accuracy": "exact",
+      "notes": "FAA NFDC Fixes/Waypoints (35-20-12.5300N 066-23-00.1100W; OFFSHORE ATLANTIC). Educational — verify current NASR/AIP.",
+      "source": "faa-nfdc-lid"
     },
     {
       "id": "MACOR",
@@ -820,8 +909,9 @@
       "lon": -67.321372,
       "category": "nat-named",
       "region": "watrs",
-      "accuracy": "approximate",
-      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+      "accuracy": "exact",
+      "notes": "FAA NFDC Fixes/Waypoints (22-13-47.6800N 067-19-16.9400W; OFFSHORE ATLANTIC). Educational — verify current NASR/AIP.",
+      "source": "faa-nfdc-lid"
     },
     {
       "id": "MARIG",
@@ -830,8 +920,9 @@
       "lon": -70.059517,
       "category": "nat-named",
       "region": "watrs",
-      "accuracy": "approximate",
-      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+      "accuracy": "exact",
+      "notes": "FAA NFDC Fixes/Waypoints (38-19-42.4000N 070-03-34.2600W; OFFSHORE ATLANTIC). Educational — verify current NASR/AIP.",
+      "source": "faa-nfdc-lid"
     },
     {
       "id": "MUNEY",
@@ -840,8 +931,9 @@
       "lon": -64.964361,
       "category": "nat-named",
       "region": "watrs",
-      "accuracy": "approximate",
-      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+      "accuracy": "exact",
+      "notes": "FAA NFDC Fixes/Waypoints (38-30-00.0000N 064-57-51.7000W; OFFSHORE ATLANTIC). Educational — verify current NASR/AIP.",
+      "source": "faa-nfdc-lid"
     },
     {
       "id": "NETSS",
@@ -850,8 +942,9 @@
       "lon": -73.104386,
       "category": "nat-named",
       "region": "watrs",
-      "accuracy": "approximate",
-      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+      "accuracy": "exact",
+      "notes": "FAA NFDC Fixes/Waypoints (34-11-38.6300N 073-06-15.7900W; OFFSHORE ATLANTIC). Educational — verify current NASR/AIP.",
+      "source": "faa-nfdc-lid"
     },
     {
       "id": "NOVOK",
@@ -860,8 +953,9 @@
       "lon": -61.201561,
       "category": "nat-named",
       "region": "watrs",
-      "accuracy": "approximate",
-      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+      "accuracy": "exact",
+      "notes": "FAA NFDC Fixes/Waypoints (42-22-53.7500N 061-12-05.6200W; OFFSHORE ATLANTIC). Educational — verify current NASR/AIP.",
+      "source": "faa-nfdc-lid"
     },
     {
       "id": "NUBUS",
@@ -870,8 +964,9 @@
       "lon": -65.536606,
       "category": "nat-named",
       "region": "watrs",
-      "accuracy": "approximate",
-      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+      "accuracy": "exact",
+      "notes": "FAA NFDC Fixes/Waypoints (23-30-00.0000N 065-32-11.7800W; OFFSHORE ATLANTIC). Educational — verify current NASR/AIP.",
+      "source": "faa-nfdc-lid"
     },
     {
       "id": "OKONU",
@@ -880,8 +975,9 @@
       "lon": -71.965058,
       "category": "nat-named",
       "region": "watrs",
-      "accuracy": "approximate",
-      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+      "accuracy": "exact",
+      "notes": "FAA NFDC Fixes/Waypoints (37-18-21.2700N 071-57-54.2100W; OFFSHORE ATLANTIC). Educational — verify current NASR/AIP.",
+      "source": "faa-nfdc-lid"
     },
     {
       "id": "ONGOT",
@@ -890,8 +986,9 @@
       "lon": -72.301667,
       "category": "nat-named",
       "region": "watrs",
-      "accuracy": "approximate",
-      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+      "accuracy": "exact",
+      "notes": "FAA NFDC Fixes/Waypoints (33-58-54.5000N 072-18-06.0000W; OFFSHORE ATLANTIC). Educational — verify current NASR/AIP.",
+      "source": "faa-nfdc-lid"
     },
     {
       "id": "OOONN",
@@ -900,8 +997,9 @@
       "lon": -74.589081,
       "category": "nat-named",
       "region": "watrs",
-      "accuracy": "approximate",
-      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+      "accuracy": "exact",
+      "notes": "FAA NFDC Fixes/Waypoints (33-38-36.0100N 074-35-20.6900W; OFFSHORE ATLANTIC). Educational — verify current NASR/AIP.",
+      "source": "faa-nfdc-lid"
     },
     {
       "id": "OPAUL",
@@ -910,8 +1008,9 @@
       "lon": -63.846578,
       "category": "nat-named",
       "region": "watrs",
-      "accuracy": "approximate",
-      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+      "accuracy": "exact",
+      "notes": "FAA NFDC Fixes/Waypoints (21-51-23.7500N 063-50-47.6800W; OFFSHORE ATLANTIC). Educational — verify current NASR/AIP.",
+      "source": "faa-nfdc-lid"
     },
     {
       "id": "PERDO",
@@ -921,7 +1020,8 @@
       "category": "nat-named",
       "region": "watrs",
       "accuracy": "approximate",
-      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+      "notes": "Pending official AIP/FAA (was OpenNav/US) from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC.",
+      "source": "pending-aip"
     },
     {
       "id": "PIREX",
@@ -930,8 +1030,9 @@
       "lon": -64.321189,
       "category": "nat-named",
       "region": "watrs",
-      "accuracy": "approximate",
-      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+      "accuracy": "exact",
+      "notes": "FAA NFDC Fixes/Waypoints (29-22-27.7000N 064-19-16.2800W; OFFSHORE ATLANTIC). Educational — verify current NASR/AIP.",
+      "source": "faa-nfdc-lid"
     },
     {
       "id": "PRCHA",
@@ -940,8 +1041,9 @@
       "lon": -66.352906,
       "category": "nat-named",
       "region": "watrs",
-      "accuracy": "approximate",
-      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+      "accuracy": "exact",
+      "notes": "FAA NFDC Fixes/Waypoints (22-55-28.3400N 066-21-10.4600W; OFFSHORE ATLANTIC). Educational — verify current NASR/AIP.",
+      "source": "faa-nfdc-lid"
     },
     {
       "id": "RABAL",
@@ -950,8 +1052,9 @@
       "lon": -69.453894,
       "category": "nat-named",
       "region": "watrs",
-      "accuracy": "approximate",
-      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+      "accuracy": "exact",
+      "notes": "FAA NFDC Fixes/Waypoints (26-43-28.2000N 069-27-14.0200W; OFFSHORE ATLANTIC). Educational — verify current NASR/AIP.",
+      "source": "faa-nfdc-lid"
     },
     {
       "id": "RKDIA",
@@ -960,8 +1063,9 @@
       "lon": -60.0,
       "category": "nat-named",
       "region": "watrs",
-      "accuracy": "approximate",
-      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+      "accuracy": "exact",
+      "notes": "FAA NFDC Fixes/Waypoints (21-00-00.0000N 060-00-00.0000W; OFFSHORE ATLANTIC). Educational — verify current NASR/AIP.",
+      "source": "faa-nfdc-lid"
     },
     {
       "id": "SAUCR",
@@ -970,8 +1074,9 @@
       "lon": -72.381883,
       "category": "nat-named",
       "region": "watrs",
-      "accuracy": "approximate",
-      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+      "accuracy": "exact",
+      "notes": "FAA NFDC Fixes/Waypoints (34-43-27.5700N 072-22-54.7800W; OFFSHORE ATLANTIC). Educational — verify current NASR/AIP.",
+      "source": "faa-nfdc-lid"
     },
     {
       "id": "SEAVR",
@@ -980,8 +1085,9 @@
       "lon": -63.073617,
       "category": "nat-named",
       "region": "watrs",
-      "accuracy": "approximate",
-      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+      "accuracy": "exact",
+      "notes": "FAA NFDC Fixes/Waypoints (29-41-55.8900N 063-04-25.0200W; OFFSHORE ATLANTIC). Educational — verify current NASR/AIP.",
+      "source": "faa-nfdc-lid"
     },
     {
       "id": "SELIM",
@@ -990,8 +1096,9 @@
       "lon": -62.668933,
       "category": "nat-named",
       "region": "watrs",
-      "accuracy": "approximate",
-      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+      "accuracy": "exact",
+      "notes": "FAA NFDC Fixes/Waypoints (38-30-00.0000N 062-40-08.1600W; OFFSHORE ATLANTIC). Educational — verify current NASR/AIP.",
+      "source": "faa-nfdc-lid"
     },
     {
       "id": "SHEIL",
@@ -1000,8 +1107,9 @@
       "lon": -66.708806,
       "category": "nat-named",
       "region": "watrs",
-      "accuracy": "approximate",
-      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+      "accuracy": "exact",
+      "notes": "FAA NFDC Fixes/Waypoints (29-54-35.4200N 066-42-31.7000W; OFFSHORE ATLANTIC). Educational — verify current NASR/AIP.",
+      "source": "faa-nfdc-lid"
     },
     {
       "id": "SKPPR",
@@ -1010,8 +1118,9 @@
       "lon": -70.448786,
       "category": "nat-named",
       "region": "watrs",
-      "accuracy": "approximate",
-      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+      "accuracy": "exact",
+      "notes": "FAA NFDC Fixes/Waypoints (35-45-32.9800N 070-26-55.6300W; OFFSHORE ATLANTIC). Educational — verify current NASR/AIP.",
+      "source": "faa-nfdc-lid"
     },
     {
       "id": "SLATN",
@@ -1020,8 +1129,9 @@
       "lon": -67.0,
       "category": "nat-named",
       "region": "watrs",
-      "accuracy": "approximate",
-      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+      "accuracy": "exact",
+      "notes": "FAA NFDC Fixes/Waypoints (39-07-00.0000N 067-00-00.0000W; OFFSHORE ATLANTIC). Educational — verify current NASR/AIP.",
+      "source": "faa-nfdc-lid"
     },
     {
       "id": "SNAGY",
@@ -1030,8 +1140,9 @@
       "lon": -76.864272,
       "category": "nat-named",
       "region": "watrs",
-      "accuracy": "approximate",
-      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+      "accuracy": "exact",
+      "notes": "FAA NFDC Fixes/Waypoints (29-36-26.3900N 076-51-51.3800W; OFFSHORE ATLANTIC). Educational — verify current NASR/AIP.",
+      "source": "faa-nfdc-lid"
     },
     {
       "id": "STERN",
@@ -1040,8 +1151,9 @@
       "lon": -72.342086,
       "category": "nat-named",
       "region": "watrs",
-      "accuracy": "approximate",
-      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+      "accuracy": "exact",
+      "notes": "FAA NFDC Fixes/Waypoints (34-58-04.4500N 072-20-31.5100W; OFFSHORE ATLANTIC). Educational — verify current NASR/AIP.",
+      "source": "faa-nfdc-lid"
     },
     {
       "id": "SUMRS",
@@ -1050,8 +1162,9 @@
       "lon": -76.558497,
       "category": "nat-named",
       "region": "watrs",
-      "accuracy": "approximate",
-      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+      "accuracy": "exact",
+      "notes": "FAA NFDC Fixes/Waypoints (28-42-42.0800N 076-33-30.5900W; OFFSHORE ATLANTIC). Educational — verify current NASR/AIP.",
+      "source": "faa-nfdc-lid"
     },
     {
       "id": "TARMO",
@@ -1060,8 +1173,9 @@
       "lon": -63.052578,
       "category": "nat-named",
       "region": "watrs",
-      "accuracy": "approximate",
-      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+      "accuracy": "exact",
+      "notes": "FAA NFDC Fixes/Waypoints (23-30-00.0000N 063-03-09.2800W; OFFSHORE ATLANTIC). Educational — verify current NASR/AIP.",
+      "source": "faa-nfdc-lid"
     },
     {
       "id": "TASNI",
@@ -1070,8 +1184,9 @@
       "lon": -69.224944,
       "category": "nat-named",
       "region": "watrs",
-      "accuracy": "approximate",
-      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+      "accuracy": "exact",
+      "notes": "FAA NFDC Fixes/Waypoints (30-54-01.1200N 069-13-29.8000W; OFFSHORE ATLANTIC). Educational — verify current NASR/AIP.",
+      "source": "faa-nfdc-lid"
     },
     {
       "id": "TUBBS",
@@ -1080,8 +1195,9 @@
       "lon": -76.985772,
       "category": "nat-named",
       "region": "watrs",
-      "accuracy": "approximate",
-      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+      "accuracy": "exact",
+      "notes": "FAA NFDC Fixes/Waypoints (31-42-54.5800N 076-59-08.7800W; OFFSHORE ATLANTIC). Educational — verify current NASR/AIP.",
+      "source": "faa-nfdc-lid"
     },
     {
       "id": "UKOKA",
@@ -1090,8 +1206,9 @@
       "lon": -77.0,
       "category": "nat-named",
       "region": "watrs",
-      "accuracy": "approximate",
-      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+      "accuracy": "exact",
+      "notes": "FAA NFDC Fixes/Waypoints (30-38-53.7000N 077-00-00.0000W; OFFSHORE ATLANTIC). Educational — verify current NASR/AIP.",
+      "source": "faa-nfdc-lid"
     },
     {
       "id": "VEGAA",
@@ -1100,8 +1217,9 @@
       "lon": -72.0,
       "category": "nat-named",
       "region": "watrs",
-      "accuracy": "approximate",
-      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+      "accuracy": "exact",
+      "notes": "FAA NFDC Fixes/Waypoints (35-19-23.3800N 072-00-00.0000W; OFFSHORE ATLANTIC). Educational — verify current NASR/AIP.",
+      "source": "faa-nfdc-lid"
     },
     {
       "id": "VESRA",
@@ -1111,7 +1229,8 @@
       "category": "nat-named",
       "region": "watrs",
       "accuracy": "approximate",
-      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+      "notes": "Pending official AIP/FAA (was OpenNav/US) from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC.",
+      "source": "pending-aip"
     },
     {
       "id": "VINSO",
@@ -1120,8 +1239,9 @@
       "lon": -67.242017,
       "category": "nat-named",
       "region": "watrs",
-      "accuracy": "approximate",
-      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+      "accuracy": "exact",
+      "notes": "FAA NFDC Fixes/Waypoints (27-04-59.2400N 067-14-31.2600W; OFFSHORE ATLANTIC). Educational — verify current NASR/AIP.",
+      "source": "faa-nfdc-lid"
     },
     {
       "id": "VIRST",
@@ -1130,8 +1250,9 @@
       "lon": -72.543694,
       "category": "nat-named",
       "region": "watrs",
-      "accuracy": "approximate",
-      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+      "accuracy": "exact",
+      "notes": "FAA NFDC Fixes/Waypoints (35-02-41.3900N 072-32-37.3000W; OFFSHORE ATLANTIC). Educational — verify current NASR/AIP.",
+      "source": "faa-nfdc-lid"
     },
     {
       "id": "WHOOS",
@@ -1140,8 +1261,9 @@
       "lon": -76.988808,
       "category": "nat-named",
       "region": "watrs",
-      "accuracy": "approximate",
-      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+      "accuracy": "exact",
+      "notes": "FAA NFDC Fixes/Waypoints (31-55-57.6000N 076-59-19.7100W; OFFSHORE ATLANTIC). Educational — verify current NASR/AIP.",
+      "source": "faa-nfdc-lid"
     },
     {
       "id": "ZZTOP",
@@ -1150,8 +1272,9 @@
       "lon": -73.587056,
       "category": "nat-named",
       "region": "watrs",
-      "accuracy": "approximate",
-      "notes": "OpenNav/US lookup from NAT HLA named-waypoint sample list. Educational — verify AIP/NFDC."
+      "accuracy": "exact",
+      "notes": "FAA NFDC Fixes/Waypoints (33-50-02.9300N 073-35-13.4000W; OFFSHORE ATLANTIC). Educational — verify current NASR/AIP.",
+      "source": "faa-nfdc-lid"
     },
     {
       "id": "42/60",
@@ -1823,13 +1946,153 @@
     {
       "id": "SOCCO",
       "name": "SOCCO",
-      "lat": 21.116666666666667,
-      "lon": -63.06166666666667,
+      "lat": 21.116403,
+      "lon": -63.061878,
+      "category": "nat-track",
+      "region": "learned",
+      "accuracy": "exact",
+      "notes": "FAA NFDC Fixes/Waypoints (21-06-59.0500N 063-03-42.7600W; OFFSHORE ATLANTIC). Educational — verify current NASR/AIP.",
+      "source": "faa-nfdc-lid"
+    },
+    {
+      "id": "60/20",
+      "name": "60/20",
+      "lat": 60.0,
+      "lon": -20.0,
+      "category": "nat-track",
+      "region": "learned",
+      "accuracy": "approximate",
+      "notes": "Learned from NAT tracks message"
+    },
+    {
+      "id": "60/30",
+      "name": "60/30",
+      "lat": 60.0,
+      "lon": -30.0,
+      "category": "nat-track",
+      "region": "learned",
+      "accuracy": "approximate",
+      "notes": "Learned from NAT tracks message"
+    },
+    {
+      "id": "59/40",
+      "name": "59/40",
+      "lat": 59.0,
+      "lon": -40.0,
+      "category": "nat-track",
+      "region": "learned",
+      "accuracy": "approximate",
+      "notes": "Learned from NAT tracks message"
+    },
+    {
+      "id": "59/20",
+      "name": "59/20",
+      "lat": 59.0,
+      "lon": -20.0,
+      "category": "nat-track",
+      "region": "learned",
+      "accuracy": "approximate",
+      "notes": "Learned from NAT tracks message"
+    },
+    {
+      "id": "59/30",
+      "name": "59/30",
+      "lat": 59.0,
+      "lon": -30.0,
+      "category": "nat-track",
+      "region": "learned",
+      "accuracy": "approximate",
+      "notes": "Learned from NAT tracks message"
+    },
+    {
+      "id": "58/40",
+      "name": "58/40",
+      "lat": 58.0,
+      "lon": -40.0,
+      "category": "nat-track",
+      "region": "learned",
+      "accuracy": "approximate",
+      "notes": "Learned from NAT tracks message"
+    },
+    {
+      "id": "58/20",
+      "name": "58/20",
+      "lat": 58.0,
+      "lon": -20.0,
+      "category": "nat-track",
+      "region": "learned",
+      "accuracy": "approximate",
+      "notes": "Learned from NAT tracks message"
+    },
+    {
+      "id": "5730/20",
+      "name": "5730/20",
+      "lat": 57.5,
+      "lon": -20.0,
+      "category": "nat-track",
+      "region": "learned",
+      "accuracy": "approximate",
+      "notes": "Learned from NAT tracks message"
+    },
+    {
+      "id": "50/30",
+      "name": "50/30",
+      "lat": 50.0,
+      "lon": -30.0,
+      "category": "nat-track",
+      "region": "learned",
+      "accuracy": "approximate",
+      "notes": "Learned from NAT tracks message"
+    },
+    {
+      "id": "48/40",
+      "name": "48/40",
+      "lat": 48.0,
+      "lon": -40.0,
+      "category": "nat-track",
+      "region": "learned",
+      "accuracy": "approximate",
+      "notes": "Learned from NAT tracks message"
+    },
+    {
+      "id": "49/30",
+      "name": "49/30",
+      "lat": 49.0,
+      "lon": -30.0,
+      "category": "nat-track",
+      "region": "learned",
+      "accuracy": "approximate",
+      "notes": "Learned from NAT tracks message"
+    },
+    {
+      "id": "50/20",
+      "name": "50/20",
+      "lat": 50.0,
+      "lon": -20.0,
+      "category": "nat-track",
+      "region": "learned",
+      "accuracy": "approximate",
+      "notes": "Learned from NAT tracks message"
+    },
+    {
+      "id": "45/50",
+      "name": "45/50",
+      "lat": 45.0,
+      "lon": -50.0,
+      "category": "nat-track",
+      "region": "learned",
+      "accuracy": "approximate",
+      "notes": "Learned from NAT tracks message"
+    },
+    {
+      "id": "47/40",
+      "name": "47/40",
+      "lat": 47.0,
+      "lon": -40.0,
       "category": "nat-track",
       "region": "learned",
       "accuracy": "approximate",
       "notes": "Learned from NAT tracks message"
     }
-  ],
-  "sourceDoc": "NAT_HLA_Waypoints_Reference.md + NAT_HLA_Named_Waypoints_Sample.md + OpenNav + TC AIM NAT"
+  ]
 }

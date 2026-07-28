@@ -321,6 +321,43 @@ html.theme-bright .theme-btn {
   line-height: 1.35;
 }
 
+.settings-liability .settings-gps-note {
+  margin: 0.55rem 0 0;
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.settings-liability .settings-gc-note {
+  margin: 0.45rem 0 0;
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.settings-liability .settings-teach-note,
+.settings-liability .settings-icloud-note,
+.settings-liability .settings-coords-note {
+  margin: 0.45rem 0 0;
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.settings-icloud-block {
+  margin-top: 0.55rem;
+  padding-top: 0.45rem;
+  border-top: 1px solid var(--line);
+}
+
+.settings-icloud-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-top: 0.45rem;
+}
+
+.settings-icloud-block .md-io-status {
+  margin-top: 0.4rem;
+}
+
 .main {
   flex: 1;
   min-height: 0;
@@ -443,6 +480,28 @@ html.theme-bright .panel {
   margin-left: auto;
 }
 
+.chart-route-summary {
+  display: none;
+  align-items: center;
+  margin-left: 0.35rem;
+  padding: 0.25rem 0.55rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  min-width: 0;
+}
+
+.chart-route-summary-text {
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+body.chart-fullscreen .chart-route-summary:not([hidden]) {
+  display: flex;
+}
+
 .chart-toolbar-toggles {
   display: flex;
   flex-wrap: wrap;
@@ -450,6 +509,54 @@ html.theme-bright .panel {
   justify-content: flex-end;
   gap: 0.45rem 0.75rem;
   margin-left: auto;
+}
+
+/* 747-8 GC planner — full-screen + empty route only */
+.gc-plan-bar {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  flex: 1 1 100%;
+  min-width: 0;
+}
+
+body.chart-fullscreen .gc-plan-bar:not([hidden]) {
+  display: flex;
+}
+
+.gc-icao {
+  width: 4.2rem;
+  padding: 0.35rem 0.4rem;
+  font: 700 0.95rem ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.06em;
+  text-align: center;
+  text-transform: uppercase;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg-input, var(--panel));
+  color: var(--text);
+}
+
+.gc-icao.warn-diff {
+  border-color: #c45a00;
+  box-shadow: 0 0 0 1px rgba(196, 90, 0, 0.35);
+}
+
+.gc-plan-label {
+  flex: 0 1 auto;
+  max-width: 18rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-align: center;
+  color: var(--muted, #8a9bb0);
+  white-space: nowrap;
+}
+
+.gc-plan-label.is-ready {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
 }
 
 .chart-toolbar #nat-tracks-btn,
@@ -772,7 +879,7 @@ html.theme-bright .chart-toggle {
 
 .entry-row {
   display: grid;
-  grid-template-columns: 1fr auto auto auto;
+  grid-template-columns: 1fr auto auto auto auto;
   gap: 0.5rem;
   align-items: start;
 }
@@ -1004,6 +1111,23 @@ html.theme-bright .icon-btn {
   color: var(--warn);
 }
 
+.route-unknown-remark {
+  margin: 0.45rem 0 0;
+  padding: 0.28rem 0.45rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--warn, #c47a1a);
+  background: color-mix(in srgb, var(--warn, #c47a1a) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--warn, #c47a1a) 35%, transparent);
+  border-radius: 6px;
+}
+
+.route-unknown-remark[hidden] {
+  display: none;
+}
+
 .route-list {
   list-style: none;
   margin: 0.55rem 0 0;
@@ -1118,6 +1242,7 @@ html.theme-bright .route-item {
   flex: 1;
   min-height: 0;
   padding: 0.5rem;
+  position: relative;
 }
 
 #chart {
@@ -1127,6 +1252,17 @@ html.theme-bright .route-item {
   background: transparent;
   touch-action: none; /* allow pinch-zoom without page scroll */
   cursor: grab;
+}
+
+/* Transparent GPS layer — redrawn alone so the globe does not blink */
+.chart-ownship {
+  position: absolute;
+  inset: 0.5rem;
+  width: calc(100% - 1rem);
+  height: calc(100% - 1rem);
+  display: block;
+  pointer-events: none;
+  background: transparent;
 }
 
 /* Full-screen Atlantic globe */

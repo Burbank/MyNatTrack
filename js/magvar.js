@@ -50,7 +50,7 @@ function clamp(v, lo, hi) {
 /**
  * @returns {number} magnetic variation degrees (East positive)
  */
-export function magneticVariation(lat, lon) {
+function magneticVariation(lat, lon) {
   const la = clamp(lat, LATS[0], LATS[LATS.length - 1]);
   const lo = clamp(lon, LONS[0], LONS[LONS.length - 1]);
 

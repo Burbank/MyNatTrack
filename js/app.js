@@ -3,6 +3,9 @@ import {
   averageBearing,
   formatTrack,
   formatDistanceNm,
+  greatCircleSamples,
+  estimate747BlockTime,
+  formatEteHhMm,
 } from "./geodesy.js";
 import {
   formatCockpitLat,
@@ -13,13 +16,23 @@ import {
   parseWaypointsFromMarkdown,
   suggestWaypoints,
 } from "./parser.js";
+import { airwaysMapFromPayload, isAirwayToken } from "./airways.js";
+import { AIM_OEP_TABLE_11, isAimOepName } from "./aimOeps.js";
 import {
   trueToMagnetic,
   formatVariation,
   MAGVAR_TABLE_DATE,
   MAGVAR_DRIFT_REMARK,
 } from "./magvar.js";
-import { drawChart, loadLandData } from "./chart.js";
+import { drawChart, loadLandData, paintOwnshipOverlay, hitTestChartAirport } from "./chart.js";
+import { lookupAirport747, airports747List } from "./airports747.js";
+import {
+  DIVERSION_AIRPORTS,
+  diversionAirportsPlottable,
+  diversionAirportsAlpha,
+  runwayLabels,
+  RWY_LABEL_MIN_M,
+} from "./diversionAirports.js";
 import {
   fetchNatTracks,
   loadCachedNatTracks,
@@ -29,11 +42,6 @@ import {
   inferTmi,
 } from "./natTracks.js";
 import { ensureUnlocked } from "./auth.js";
-import {
-  DIVERSION_AIRPORTS,
-  diversionAirportsAlpha,
-  runwayLabels,
-} from "./diversionAirports.js";
 
 const STORAGE_KEY = "mynattrack_route_v1";
 /** Explicit stored baseline for NM difference (Save route / Route stored). */
@@ -81,7 +89,6 @@ const state = {
   /** Device GPS for ownship marker on chart */
   gps: null,
   gpsWatchId: null,
-  gpsLastDrawMs: 0,
   /** edit = route+chart+legs; fly = chart left, legs right */
   uiMode: "edit",
   /**
@@ -97,7 +104,12 @@ const state = {
    */
   storedRoute: null,
   /** Cached from last renderLegs — avoids Vincenty on every GPS fix. */
-  routeTotals: { legsCount: 0, totalNm: 0, key: "" },
+  routeTotals: { legsCount: 0, totalNm: 0, totalEteMin: 0, key: "" },
+  /** 747-8 GC planner (full-screen, empty route only) */
+  gcDepIcao: "",
+  gcArrIcao: "",
+  /** Memoized GC great-circle plan (keyed by dep|arr ICAO). */
+  gcPlanCache: null,
   /**
    * Teach-unknown-waypoint wizard.
    * @type {null | {
@@ -108,6 +120,10 @@ const state = {
    * }}
    */
   teach: null,
+  /** True when last route paste skipped unknown tokens (airways / missing names). */
+  skippedUnknowns: false,
+  /** Bundled WATRS / NY OAC airway definitions (M201–M204, …). */
+  airways: Object.create(null),
 };
 
 const el = {
@@ -116,7 +132,9 @@ const el = {
   addBtn: document.getElementById("add-btn"),
   clearBtn: document.getElementById("clear-btn"),
   cancelEditBtn: document.getElementById("cancel-edit-btn"),
+  teachBtn: document.getElementById("teach-btn"),
   routeHint: document.getElementById("route-hint"),
+  routeUnknownRemark: document.getElementById("route-unknown-remark"),
   routeStoreBtn: document.getElementById("route-store-btn"),
   routeStoreLabel: document.getElementById("route-store-label"),
   routeStoreConfirm: document.getElementById("route-store-confirm"),
@@ -132,6 +150,7 @@ const el = {
   totalsCompare: document.getElementById("totals-compare"),
   legsModDiff: document.getElementById("legs-mod-diff"),
   chart: document.getElementById("chart"),
+  chartOwnship: document.getElementById("chart-ownship"),
   error: document.getElementById("error"),
   teachPanel: document.getElementById("teach-panel"),
   teachTitle: document.getElementById("teach-title"),
@@ -140,7 +159,6 @@ const el = {
   teachCoords: document.getElementById("teach-coords"),
   teachError: document.getElementById("teach-error"),
   teachSaveBtn: document.getElementById("teach-save-btn"),
-  teachSkipBtn: document.getElementById("teach-skip-btn"),
   teachCancelBtn: document.getElementById("teach-cancel-btn"),
   settingsBtn: document.getElementById("settings-btn"),
   settingsPanel: document.getElementById("settings-panel"),
@@ -167,6 +185,10 @@ const el = {
   mdImportHelpContinue: document.getElementById("md-import-help-continue"),
   mdImportFile: document.getElementById("md-import-file"),
   mdImportStatus: document.getElementById("md-import-status"),
+  icloudExportBtn: document.getElementById("icloud-export-btn"),
+  icloudImportBtn: document.getElementById("icloud-import-btn"),
+  icloudImportFile: document.getElementById("icloud-import-file"),
+  icloudSyncStatus: document.getElementById("icloud-sync-status"),
   settingsVerify: document.getElementById("settings-verify"),
   natTracksBtn: document.getElementById("nat-tracks-btn"),
   natPanel: document.getElementById("nat-panel"),
@@ -184,6 +206,12 @@ const el = {
   natUtcClock: document.getElementById("nat-utc-clock"),
   themeBtn: document.getElementById("theme-btn"),
   chartFullscreenBtn: document.getElementById("chart-fullscreen-btn"),
+  chartRouteSummary: document.getElementById("chart-route-summary"),
+  chartRouteSummaryText: document.getElementById("chart-route-summary-text"),
+  gcPlanBar: document.getElementById("gc-plan-bar"),
+  gcDep: document.getElementById("gc-dep"),
+  gcArr: document.getElementById("gc-arr"),
+  gcPlanLabel: document.getElementById("gc-plan-label"),
   modeEditBtn: document.getElementById("mode-edit-btn"),
   modeFlyBtn: document.getElementById("mode-fly-btn"),
   thAvgMag: document.getElementById("th-avg-mag"),
@@ -197,6 +225,9 @@ let chartRaf = 0;
 let chartLitePending = false;
 let chartIdleTimer = 0;
 let natClockTimer = 0;
+/** Last automatic NAT fetch (panel open). Manual Refresh always allowed. */
+let natLastAutoFetchMs = 0;
+const NAT_AUTO_REFRESH_MS = 10 * 60 * 1000;
 
 function loadThemePref() {
   try {
@@ -252,7 +283,11 @@ function setChartFullscreen(on) {
     el.chartFullscreenBtn.setAttribute("aria-pressed", on ? "true" : "false");
     el.chartFullscreenBtn.title = on ? "Exit full screen chart" : "Full screen chart";
   }
+  if (!on) {
+    clearGcPlan();
+  }
   syncTrackToggleUi();
+  syncGcPlanBar();
   // Allow layout to settle before redraw
   requestAnimationFrame(() => {
     requestAnimationFrame(() => renderChart());
@@ -261,6 +296,149 @@ function setChartFullscreen(on) {
 
 function toggleChartFullscreen() {
   setChartFullscreen(!document.body.classList.contains("chart-fullscreen"));
+}
+
+/** No working route and no saved baseline — GC planner may appear. */
+function routeIsIdleForGcPlan() {
+  if (state.route?.length) return false;
+  if (state.storedRoute?.route?.length) return false;
+  return true;
+}
+
+function clearGcPlan() {
+  state.gcDepIcao = "";
+  state.gcArrIcao = "";
+  state.gcPlanCache = null;
+  if (el.gcDep) el.gcDep.value = "";
+  if (el.gcArr) el.gcArr.value = "";
+  if (el.gcDep) el.gcDep.classList.remove("warn-diff");
+  if (el.gcArr) el.gcArr.classList.remove("warn-diff");
+  updateGcPlanLabel();
+}
+
+function normalizeGcIcaoInput(raw) {
+  return String(raw || "")
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z]/g, "")
+    .slice(0, 4);
+}
+
+function resolveGcAirport(icao) {
+  if (!icao || icao.length !== 4) return null;
+  const from747 = lookupAirport747(icao);
+  if (from747) return from747;
+  const div = diversionAirportsPlottable(RWY_LABEL_MIN_M).find(
+    (a) => a.icao === icao
+  );
+  return div || null;
+}
+
+/**
+ * @returns {null | {
+ *   dep: {icao:string,lat:number,lon:number},
+ *   arr: {icao:string,lat:number,lon:number},
+ *   points: {lat:number,lon:number}[],
+ *   distanceNm: number,
+ *   timeLabel: string,
+ *   windKt?: number,
+ *   gsKt?: number
+ * }}
+ */
+function buildGcPlan() {
+  const dep = resolveGcAirport(state.gcDepIcao);
+  const arr = resolveGcAirport(state.gcArrIcao);
+  if (!dep || !arr) return null;
+  if (dep.icao === arr.icao) return null;
+  const key = `${dep.icao}|${arr.icao}`;
+  const cached = state.gcPlanCache;
+  if (cached && cached.key === key) return cached.plan;
+  const inv = vincentyInverse(dep.lat, dep.lon, arr.lat, arr.lon);
+  const time = estimate747BlockTime(
+    inv.distanceNm,
+    dep.lat,
+    dep.lon,
+    arr.lat,
+    arr.lon,
+    { initialBearing: inv.initialBearing }
+  );
+  const plan = {
+    dep,
+    arr,
+    points: greatCircleSamples(dep.lat, dep.lon, arr.lat, arr.lon, 80),
+    distanceNm: inv.distanceNm,
+    timeLabel: time.label,
+    windKt: time.windKt,
+    gsKt: time.gsKt,
+  };
+  state.gcPlanCache = { key, plan };
+  return plan;
+}
+
+function updateGcPlanLabel() {
+  if (!el.gcPlanLabel) return;
+  const plan = buildGcPlan();
+  if (plan) {
+    el.gcPlanLabel.textContent = `${formatDistanceNm(plan.distanceNm)} NM, ${plan.timeLabel}`;
+    el.gcPlanLabel.classList.add("is-ready");
+    const windNote =
+      plan.windKt === 0
+        ? "calm mid-lat wind model"
+        : plan.windKt > 0
+          ? `~${plan.windKt} kt tailwind (westerlies)`
+          : `~${Math.abs(plan.windKt)} kt headwind (westerlies)`;
+    el.gcPlanLabel.title = `GC NM + crude 747 block (~${plan.gsKt} kt GS; ${windNote})`;
+  } else {
+    el.gcPlanLabel.textContent = "PLAN 747-8 Great Circle";
+    el.gcPlanLabel.classList.remove("is-ready");
+    el.gcPlanLabel.title = "";
+  }
+}
+
+function syncGcPlanBar() {
+  const show =
+    document.body.classList.contains("chart-fullscreen") && routeIsIdleForGcPlan();
+  if (el.gcPlanBar) el.gcPlanBar.hidden = !show;
+  if (!show) return;
+  updateGcPlanLabel();
+}
+
+function onGcIcaoInput(which, raw) {
+  const code = normalizeGcIcaoInput(raw);
+  const input = which === "dep" ? el.gcDep : el.gcArr;
+  if (input && input.value !== code) input.value = code;
+  if (which === "dep") state.gcDepIcao = code;
+  else state.gcArrIcao = code;
+  state.gcPlanCache = null;
+  if (input) {
+    const ok = code.length === 0 || (code.length === 4 && !!resolveGcAirport(code));
+    input.classList.toggle("warn-diff", code.length > 0 && !ok);
+  }
+  updateGcPlanLabel();
+  renderChart();
+}
+
+/** Full-screen GC planner: 1st tap → DEP, 2nd → DEST, further tap restarts with new DEP. */
+function selectGcAirportFromTap(ap) {
+  if (!ap?.icao) return;
+  if (
+    !document.body.classList.contains("chart-fullscreen") ||
+    !routeIsIdleForGcPlan()
+  ) {
+    return;
+  }
+  const code = normalizeGcIcaoInput(ap.icao);
+  if (!resolveGcAirport(code) && !(Number.isFinite(ap.lat) && Number.isFinite(ap.lon))) {
+    return;
+  }
+  if (!state.gcDepIcao) {
+    onGcIcaoInput("dep", code);
+  } else if (!state.gcArrIcao || state.gcArrIcao === state.gcDepIcao) {
+    onGcIcaoInput("arr", code);
+  } else {
+    onGcIcaoInput("dep", code);
+    onGcIcaoInput("arr", "");
+  }
 }
 
 function showError(msg) {
@@ -319,9 +497,20 @@ function snapshotRoutePoints(route) {
   }));
 }
 
-function computeRouteTotalNm(route) {
+function isAirportWaypoint(w) {
+  if (!w) return false;
+  if (String(w.category || "").toLowerCase() === "airport") return true;
+  const icao = String(w.name || w.id || "")
+    .trim()
+    .toUpperCase();
+  if (icao.length !== 4) return false;
+  return !!resolveGcAirport(icao);
+}
+
+/** Sum crude ETE minutes for a route (same rules as Legs ETE column). */
+function computeRouteTotalEteMin(route) {
   if (!route || route.length < 2) return 0;
-  let totalNm = 0;
+  let total = 0;
   for (let i = 0; i < route.length - 1; i++) {
     const a = route[i];
     const b = route[i + 1];
@@ -333,9 +522,14 @@ function computeRouteTotalNm(route) {
     ) {
       continue;
     }
-    totalNm += vincentyInverse(a.lat, a.lon, b.lat, b.lon).distanceNm;
+    const inv = vincentyInverse(a.lat, a.lon, b.lat, b.lon);
+    const pad = isAirportWaypoint(a) || isAirportWaypoint(b);
+    total += estimate747BlockTime(inv.distanceNm, a.lat, a.lon, b.lat, b.lon, {
+      terminalPad: pad,
+      initialBearing: inv.initialBearing,
+    }).minutes;
   }
-  return totalNm;
+  return total;
 }
 
 function loadStoredRoute() {
@@ -384,13 +578,22 @@ function persistStoredRoute(snapshot) {
 function storeCurrentRouteAsBaseline() {
   const route = snapshotRoutePoints(state.route);
   const key = routeSequenceKey(route);
-  const totalNm =
+  const computed =
     state.routeTotals.key === key
-      ? state.routeTotals.totalNm
-      : computeRouteTotalNm(route);
+      ? state.routeTotals
+      : (() => {
+          const c = computeLegs();
+          return {
+            legsCount: c.legs.length,
+            totalNm: c.totalNm,
+            totalEteMin: c.totalEteMin,
+            key,
+          };
+        })();
   persistStoredRoute({
     waypoints: route.length,
-    totalNm,
+    totalNm: computed.totalNm,
+    totalEteMin: computed.totalEteMin,
     key,
     route,
   });
@@ -435,6 +638,7 @@ function restoreRouteFromStored() {
   }
   state.editingIndex = null;
   state.insertAfterIndex = null;
+  state.skippedUnknowns = false;
   if (el.input) el.input.value = "";
   hideSuggestions();
   showError("");
@@ -446,6 +650,7 @@ function clearWorkingRouteOnly() {
   state.route = [];
   state.editingIndex = null;
   state.insertAfterIndex = null;
+  state.skippedUnknowns = false;
   if (el.input) el.input.value = "";
   hideSuggestions();
   showError("");
@@ -495,11 +700,28 @@ function saveLearnedWaypoints(list) {
 function mergeLearnedWaypointsIntoDb() {
   const learned = loadLearnedWaypoints();
   if (!learned.length) return;
-  const known = new Set(state.db.map((w) => String(w.name || "").toUpperCase()));
+  const byName = new Map(
+    state.db.map((w) => [String(w.name || "").toUpperCase(), w])
+  );
   for (const w of learned) {
     const name = String(w?.name || "").toUpperCase();
     if (!name || !Number.isFinite(w.lat) || !Number.isFinite(w.lon)) continue;
-    if (known.has(name)) continue;
+    const existing = byName.get(name);
+    const isManual =
+      w.source === "manual-teach" || w.category === "manual";
+    if (existing) {
+      // Manual Teach always wins over bundled / online / NAT-learned
+      if (isManual) {
+        existing.lat = w.lat;
+        existing.lon = w.lon;
+        existing.accuracy = w.accuracy || "approximate";
+        existing.category = "manual";
+        existing.notes = w.notes || existing.notes;
+        existing.source = "manual-teach";
+      }
+      continue;
+    }
+    // Do not re-introduce online lookups that conflict was skipped — only add new
     state.db.push({
       id: w.id || name,
       name,
@@ -508,8 +730,9 @@ function mergeLearnedWaypointsIntoDb() {
       accuracy: w.accuracy || "approximate",
       category: w.category || "nat-track",
       notes: w.notes || "Learned from NAT tracks message",
+      source: w.source || "learned",
     });
-    known.add(name);
+    byName.set(name, state.db[state.db.length - 1]);
   }
 }
 
@@ -544,6 +767,69 @@ function mergeDiversionAirportsIntoDb() {
       notes: `${ap.name || icao}. ${rwyNote}`,
     });
     known.add(icao);
+  }
+}
+
+/** 747-8 ICAOs available for route entry / suggest everywhere (not chart-clutter). */
+function merge747AirportsIntoDb() {
+  const known = new Set(
+    state.db.flatMap((w) =>
+      [w.name, w.id]
+        .filter(Boolean)
+        .map((s) => String(s).toUpperCase())
+    )
+  );
+  for (const ap of airports747List()) {
+    const icao = String(ap?.icao || "").trim().toUpperCase();
+    if (!icao || !Number.isFinite(ap.lat) || !Number.isFinite(ap.lon)) continue;
+    if (known.has(icao)) continue;
+    const longest = (ap.runways || [])[0];
+    const rwyNote = longest
+      ? `Longest ${longest.rwy} ${longest.rwyM} m`
+      : "747-8 airport";
+    state.db.push({
+      id: icao,
+      name: icao,
+      lat: ap.lat,
+      lon: ap.lon,
+      accuracy: "exact",
+      category: "airport",
+      region: "747-8",
+      notes: `${ap.name || icao}. ${rwyNote}`,
+    });
+    known.add(icao);
+  }
+}
+
+/** Bundled WATRS / NY OAC airway fixes (M201–M204 educational set). */
+function mergeWatrsWaypointsIntoDb(watrs) {
+  const known = new Set(
+    state.db.flatMap((w) =>
+      [w.name, w.id]
+        .filter(Boolean)
+        .map((s) => String(s).toUpperCase())
+    )
+  );
+  for (const w of watrs?.waypoints || []) {
+    const name = String(w?.name || "")
+      .trim()
+      .toUpperCase();
+    if (!name || !Number.isFinite(w.lat) || !Number.isFinite(w.lon)) continue;
+    if (known.has(name)) continue;
+    state.db.push({
+      id: name,
+      name,
+      lat: w.lat,
+      lon: w.lon,
+      accuracy: w.accuracy || "approximate",
+      category: w.category || "watrs",
+      region: w.country || "WATRS",
+      notes:
+        w.notes ||
+        "WATRS / New York OAC educational fix — verify NFDC/AIP.",
+      source: w.source || "watrs-airways",
+    });
+    known.add(name);
   }
 }
 
@@ -646,17 +932,200 @@ function openMdImportHelp() {
   if (el.mdImportHelp) el.mdImportHelp.hidden = false;
 }
 
-function setMdImportStatus(msg, isError = false) {
-  if (!el.mdImportStatus) return;
+function setIcloudSyncStatus(msg, isError = false) {
+  if (!el.icloudSyncStatus) {
+    el.icloudSyncStatus = document.getElementById("icloud-sync-status");
+  }
+  if (!el.icloudSyncStatus) return;
   if (!msg) {
-    el.mdImportStatus.hidden = true;
-    el.mdImportStatus.textContent = "";
-    el.mdImportStatus.classList.remove("is-error");
+    el.icloudSyncStatus.hidden = true;
+    el.icloudSyncStatus.textContent = "";
+    el.icloudSyncStatus.classList.remove("is-error");
     return;
   }
-  el.mdImportStatus.textContent = msg;
-  el.mdImportStatus.classList.toggle("is-error", isError);
-  el.mdImportStatus.hidden = false;
+  el.icloudSyncStatus.textContent = msg;
+  el.icloudSyncStatus.classList.toggle("is-error", isError);
+  el.icloudSyncStatus.hidden = false;
+}
+
+function learnedBackupFilename() {
+  return "MyNatTrack-learned.json";
+}
+
+function buildLearnedBackupPayload() {
+  return {
+    format: "mynattrack-learned-v1",
+    exportedOn: todayUtcDate(),
+    accuracyVerifiedOn: state.accuracyVerifiedOn || loadStoredAccuracyDate() || "",
+    waypoints: loadLearnedWaypoints(),
+  };
+}
+
+function downloadJsonFile(obj, filename) {
+  const text = JSON.stringify(obj, null, 2);
+  const blob = new Blob([text], { type: "application/json;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.rel = "noopener";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1500);
+}
+
+async function exportLearnedToFiles() {
+  const payload = buildLearnedBackupPayload();
+  const filename = learnedBackupFilename();
+  const text = JSON.stringify(payload, null, 2);
+  const file = new File([text], filename, {
+    type: "application/json",
+    lastModified: Date.now(),
+  });
+  try {
+    if (navigator.canShare?.({ files: [file] })) {
+      await navigator.share({
+        files: [file],
+        title: "MyNatTrack learned waypoints",
+        text: "Save to Files → iCloud Drive (MyNatTrack folder) for use on your other devices.",
+      });
+      setIcloudSyncStatus(
+        `Shared ${payload.waypoints.length} learned fix(es). Choose Save to Files → iCloud Drive.`
+      );
+      return;
+    }
+  } catch (err) {
+    if (err && (err.name === "AbortError" || err.name === "NotAllowedError")) {
+      setIcloudSyncStatus("Share cancelled.");
+      return;
+    }
+  }
+  downloadJsonFile(payload, filename);
+  setIcloudSyncStatus(
+    `Downloaded ${filename} (${payload.waypoints.length} fix(es)). Move it into iCloud Drive if needed.`
+  );
+}
+
+/**
+ * Merge a learned JSON backup. Priority: manual Teach > existing manual > incoming > older online.
+ * AIM Table 1.1 OEPs are never taken from the backup (unless marked manual-teach).
+ */
+function mergeLearnedBackupPayload(payload) {
+  const incoming = Array.isArray(payload?.waypoints) ? payload.waypoints : [];
+  if (!incoming.length) {
+    return { added: 0, updated: 0, skipped: 0 };
+  }
+  let added = 0;
+  let updated = 0;
+  let skipped = 0;
+  const learned = loadLearnedWaypoints();
+  const learnedBy = new Map(
+    learned.map((w) => [String(w?.name || "").toUpperCase(), w])
+  );
+
+  for (const raw of incoming) {
+    if (!raw || typeof raw !== "object") {
+      skipped += 1;
+      continue;
+    }
+    const name = String(raw.name || "")
+      .trim()
+      .toUpperCase();
+    const lat = Number(raw.lat);
+    const lon = Number(raw.lon);
+    if (!name || !Number.isFinite(lat) || !Number.isFinite(lon)) {
+      skipped += 1;
+      continue;
+    }
+    if (isAimOepName(name) && !isManualTaughtEntry(raw)) {
+      skipped += 1;
+      continue;
+    }
+    const entry = {
+      id: raw.id || name,
+      name,
+      lat,
+      lon,
+      accuracy: raw.accuracy || "approximate",
+      category: raw.category || (isManualTaughtEntry(raw) ? "manual" : "learned"),
+      region: raw.region || "backup",
+      notes: raw.notes || "Imported from iCloud / Files backup",
+      source: raw.source || (isManualTaughtEntry(raw) ? "manual-teach" : "icloud-import"),
+    };
+
+    const existingLearned = learnedBy.get(name);
+    if (existingLearned && isManualTaughtEntry(existingLearned) && !isManualTaughtEntry(entry)) {
+      skipped += 1;
+      continue;
+    }
+
+    const dbHit = state.db.find((w) => String(w.name || "").toUpperCase() === name);
+    if (dbHit && isManualTaughtEntry(dbHit) && !isManualTaughtEntry(entry)) {
+      skipped += 1;
+      continue;
+    }
+
+    if (dbHit) {
+      dbHit.lat = entry.lat;
+      dbHit.lon = entry.lon;
+      dbHit.accuracy = entry.accuracy;
+      dbHit.category = entry.category;
+      dbHit.notes = entry.notes;
+      dbHit.source = entry.source;
+      updated += 1;
+    } else {
+      state.db.push({ ...entry });
+      added += 1;
+    }
+
+    learnedBy.set(name, entry);
+  }
+
+  const next = [...learnedBy.values()];
+  saveLearnedWaypoints(next);
+  if (payload.accuracyVerifiedOn) {
+    setAccuracyVerifiedDate(String(payload.accuracyVerifiedOn));
+  } else {
+    setAccuracyVerifiedDate(todayUtcDate());
+  }
+  refreshMarkdownWithLearned();
+  // Refresh route copies of updated names
+  const names = new Set(
+    incoming.map((w) => String(w?.name || "").toUpperCase()).filter(Boolean)
+  );
+  state.route = state.route.map((wp) => {
+    const n = String(wp.name || "").toUpperCase();
+    if (!names.has(n)) return wp;
+    const hit = state.db.find((w) => String(w.name || "").toUpperCase() === n);
+    return hit ? enrichPoint({ ...hit }) : wp;
+  });
+  saveRoute();
+  return { added, updated, skipped };
+}
+
+async function importLearnedFromFile(file) {
+  if (!file) return;
+  try {
+    const text = await file.text();
+    const payload = JSON.parse(text);
+    if (payload?.format && payload.format !== "mynattrack-learned-v1") {
+      setIcloudSyncStatus("Unrecognized backup format.", true);
+      return;
+    }
+    if (!Array.isArray(payload?.waypoints)) {
+      setIcloudSyncStatus("File has no waypoints array.", true);
+      return;
+    }
+    const { added, updated, skipped } = mergeLearnedBackupPayload(payload);
+    applyAimOepCorrections();
+    renderAll();
+    setIcloudSyncStatus(
+      `Imported: ${added} added, ${updated} updated, ${skipped} skipped.`
+    );
+  } catch (err) {
+    setIcloudSyncStatus(err?.message || "Could not read that JSON file.", true);
+  }
 }
 
 function downloadWaypointsMarkdown(text, filename) {
@@ -896,6 +1365,7 @@ function syncA2903ViewportClass() {
 function computeLegs() {
   const legs = [];
   let totalNm = 0;
+  let totalEteMin = 0;
   for (let i = 0; i < state.route.length - 1; i += 1) {
     const a = state.route[i];
     const b = state.route[i + 1];
@@ -905,7 +1375,17 @@ function computeLegs() {
     const midLon = (a.lon + b.lon) / 2;
     const avgMag = trueToMagnetic(avgTrue, midLat, midLon);
     const initMag = trueToMagnetic(inv.initialBearing, a.lat, a.lon);
+    const terminalPad = isAirportWaypoint(a) || isAirportWaypoint(b);
+    const ete = estimate747BlockTime(
+      inv.distanceNm,
+      a.lat,
+      a.lon,
+      b.lat,
+      b.lon,
+      { terminalPad, initialBearing: inv.initialBearing }
+    );
     totalNm += inv.distanceNm;
+    totalEteMin += ete.minutes;
     legs.push({
       from: a,
       to: b,
@@ -914,11 +1394,13 @@ function computeLegs() {
       initTrue: inv.initialBearing,
       initMag,
       distanceNm: inv.distanceNm,
+      eteMin: ete.minutes,
+      eteLabel: ete.label,
       avgVarLabel: formatVariation(midLat, midLon),
       initVarLabel: formatVariation(a.lat, a.lon),
     });
   }
-  return { legs, totalNm };
+  return { legs, totalNm, totalEteMin };
 }
 
 function enrichPoint(p) {
@@ -949,6 +1431,15 @@ function ensureRouteHintPlacement() {
   updateRouteStoreButton();
 }
 
+function updateUnknownRemark() {
+  if (!el.routeUnknownRemark) {
+    el.routeUnknownRemark = document.getElementById("route-unknown-remark");
+  }
+  if (!el.routeUnknownRemark) return;
+  const show = Boolean(state.skippedUnknowns && state.route.length);
+  el.routeUnknownRemark.hidden = !show;
+}
+
 function updateEntryChrome() {
   updateRouteStoreButton();
   const editing = state.editingIndex != null;
@@ -959,19 +1450,23 @@ function updateEntryChrome() {
   if (el.cancelEditBtn) {
     el.cancelEditBtn.hidden = !editing && !inserting;
   }
+  if (el.teachBtn) {
+    el.teachBtn.hidden = !shouldShowTeachButton();
+  }
   if (el.routeHint) {
     if (editing) {
-      el.routeHint.textContent = `Editing waypoint ${state.editingIndex + 1}. Change the value and tap Update, or Cancel.`;
+      el.routeHint.textContent = `Editing waypoint ${state.editingIndex + 1}. Teach to correct coordinates, Update to replace, or Cancel.`;
       el.routeHint.hidden = false;
     } else if (inserting) {
       el.routeHint.textContent = `Inserting after waypoint ${state.insertAfterIndex + 1}. Enter one or more waypoints, then Insert.`;
       el.routeHint.hidden = false;
     } else {
       el.routeHint.textContent =
-        "Paste a full space-separated route, or add single waypoints. Use Edit / Insert / ↑↓ / × for ATC changes.";
+        "Paste a full space-separated route, or add single waypoints. Use Edit / Teach / Insert / ↑↓ / × for ATC changes.";
       el.routeHint.hidden = false;
     }
   }
+  updateUnknownRemark();
 }
 
 function cancelEditMode() {
@@ -1217,12 +1712,23 @@ function formatNmDelta(deltaNm) {
   return { text: `Difference: +${abs} NM`, kind: "longer" };
 }
 
-/** Compact title form: "mod diff 240.0nm" (signed). */
-function formatModDiffTitle(deltaNm) {
+function formatEteDelta(deltaMin) {
+  const abs = formatEteHhMm(Math.abs(deltaMin));
+  if (Math.abs(deltaMin) < 0.5) return { text: `ETE ${abs}`, kind: "same" };
+  if (deltaMin < 0) return { text: `ETE −${abs}`, kind: "shorter" };
+  return { text: `ETE +${abs}`, kind: "longer" };
+}
+
+/** Compact title form: "mod diff 240.0nm · −00:32". */
+function formatModDiffTitle(deltaNm, deltaEteMin) {
   const abs = formatDistanceNm(Math.abs(deltaNm));
-  if (Math.abs(deltaNm) < 0.05) return `mod diff ${abs}nm`;
-  if (deltaNm < 0) return `mod diff −${abs}nm`;
-  return `mod diff +${abs}nm`;
+  let nmPart = `mod diff ${abs}nm`;
+  if (Math.abs(deltaNm) >= 0.05) {
+    nmPart = deltaNm < 0 ? `mod diff −${abs}nm` : `mod diff +${abs}nm`;
+  }
+  if (deltaEteMin == null || !Number.isFinite(deltaEteMin)) return nmPart;
+  const ete = formatEteDelta(deltaEteMin);
+  return `${nmPart} · ${ete.text}`;
 }
 
 function clearLegsModDiff() {
@@ -1231,17 +1737,24 @@ function clearLegsModDiff() {
   el.legsModDiff.textContent = "";
 }
 
-function updateLegsModDiff(deltaNm) {
+function updateLegsModDiff(deltaNm, deltaEteMin) {
   if (!el.legsModDiff) return;
   if (deltaNm == null || !Number.isFinite(deltaNm)) {
     clearLegsModDiff();
     return;
   }
-  el.legsModDiff.textContent = formatModDiffTitle(deltaNm);
+  el.legsModDiff.textContent = formatModDiffTitle(deltaNm, deltaEteMin);
   el.legsModDiff.hidden = false;
 }
 
-function updateTotalsCompare(currentNm) {
+function storedRouteEteMin(stored) {
+  if (!stored) return 0;
+  if (Number.isFinite(stored.totalEteMin)) return stored.totalEteMin;
+  if (stored.route?.length >= 2) return computeRouteTotalEteMin(stored.route);
+  return 0;
+}
+
+function updateTotalsCompare(currentNm, currentEteMin) {
   const hideAll = () => {
     if (el.totalsCompare) {
       el.totalsCompare.hidden = true;
@@ -1260,74 +1773,118 @@ function updateTotalsCompare(currentNm) {
     return;
   }
   const curKey = routeSequenceKey(state.route);
-  // Hide while working route still matches the stored baseline
   if (stored.key && curKey && stored.key === curKey) {
     hideAll();
     return;
   }
+  const storedEte = storedRouteEteMin(stored);
+  const storedEteTxt = formatEteHhMm(storedEte);
   if (!state.route.length) {
     if (el.totalsCompare) {
       el.totalsCompare.innerHTML =
         `Your stored route was ${stored.waypoints} waypoints · ` +
-        `${formatDistanceNm(stored.totalNm)} NM total`;
+        `${formatDistanceNm(stored.totalNm)} NM total · ETE ${storedEteTxt}`;
       el.totalsCompare.hidden = false;
     }
     clearLegsModDiff();
     return;
   }
-  const nm = currentNm != null ? currentNm : computeLegs().totalNm;
+  let nm = currentNm;
+  let eteMin = currentEteMin;
+  if (nm == null || eteMin == null) {
+    const legs = computeLegs();
+    if (nm == null) nm = legs.totalNm;
+    if (eteMin == null) eteMin = legs.totalEteMin;
+  }
   const delta = nm - stored.totalNm;
+  const deltaEte = eteMin - storedEte;
   const diff = formatNmDelta(delta);
+  const eteDiff = formatEteDelta(deltaEte);
   const diffClass =
     diff.kind === "shorter"
       ? "diff-shorter"
       : diff.kind === "longer"
         ? "diff-longer"
         : "";
+  const eteClass =
+    eteDiff.kind === "shorter"
+      ? "diff-shorter"
+      : eteDiff.kind === "longer"
+        ? "diff-longer"
+        : "";
   if (el.totalsCompare) {
     el.totalsCompare.innerHTML =
       `vs stored · ${stored.waypoints} waypoints · ` +
-      `${formatDistanceNm(stored.totalNm)} NM total · ` +
-      `<span class="${diffClass}">${diff.text}</span>`;
+      `${formatDistanceNm(stored.totalNm)} NM · ETE ${storedEteTxt} · ` +
+      `<span class="${diffClass}">${diff.text}</span> · ` +
+      `<span class="${eteClass}">${eteDiff.text}</span>`;
     el.totalsCompare.hidden = false;
   }
-  updateLegsModDiff(delta);
+  updateLegsModDiff(delta, deltaEte);
 }
 
-function updateTotalsLine(legsCount, totalNm) {
+function syncChartRouteSummary(nm, eteMin) {
+  if (!el.chartRouteSummary || !el.chartRouteSummaryText) return;
+  if (!state.route.length || state.route.length < 2) {
+    el.chartRouteSummary.hidden = true;
+    el.chartRouteSummaryText.textContent = "";
+    return;
+  }
+  const n = Number.isFinite(nm) ? nm : state.routeTotals.totalNm;
+  const e = Number.isFinite(eteMin) ? eteMin : state.routeTotals.totalEteMin;
+  el.chartRouteSummaryText.textContent = `${formatDistanceNm(n)} NM · ETE ${formatEteHhMm(e)}`;
+  el.chartRouteSummary.hidden = false;
+}
+
+function updateTotalsLine(legsCount, totalNm, totalEteMin) {
   if (!el.totals) return;
   if (!state.route.length) {
-    state.routeTotals = { legsCount: 0, totalNm: 0, key: "" };
+    state.routeTotals = { legsCount: 0, totalNm: 0, totalEteMin: 0, key: "" };
     el.totals.textContent = "—";
-    updateTotalsCompare(0);
+    syncChartRouteSummary(0, 0);
+    updateTotalsCompare(0, 0);
     return;
   }
   const key = routeSequenceKey(state.route);
   let nLegs = legsCount;
   let nm = totalNm;
-  if (nLegs == null || nm == null) {
+  let ete = totalEteMin;
+  if (nLegs == null || nm == null || ete == null) {
     if (state.routeTotals.key === key) {
       nLegs = state.routeTotals.legsCount;
       nm = state.routeTotals.totalNm;
+      ete = state.routeTotals.totalEteMin;
     } else {
       const computed = computeLegs();
       nLegs = computed.legs.length;
       nm = computed.totalNm;
-      state.routeTotals = { legsCount: nLegs, totalNm: nm, key };
+      ete = computed.totalEteMin;
+      state.routeTotals = {
+        legsCount: nLegs,
+        totalNm: nm,
+        totalEteMin: ete,
+        key,
+      };
     }
   } else {
-    state.routeTotals = { legsCount: nLegs, totalNm: nm, key };
+    state.routeTotals = {
+      legsCount: nLegs,
+      totalNm: nm,
+      totalEteMin: ete,
+      key,
+    };
   }
   el.totals.textContent =
-    `${state.route.length} waypoints · ${nLegs} legs · ${formatDistanceNm(nm)} NM total` +
+    `${state.route.length} waypoints · ${nLegs} legs · ${formatDistanceNm(nm)} NM total · ETE ${formatEteHhMm(ete)}` +
     gpsProgressSuffix();
-  updateTotalsCompare(nm);
+  syncChartRouteSummary(nm, ete);
+  updateTotalsCompare(nm, ete);
 }
 
 function renderLegs() {
-  const { legs, totalNm } = computeLegs();
+  const { legs, totalNm, totalEteMin } = computeLegs();
   if (!el.legsBody) {
-    updateTotalsLine(legs.length, totalNm);
+    updateTotalsLine(legs.length, totalNm, totalEteMin);
     return;
   }
   el.legsBody.innerHTML = "";
@@ -1346,11 +1903,12 @@ function renderLegs() {
       <td class="mono">${formatTrack(leg.initTrue)}°</td>
       <td class="mono" ${showMag ? "" : "hidden"}>${formatTrack(leg.initMag)}° <span class="muted">(${leg.initVarLabel})</span></td>
       <td class="mono">${formatDistanceNm(leg.distanceNm)}</td>
+      <td class="mono" title="Crude ETE (westerlies; climb/descent pad only if either end is an airport)">${leg.eteLabel}</td>
     `;
     el.legsBody.appendChild(tr);
   });
 
-  updateTotalsLine(legs.length, totalNm);
+  updateTotalsLine(legs.length, totalNm, totalEteMin);
 }
 
 /** Memoized colored/filtered NAT tracks for chart paints. */
@@ -1490,8 +2048,67 @@ function isSilentNatFetchFailure(message) {
     m.includes("networkerror") ||
     m.includes("failed to fetch") ||
     m.includes("load failed") ||
-    m.includes("the operation was aborted")
+    m.includes("the operation was aborted") ||
+    m.includes("offline") ||
+    m.includes("network request failed")
   );
+}
+
+function openNatTracksPanel() {
+  if (!el.natPanel) return;
+  el.natPanel.hidden = false;
+  renderNatPanel();
+  maybeAutoRefreshNatOnOpen();
+}
+
+/** Auto-fetch when panel opens (online only); at most once per 10 minutes. */
+function maybeAutoRefreshNatOnOpen() {
+  if (typeof navigator !== "undefined" && navigator.onLine === false) return;
+  const now = Date.now();
+  if (natLastAutoFetchMs > 0 && now - natLastAutoFetchMs < NAT_AUTO_REFRESH_MS) {
+    return;
+  }
+  natLastAutoFetchMs = now;
+  refreshNatTracks().catch(() => {});
+}
+
+async function refreshNatTracks({ openPanel = false } = {}) {
+  if (state.natLoading) return;
+  if (typeof navigator !== "undefined" && navigator.onLine === false) {
+    /* Offline: keep cached tracks; no error message */
+    if (openPanel && el.natPanel) el.natPanel.hidden = false;
+    renderNatPanel();
+    return;
+  }
+  state.natLoading = true;
+  renderNatPanel();
+  if (el.natRefreshBtn) el.natRefreshBtn.disabled = true;
+  try {
+    const result = await fetchNatTracks(state.db);
+    if (!result.ok) {
+      // Keep last good tracks; never surface offline/network blips
+      if (state.nat || isSilentNatFetchFailure(result.error)) {
+        state.natFetchError = "";
+      } else {
+        state.natFetchError = result.error || "Fetch failed";
+      }
+    } else {
+      // Cache fallback after online miss: keep tracks, never flash a warning
+      if (result.warning) delete result.warning;
+      state.natFetchError = "";
+      state.nat = result;
+      scheduleAbsorbTrackWaypoints(result.tracks || []);
+    }
+    renderChart();
+  } catch {
+    // Interrupted / timed out refresh — keep current tracks, no error UI
+    if (state.nat) state.natFetchError = "";
+  } finally {
+    state.natLoading = false;
+    if (el.natRefreshBtn) el.natRefreshBtn.disabled = false;
+    renderNatPanel();
+    if (openPanel && el.natPanel) el.natPanel.hidden = false;
+  }
 }
 
 function renderNatPanel() {
@@ -1537,18 +2154,30 @@ function paintChart(lite = false) {
   const showAny =
     state.settings.showEastTracks !== false ||
     state.settings.showWestTracks !== false;
+  const gcIdle =
+    document.body.classList.contains("chart-fullscreen") && routeIsIdleForGcPlan();
+  const gcPlan = gcIdle ? buildGcPlan() : null;
   state.lastChartLayout = drawChart(el.chart, {
     route: state.route,
     natTracks: coloredNatTracks(),
     showNatTracks: showAny,
     showRwyLabels: state.settings.showRwyLabels !== false,
     showAirspace: state.settings.showAirspace !== false,
-    ownship: state.gps,
     bright: document.documentElement.classList.contains("theme-bright"),
     zoom: state.chartZoom,
     pan: state.chartPan,
     lite,
+    gcPlan,
+    show747Airports: gcIdle,
   });
+  paintOwnshipOnly();
+}
+
+/** Move / clear the GPS arrow without touching the base globe canvas. */
+function paintOwnshipOnly() {
+  if (!el.chartOwnship || !state.lastChartLayout) return;
+  const bright = document.documentElement.classList.contains("theme-bright");
+  paintOwnshipOverlay(el.chartOwnship, state.lastChartLayout, state.gps, bright);
 }
 
 /** Coalesce redraws to one per animation frame; lite skips heavy labels during gestures. */
@@ -1596,6 +2225,9 @@ function applyUiMode(mode, { paint = true } = {}) {
   } catch {
     /* ignore */
   }
+  if (state.uiMode === "fly") {
+    startGpsWatch();
+  }
   if (!paint) return;
   requestAnimationFrame(() => {
     requestAnimationFrame(() => renderChart());
@@ -1612,6 +2244,25 @@ function loadUiMode() {
   return "edit";
 }
 
+/**
+ * Coarse location is enough for Atlantic chart ownship (≈1 NM / cell-WiFi class).
+ * enableHighAccuracy:true maps to iOS “Precise Location” and re-prompts more often.
+ */
+const GPS_WATCH_OPTS = {
+  enableHighAccuracy: false,
+  maximumAge: 30000,
+  timeout: 20000,
+};
+
+function refreshTotalsFromGps() {
+  const cached = state.routeTotals;
+  if (state.route.length && cached.key === routeSequenceKey(state.route)) {
+    updateTotalsLine(cached.legsCount, cached.totalNm, cached.totalEteMin);
+  } else {
+    updateTotalsLine();
+  }
+}
+
 function startGpsWatch() {
   if (!navigator.geolocation || state.gpsWatchId != null) return;
   state.gpsWatchId = navigator.geolocation.watchPosition(
@@ -1624,38 +2275,33 @@ function startGpsWatch() {
         heading: Number.isFinite(c.heading) ? c.heading : null,
         speed: Number.isFinite(c.speed) ? c.speed : null,
       };
-      // Reuse cached route totals — do not re-run Vincenty on every fix
-      const cached = state.routeTotals;
-      if (state.route.length && cached.key === routeSequenceKey(state.route)) {
-        updateTotalsLine(cached.legsCount, cached.totalNm);
-      } else {
-        updateTotalsLine();
-      }
-      const now = performance.now();
-      // Throttle chart redraws; lite for ownship, then a quiet full paint for labels
-      if (now - state.gpsLastDrawMs < 800 && state.gpsLastDrawMs > 0) return;
-      state.gpsLastDrawMs = now;
-      markChartInteracting();
+      refreshTotalsFromGps();
+      paintOwnshipOnly();
     },
     () => {
       /* permission denied / unavailable — clear ownship if it was showing */
       if (state.gps) {
         state.gps = null;
-        const cached = state.routeTotals;
-        if (state.route.length && cached.key === routeSequenceKey(state.route)) {
-          updateTotalsLine(cached.legsCount, cached.totalNm);
-        } else {
-          updateTotalsLine();
-        }
-        scheduleChartRender({ lite: false });
+        refreshTotalsFromGps();
+        paintOwnshipOnly();
       }
     },
-    {
-      enableHighAccuracy: true,
-      maximumAge: 5000,
-      timeout: 20000,
-    }
+    GPS_WATCH_OPTS
   );
+}
+
+/** Start watch only if the browser already granted location (no new prompt). */
+function startGpsWatchIfAlreadyGranted() {
+  if (!navigator.geolocation || state.gpsWatchId != null) return;
+  if (!navigator.permissions?.query) return;
+  navigator.permissions
+    .query({ name: "geolocation" })
+    .then((result) => {
+      if (result.state === "granted") startGpsWatch();
+    })
+    .catch(() => {
+      /* Safari may reject query — wait for Fly mode */
+    });
 }
 
 function clampChartZoom(z) {
@@ -1706,6 +2352,11 @@ function bindChartGestures() {
   let panning = false;
   let lastX = 0;
   let lastY = 0;
+  let tapStartX = 0;
+  let tapStartY = 0;
+  let tapStartT = 0;
+  let tapMoved = false;
+  let mousePanMoved = false;
 
   const touchDist = (touches) => {
     const a = touches[0];
@@ -1713,17 +2364,46 @@ function bindChartGestures() {
     return Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
   };
 
+  const tryAirportTap = (clientX, clientY) => {
+    if (
+      !document.body.classList.contains("chart-fullscreen") ||
+      !routeIsIdleForGcPlan()
+    ) {
+      return;
+    }
+    const layout = state.lastChartLayout;
+    if (!layout) return;
+    const rect = canvas.getBoundingClientRect();
+    const x = clientX - rect.left;
+    const y = clientY - rect.top;
+    const ap = hitTestChartAirport(
+      layout,
+      x,
+      y,
+      layout.width || rect.width,
+      layout.height || rect.height,
+      30,
+      true
+    );
+    if (ap) selectGcAirportFromTap(ap);
+  };
+
   canvas.addEventListener(
     "touchstart",
     (e) => {
       if (e.touches.length === 2) {
         panning = false;
+        tapMoved = true;
         pinchStartDist = touchDist(e.touches);
         pinchStartZoom = state.chartZoom;
       } else if (e.touches.length === 1) {
         panning = true;
+        tapMoved = false;
         lastX = e.touches[0].clientX;
         lastY = e.touches[0].clientY;
+        tapStartX = lastX;
+        tapStartY = lastY;
+        tapStartT = performance.now();
       }
     },
     { passive: true }
@@ -1735,6 +2415,7 @@ function bindChartGestures() {
       if (e.touches.length === 2 && pinchStartDist >= 8) {
         e.preventDefault();
         panning = false;
+        tapMoved = true;
         const dist = touchDist(e.touches);
         state.chartZoom = clampChartZoom(pinchStartZoom * (dist / pinchStartDist));
         markChartInteracting();
@@ -1743,7 +2424,12 @@ function bindChartGestures() {
       if (e.touches.length === 1 && panning) {
         e.preventDefault();
         const t = e.touches[0];
-        applyChartPanPixels(t.clientX - lastX, t.clientY - lastY);
+        const dx = t.clientX - lastX;
+        const dy = t.clientY - lastY;
+        if (Math.hypot(t.clientX - tapStartX, t.clientY - tapStartY) > 12) {
+          tapMoved = true;
+        }
+        applyChartPanPixels(dx, dy);
         lastX = t.clientX;
         lastY = t.clientY;
       }
@@ -1756,8 +2442,13 @@ function bindChartGestures() {
     (e) => {
       if (e.touches.length < 2) pinchStartDist = 0;
       if (e.touches.length === 0) {
+        const wasTap =
+          !tapMoved &&
+          performance.now() - tapStartT < 450 &&
+          Math.hypot(lastX - tapStartX, lastY - tapStartY) <= 12;
         panning = false;
         markChartInteracting();
+        if (wasTap) tryAirportTap(tapStartX, tapStartY);
       }
       if (e.touches.length === 1) {
         panning = true;
@@ -1782,66 +2473,43 @@ function bindChartGestures() {
   canvas.addEventListener("mousedown", (e) => {
     if (e.button !== 0) return;
     panning = true;
+    mousePanMoved = false;
     lastX = e.clientX;
     lastY = e.clientY;
+    tapStartX = lastX;
+    tapStartY = lastY;
+    tapStartT = performance.now();
     canvas.style.cursor = "grabbing";
   });
 
   window.addEventListener("mousemove", (e) => {
     if (!panning) return;
+    if (Math.hypot(e.clientX - tapStartX, e.clientY - tapStartY) > 8) {
+      mousePanMoved = true;
+    }
     applyChartPanPixels(e.clientX - lastX, e.clientY - lastY);
     lastX = e.clientX;
     lastY = e.clientY;
   });
 
-  const endMousePan = () => {
+  const endMousePan = (e) => {
     if (!panning) return;
     panning = false;
     canvas.style.cursor = "grab";
     markChartInteracting();
+    const wasTap =
+      !mousePanMoved &&
+      performance.now() - tapStartT < 450 &&
+      Math.hypot((e?.clientX ?? lastX) - tapStartX, (e?.clientY ?? lastY) - tapStartY) <= 8;
+    if (wasTap) tryAirportTap(tapStartX, tapStartY);
   };
   window.addEventListener("mouseup", endMousePan);
-}
-
-async function refreshNatTracks({ openPanel = false } = {}) {
-  if (state.natLoading) return;
-  state.natLoading = true;
-  renderNatPanel();
-  if (el.natRefreshBtn) el.natRefreshBtn.disabled = true;
-  try {
-    const result = await fetchNatTracks(state.db);
-    if (!result.ok) {
-      // Keep last good tracks; only show an error if nothing is loaded yet
-      // and the failure is not a silent timeout/abort/network blip
-      if (state.nat) {
-        state.natFetchError = "";
-      } else if (isSilentNatFetchFailure(result.error)) {
-        state.natFetchError = "";
-      } else {
-        state.natFetchError = result.error || "Fetch failed";
-      }
-    } else {
-      // Cache fallback after online miss: keep tracks, never flash a warning
-      if (result.warning) delete result.warning;
-      state.natFetchError = "";
-      state.nat = result;
-      scheduleAbsorbTrackWaypoints(result.tracks || []);
-    }
-    renderChart();
-  } catch {
-    // Interrupted / timed out refresh — keep current tracks, no error UI
-    if (state.nat) state.natFetchError = "";
-  } finally {
-    state.natLoading = false;
-    if (el.natRefreshBtn) el.natRefreshBtn.disabled = false;
-    renderNatPanel();
-    if (openPanel && el.natPanel) el.natPanel.hidden = false;
-  }
 }
 
 function renderAll() {
   renderRouteList();
   renderLegs();
+  syncGcPlanBar();
   renderChart();
   saveRoute();
 }
@@ -1860,8 +2528,14 @@ function showTeachError(msg) {
 function commitTaughtPoints(points) {
   const enriched = points.map((p) => enrichPoint({ ...p }));
   const commit = state.teach?.commit;
+  const hadUnresolved = Boolean(
+    state.teach?.slots?.some(
+      (s) => s.type === "unknown" && (s.skipped || !s.point)
+    )
+  );
   if (!enriched.length) {
     state.teach = null;
+    state.skippedUnknowns = hadUnresolved || state.skippedUnknowns;
     updateEntryChrome();
     return;
   }
@@ -1879,6 +2553,13 @@ function commitTaughtPoints(points) {
     state.insertAfterIndex = null;
   } else if (commit?.kind === "replace") {
     state.route = enriched;
+  } else if (commit?.kind === "teach-only") {
+    // DB already updated via rememberManualWaypoint — refresh any route copies
+    const p = enriched[0];
+    const n = String(p.name || "").toUpperCase();
+    state.route = state.route.map((wp) =>
+      String(wp.name || "").toUpperCase() === n ? enrichPoint({ ...p }) : wp
+    );
   } else {
     state.route.push(...enriched);
   }
@@ -1886,6 +2567,7 @@ function commitTaughtPoints(points) {
   state.teach = null;
   state.editingIndex = null;
   state.insertAfterIndex = null;
+  state.skippedUnknowns = hadUnresolved;
   if (el.input) el.input.value = "";
   hideSuggestions();
   showError("");
@@ -1902,7 +2584,7 @@ function rememberManualWaypoint(name, lat, lon) {
     accuracy: "approximate",
     category: "manual",
     region: "user",
-    notes: "Manually entered from chart",
+    notes: "Manually taught — overrides online lookup",
     source: "manual-teach",
   };
   const known = state.db.find(
@@ -1913,7 +2595,9 @@ function rememberManualWaypoint(name, lat, lon) {
     known.lon = lon;
     known.accuracy = "approximate";
     known.notes = entry.notes;
-    known.category = known.category || "manual";
+    known.category = "manual";
+    known.source = "manual-teach";
+    known.region = "user";
   } else {
     state.db.push(entry);
   }
@@ -1928,6 +2612,121 @@ function rememberManualWaypoint(name, lat, lon) {
   return enrichPoint({ ...entry });
 }
 
+function isManualTaughtEntry(w) {
+  if (!w) return false;
+  return w.source === "manual-teach" || w.category === "manual";
+}
+
+/**
+ * Force Transport Canada AIM Table 1.1 OEP coordinates into DB / learned / route.
+ * Skips manual Teach entries. Removes bad OpenNav-learned OEP overrides (often 052°W).
+ */
+function applyAimOepCorrections() {
+  let dbChanged = false;
+  const byName = new Map(
+    state.db.map((w) => [String(w.name || "").toUpperCase(), w])
+  );
+  for (const [name, aim] of Object.entries(AIM_OEP_TABLE_11)) {
+    const notes = `Transport Canada AIM NAT Table 1.1 — ${aim.arinc}. Locked against OpenNav (often wrong 052°W). Educational — verify current AIM.`;
+    const existing = byName.get(name);
+    if (existing && isManualTaughtEntry(existing)) continue;
+    if (!existing) {
+      const entry = {
+        id: name,
+        name,
+        lat: aim.lat,
+        lon: aim.lon,
+        accuracy: "exact",
+        category: "oceanic_oep",
+        region: "west",
+        source: "tc-aim-nat-table-1.1",
+        notes,
+      };
+      state.db.push(entry);
+      byName.set(name, entry);
+      dbChanged = true;
+      continue;
+    }
+    if (
+      existing.lat !== aim.lat ||
+      existing.lon !== aim.lon ||
+      existing.source !== "tc-aim-nat-table-1.1"
+    ) {
+      existing.lat = aim.lat;
+      existing.lon = aim.lon;
+      existing.accuracy = "exact";
+      existing.category = "oceanic_oep";
+      existing.region = "west";
+      existing.source = "tc-aim-nat-table-1.1";
+      existing.notes = notes;
+      dbChanged = true;
+    }
+  }
+
+  const learned = loadLearnedWaypoints();
+  const nextLearned = [];
+  let learnedChanged = false;
+  for (const w of learned) {
+    const name = String(w?.name || "").toUpperCase();
+    if (isAimOepName(name) && !isManualTaughtEntry(w)) {
+      // Drop OpenNav / online / stale learned OEPs — bundled AIM wins
+      learnedChanged = true;
+      continue;
+    }
+    nextLearned.push(w);
+  }
+  if (learnedChanged) saveLearnedWaypoints(nextLearned);
+
+  let routeChanged = false;
+  state.route = state.route.map((wp) => {
+    const name = String(wp?.name || "").toUpperCase();
+    const aim = AIM_OEP_TABLE_11[name];
+    if (!aim) return wp;
+    if (isManualTaughtEntry(wp)) return wp;
+    if (wp.lat === aim.lat && wp.lon === aim.lon) return wp;
+    routeChanged = true;
+    return enrichPoint({
+      ...wp,
+      lat: aim.lat,
+      lon: aim.lon,
+      accuracy: "exact",
+      source: "tc-aim-nat-table-1.1",
+      notes: `Transport Canada AIM NAT Table 1.1 — ${aim.arinc}`,
+    });
+  });
+
+  if (dbChanged || learnedChanged) refreshMarkdownWithLearned();
+  if (routeChanged) saveRoute();
+  return dbChanged || learnedChanged || routeChanged;
+}
+
+/** Current single name in the entry field (editing route WP or typing one token). */
+function currentTeachCandidateName() {
+  if (state.editingIndex != null && state.route[state.editingIndex]) {
+    const fromRoute = String(state.route[state.editingIndex].name || "")
+      .trim()
+      .toUpperCase();
+    const typed = String(el.input?.value || "")
+      .trim()
+      .toUpperCase();
+    // Prefer typed name if user changed it to another single token
+    if (typed && !/\s/.test(typed) && /^[A-Z0-9]{2,6}$/.test(typed)) return typed;
+    if (fromRoute && /^[A-Z0-9]{2,6}$/.test(fromRoute)) return fromRoute;
+  }
+  const raw = String(el.input?.value || "").trim();
+  if (!raw || /\s/.test(raw)) return "";
+  const tok = raw.toUpperCase();
+  if (/^[A-Z]{2,6}$/.test(tok) || /^[A-Z0-9]{2,6}$/.test(tok)) return tok;
+  return "";
+}
+
+function shouldShowTeachButton() {
+  if (state.teach) return false;
+  if (state.editingIndex != null) return true;
+  const name = currentTeachCandidateName();
+  return Boolean(name);
+}
+
 function paintTeachStep() {
   const teach = state.teach;
   if (!teach || !el.teachPanel) return;
@@ -1938,39 +2737,91 @@ function paintTeachStep() {
     return;
   }
   const n = teach.cursor + 1;
+  const correcting = Boolean(teach.correcting);
   if (el.teachTitle) {
-    el.teachTitle.textContent =
-      total > 1 ? `Teach waypoint ${n} of ${total}` : "Teach waypoint";
+    el.teachTitle.textContent = correcting
+      ? "Teach / correct waypoint"
+      : total > 1
+        ? `Teach waypoint ${n} of ${total}`
+        : "Teach waypoint";
   }
   if (el.teachProgress) {
-    el.teachProgress.textContent =
-      total > 1
+    el.teachProgress.textContent = correcting
+      ? "Enter chart coordinates to save or correct this fix (manual Teach overrides online lookup)"
+      : total > 1
         ? `${n} of ${total} unrecognized — enter chart coordinates, then Save`
         : "Unrecognized name — enter chart coordinates, then Save";
   }
   if (el.teachName) el.teachName.textContent = cur.token;
-  if (el.teachCoords) el.teachCoords.value = "";
+  if (el.teachCoords) {
+    el.teachCoords.value = cur.prefill || "";
+  }
   if (el.teachSaveBtn) {
-    el.teachSaveBtn.textContent = n >= total ? "Save & finish" : "Save";
+    el.teachSaveBtn.textContent =
+      correcting || n >= total ? "Save & finish" : "Save";
   }
   showTeachError("");
   el.teachPanel.hidden = false;
   el.teachCoords?.focus();
 }
 
-function openTeachQueue(slots, unknowns, commit) {
+/** Opt-in Teach / correct for one named fix (never auto-opened on paste). */
+function openTeachForName(name, commit, prefill = "") {
+  const token = String(name || "")
+    .trim()
+    .toUpperCase();
+  if (!token) return;
   state.teach = {
-    unknowns: unknowns.map((u) => ({ token: u.token, index: u.index })),
+    unknowns: [{ token, index: 0 }],
     cursor: 0,
-    slots: slots.map((s) =>
-      s.type === "point"
-        ? { type: "point", index: s.index, point: s.point }
-        : { type: "unknown", index: s.index, token: s.token, point: null, skipped: false }
-    ),
-    commit,
+    correcting: true,
+    slots: [
+      {
+        type: "unknown",
+        index: 0,
+        token,
+        point: null,
+        skipped: false,
+        prefill: prefill || "",
+      },
+    ],
+    commit: commit || { kind: "append" },
   };
+  // Stash prefill on unknown too for paintTeachStep
+  state.teach.unknowns[0].prefill = prefill || "";
   showError("");
   paintTeachStep();
+}
+
+function startTeachFromButton() {
+  if (state.teach) return;
+  const name = currentTeachCandidateName();
+  if (!name) {
+    showError("Type or Edit a single named waypoint, then Teach.");
+    return;
+  }
+  let prefill = "";
+  let commit = { kind: "append" };
+  if (state.editingIndex != null && state.route[state.editingIndex]) {
+    const wp = state.route[state.editingIndex];
+    prefill = formatCockpitLatLon(wp.lat, wp.lon);
+    commit = { kind: "edit", editIndex: state.editingIndex };
+  } else if (state.insertAfterIndex != null) {
+    commit = { kind: "insert", insertAt: state.insertAfterIndex + 1 };
+  } else {
+    const existing = state.db.find(
+      (w) => String(w.name || "").toUpperCase() === name
+    );
+    if (existing && Number.isFinite(existing.lat) && Number.isFinite(existing.lon)) {
+      prefill = formatCockpitLatLon(existing.lat, existing.lon);
+      // Correct existing DB fix; refresh any copies already on the route
+      commit = { kind: "teach-only" };
+    } else {
+      // Brand-new name → after Save, add it to the route
+      commit = { kind: "append" };
+    }
+  }
+  openTeachForName(name, commit, prefill);
 }
 
 function closeTeachPanel() {
@@ -2037,20 +2888,134 @@ function saveTeachCurrent() {
   advanceTeachQueue();
 }
 
-function skipTeachCurrent() {
-  const teach = state.teach;
-  if (!teach) return;
-  const cur = teach.unknowns[teach.cursor];
-  if (!cur) return;
-  const slot = teach.slots.find((s) => s.index === cur.index);
-  if (slot) {
-    slot.point = null;
-    slot.skipped = true;
-  }
-  advanceTeachQueue();
+function addWaypointFromInput() {
+  void addWaypointFromInputAsync();
 }
 
-function addWaypointFromInput() {
+function teachableUnknowns(unknowns) {
+  return (unknowns || []).filter((u) => {
+    const tok = String(u?.token || "")
+      .trim()
+      .toUpperCase();
+    if (!tok || u.airway || isAirwayToken(tok)) return false;
+    return /^[A-Z0-9]{2,6}$/.test(tok);
+  });
+}
+
+async function lookupWaypointOnline(name) {
+  const q = String(name || "")
+    .trim()
+    .toUpperCase();
+  if (!/^[A-Z0-9]{2,6}$/.test(q)) return null;
+  try {
+    const res = await fetch(
+      `./api/lookup-waypoint?name=${encodeURIComponent(q)}`
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (!data?.ok) return null;
+    if (!Number.isFinite(data.lat) || !Number.isFinite(data.lon)) return null;
+    return data;
+  } catch {
+    return null;
+  }
+}
+
+/** Persist an OpenNav (or similar) online fix into learned DB + state.db. */
+function absorbOnlineWaypoint(data) {
+  const name = String(data?.name || "")
+    .trim()
+    .toUpperCase();
+  if (!name || !Number.isFinite(data.lat) || !Number.isFinite(data.lon)) {
+    return null;
+  }
+  const known = state.db.find(
+    (w) => String(w.name || "").toUpperCase() === name
+  );
+  // AIM Table 1.1 OEPs / manual Teach: never accept OpenNav (often wrong 052°W)
+  if (isAimOepName(name)) {
+    if (known) return enrichPoint({ ...known });
+    return null;
+  }
+  if (known) {
+    if (isManualTaughtEntry(known)) return enrichPoint({ ...known });
+    if (known.source !== "opennav-lookup" && known.source !== "online-lookup") {
+      return enrichPoint({ ...known });
+    }
+  }
+  const learnedExisting = loadLearnedWaypoints().find(
+    (w) => String(w?.name || "").toUpperCase() === name
+  );
+  if (isManualTaughtEntry(learnedExisting)) {
+    return enrichPoint({ ...learnedExisting });
+  }
+
+  const entry = {
+    id: name,
+    name,
+    lat: data.lat,
+    lon: data.lon,
+    accuracy: data.accuracy || "approximate",
+    category: "online-lookup",
+    region: data.country || "lookup",
+    notes:
+      data.notes ||
+      `Online lookup (${data.source || "OpenNav"}). Educational — verify AIP/NFDC.`,
+    source: "opennav-lookup",
+  };
+  if (known) {
+    known.lat = entry.lat;
+    known.lon = entry.lon;
+    known.accuracy = entry.accuracy;
+    known.notes = entry.notes;
+    known.category = entry.category;
+    known.source = entry.source;
+  } else {
+    state.db.push(entry);
+  }
+  const learned = loadLearnedWaypoints().filter(
+    (w) => String(w?.name || "").toUpperCase() !== name
+  );
+  learned.push(entry);
+  saveLearnedWaypoints(learned);
+  setAccuracyVerifiedDate(todayUtcDate());
+  refreshMarkdownWithLearned();
+  persistLearnedWaypointsToServer([entry], state.accuracyVerifiedOn);
+  return enrichPoint({ ...entry });
+}
+
+async function resolveUnknownsOnline(unknowns) {
+  const list = teachableUnknowns(unknowns);
+  const found = [];
+  for (const u of list) {
+    const hit = await lookupWaypointOnline(u.token);
+    if (!hit) continue;
+    const p = absorbOnlineWaypoint(hit);
+    if (p) found.push(p);
+  }
+  return found;
+}
+
+function commitRoutePoints(points, { mode, skipped }) {
+  const enriched = points.map((p) => enrichPoint({ ...p }));
+  if (mode === "edit") {
+    if (enriched.length !== 1) return false;
+    state.route[state.editingIndex] = enriched[0];
+    state.editingIndex = null;
+  } else if (mode === "insert") {
+    const at = state.insertAfterIndex + 1;
+    state.route.splice(at, 0, ...enriched);
+    state.insertAfterIndex = null;
+  } else if (mode === "replace") {
+    state.route = enriched;
+  } else {
+    state.route.push(...enriched);
+  }
+  state.skippedUnknowns = Boolean(skipped);
+  return true;
+}
+
+async function addWaypointFromInputAsync() {
   if (!el.input) return;
   if (state.teach) return; // wizard open
   const raw = el.input.value;
@@ -2059,25 +3024,92 @@ function addWaypointFromInput() {
     showError("");
     return;
   }
-  const result = parseRouteString(raw, state.db);
 
-  // Unknown named fixes → teach wizard (keep known tokens in order)
-  if (!result.ok && result.unknowns?.length) {
-    if (state.editingIndex != null && result.tokens.length !== 1) {
-      showError("When editing, enter a single waypoint (or Cancel, then paste a full route).");
+  let result = parseRouteString(raw, state.db, state.airways);
+  const tokenCount = result.tokens?.length || 0;
+  const hasUnknowns = Boolean(result.unknowns?.length);
+  const knownCount = result.points?.length || 0;
+
+  // Multi-token paste (e.g. MPilot): load knowns now; quiet online lookup; no teach modal.
+  if (!result.ok && hasUnknowns) {
+    if (state.editingIndex != null && tokenCount !== 1) {
+      showError(
+        "When editing, enter a single waypoint (or Cancel, then paste a full route)."
+      );
       return;
     }
-    let commit;
-    if (state.editingIndex != null) {
-      commit = { kind: "edit", editIndex: state.editingIndex };
-    } else if (state.insertAfterIndex != null) {
-      commit = { kind: "insert", insertAt: state.insertAfterIndex + 1 };
-    } else if (!state.route.length && (result.tokens?.length || 0) > 1) {
-      commit = { kind: "replace" };
-    } else {
-      commit = { kind: "append" };
+    if (tokenCount > 1) {
+      if (!knownCount && !teachableUnknowns(result.unknowns).length) {
+        showError(
+          "No known waypoints could be loaded from that paste (airways / unknown names skipped)."
+        );
+        return;
+      }
+      showError("");
+      const wasEmpty = !state.route.length;
+      const mode =
+        state.insertAfterIndex != null
+          ? "insert"
+          : wasEmpty
+            ? "replace"
+            : "append";
+      if (knownCount) {
+        commitRoutePoints(result.points, { mode, skipped: true });
+      } else {
+        state.skippedUnknowns = true;
+      }
+      el.input.value = "";
+      hideSuggestions();
+      renderAll();
+
+      // Grow DB quietly when online — never opens Teach; never overwrites manual Teach
+      await resolveUnknownsOnline(result.unknowns);
+      result = parseRouteString(raw, state.db, state.airways);
+      if (result.points?.length) {
+        commitRoutePoints(result.points, {
+          mode: wasEmpty || mode === "replace" ? "replace" : mode,
+          skipped: Boolean(
+            !result.ok ||
+              result.airwaySkipped?.length ||
+              result.unknowns?.length
+          ),
+        });
+      }
+      renderAll();
+      return;
     }
-    openTeachQueue(result.slots || [], result.unknowns, commit);
+    // Single unknown: quiet online try; otherwise prompt to use Teach (no auto-wizard)
+    const unk = result.unknowns[0]?.token;
+    const hit = await lookupWaypointOnline(unk);
+    if (hit) {
+      const p = absorbOnlineWaypoint(hit);
+      // Only use online result if it was newly accepted (or already known)
+      if (p && String(p.name || "").toUpperCase() === String(unk || "").toUpperCase()) {
+        // If absorb refused overwrite and returned bundled with different intent — check parse again
+        const again = parseRouteString(unk, state.db, state.airways);
+        if (again.ok && again.points[0]) {
+          showError("");
+          const pt = enrichPoint({ ...again.points[0] });
+          if (state.editingIndex != null) {
+            state.route[state.editingIndex] = pt;
+            state.editingIndex = null;
+          } else if (state.insertAfterIndex != null) {
+            state.route.splice(state.insertAfterIndex + 1, 0, pt);
+            state.insertAfterIndex = null;
+          } else {
+            state.route.push(pt);
+          }
+          el.input.value = "";
+          hideSuggestions();
+          renderAll();
+          return;
+        }
+      }
+    }
+    showError(
+      `${unk || "Waypoint"} is not in the local database. Tap Teach to enter chart coordinates.`
+    );
+    updateEntryChrome();
     return;
   }
 
@@ -2090,7 +3122,9 @@ function addWaypointFromInput() {
 
   if (state.editingIndex != null) {
     if (points.length !== 1) {
-      showError("When editing, enter a single waypoint (or Cancel, then paste a full route).");
+      showError(
+        "When editing, enter a single waypoint (or Cancel, then paste a full route)."
+      );
       return;
     }
     state.route[state.editingIndex] = points[0];
@@ -2102,6 +3136,7 @@ function addWaypointFromInput() {
   } else if (!state.route.length && points.length > 1) {
     // Initial multi-waypoint paste into empty route → load whole string
     state.route = points;
+    state.skippedUnknowns = false;
   } else {
     state.route.push(...points);
   }
@@ -2249,14 +3284,26 @@ async function init() {
     state.nat = { ...cachedNat, fromCache: true };
   }
 
-  const [wpRes, mdRes] = await Promise.all([
+  const [wpRes, mdRes, watrsRes] = await Promise.all([
     fetch("data/waypoints.json"),
     fetch("docs/NAT_HLA_Waypoints_Reference.md"),
+    fetch("data/watrs-airways.json").catch(() => null),
   ]);
   const wpData = await wpRes.json();
   state.db = wpData.waypoints || [];
   mergeDiversionAirportsIntoDb();
+  merge747AirportsIntoDb();
+  try {
+    if (watrsRes && watrsRes.ok) {
+      const watrs = await watrsRes.json();
+      state.airways = airwaysMapFromPayload(watrs);
+      mergeWatrsWaypointsIntoDb(watrs);
+    }
+  } catch {
+    state.airways = Object.create(null);
+  }
   mergeLearnedWaypointsIntoDb();
+  applyAimOepCorrections();
   state.mdBaseText = await mdRes.text();
   state.mdText = state.mdBaseText;
   refreshMarkdownWithLearned();
@@ -2295,7 +3342,8 @@ async function init() {
   renderAll();
   renderNatPanel();
   startNatClockTimer();
-  startGpsWatch();
+  /* Avoid location prompt on every launch — only watch if already allowed, or on Fly */
+  startGpsWatchIfAlreadyGranted();
 
   if (el.modeEditBtn) {
     el.modeEditBtn.addEventListener("click", () => applyUiMode("edit"));
@@ -2331,7 +3379,6 @@ async function init() {
     }
   });
   el.teachSaveBtn?.addEventListener("click", saveTeachCurrent);
-  el.teachSkipBtn?.addEventListener("click", skipTeachCurrent);
   el.teachCancelBtn?.addEventListener("click", cancelTeachQueue);
   el.teachCoords?.addEventListener("keydown", (e) => {
     if (e.key === "Enter") {
@@ -2339,7 +3386,11 @@ async function init() {
       saveTeachCurrent();
     }
   });
-  el.input?.addEventListener("input", renderSuggestions);
+  el.input?.addEventListener("input", () => {
+    renderSuggestions();
+    updateEntryChrome();
+  });
+  el.teachBtn?.addEventListener("click", startTeachFromButton);
   el.suggest?.addEventListener("click", (e) => {
     const btn = e.target.closest("[data-name]");
     if (!btn || !el.input) return;
@@ -2527,11 +3578,21 @@ async function init() {
     if (file) importWaypointsMarkdownFile(file);
   });
 
+  el.icloudExportBtn?.addEventListener("click", () => {
+    void exportLearnedToFiles();
+  });
+  el.icloudImportBtn?.addEventListener("click", () => {
+    setIcloudSyncStatus("");
+    el.icloudImportFile?.click();
+  });
+  el.icloudImportFile?.addEventListener("change", () => {
+    const file = el.icloudImportFile?.files?.[0];
+    if (el.icloudImportFile) el.icloudImportFile.value = "";
+    if (file) void importLearnedFromFile(file);
+  });
+
   if (el.natTracksBtn && el.natPanel) {
-    el.natTracksBtn.addEventListener("click", () => {
-      el.natPanel.hidden = false;
-      renderNatPanel();
-    });
+    el.natTracksBtn.addEventListener("click", () => openNatTracksPanel());
   }
   el.natClose?.addEventListener("click", () => {
     if (el.natPanel) el.natPanel.hidden = true;
@@ -2539,7 +3600,20 @@ async function init() {
   el.natPanel?.addEventListener("click", (e) => {
     if (e.target === el.natPanel) el.natPanel.hidden = true;
   });
-  el.natRefreshBtn?.addEventListener("click", () => refreshNatTracks());
+  el.natRefreshBtn?.addEventListener("click", () => {
+    natLastAutoFetchMs = Date.now();
+    refreshNatTracks();
+  });
+
+  const bindGcIcao = (input, which) => {
+    if (!input) return;
+    input.addEventListener("input", () => onGcIcaoInput(which, input.value));
+    input.addEventListener("change", () => onGcIcaoInput(which, input.value));
+    input.addEventListener("blur", () => onGcIcaoInput(which, input.value));
+  };
+  bindGcIcao(el.gcDep, "dep");
+  bindGcIcao(el.gcArr, "arr");
+  syncGcPlanBar();
 
   const syncTrackToggles = () => {
     state.settings.showEastTracks = !!el.showEastTracks?.checked;
@@ -2578,6 +3652,7 @@ async function init() {
 
   // Auto-refresh NAT tracks when the device is online (uses Mac proxy if available)
   if (navigator.onLine) {
+    natLastAutoFetchMs = Date.now();
     refreshNatTracks().catch(() => {});
   }
 }

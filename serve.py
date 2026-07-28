@@ -14,6 +14,7 @@ import re
 import socket
 import socketserver
 import urllib.error
+import urllib.parse
 import urllib.request
 from http.server import SimpleHTTPRequestHandler
 
@@ -47,6 +48,9 @@ class QuietHandler(SimpleHTTPRequestHandler):
         path = self.path.split("?", 1)[0]
         if path in ("/api/nat-tracks", "/api/nat-tracks/"):
             self._proxy_nat_tracks()
+            return
+        if path in ("/api/lookup-waypoint", "/api/lookup-waypoint/"):
+            self._lookup_waypoint()
             return
         super().do_GET()
 
@@ -132,6 +136,161 @@ class QuietHandler(SimpleHTTPRequestHandler):
             502,
             {"error": "; ".join(errors) or "NAT fetch failed", "source": "proxy"},
         )
+
+    def _lookup_waypoint(self) -> None:
+        """Look up a named fix via official FAA NFDC LID (not OpenNav).
+
+        Gander 050°W OEP names (NICSO, OMSAT, …) are intentionally not returned
+        here — Transport Canada AIM Table 1.1 overrules FAA LID for those.
+        """
+        import random
+        import string
+        from urllib.parse import parse_qs, urlparse
+
+        # TC AIM NAT Table 1.1 OEPs — do not serve FAA LID (often ~052°W)
+        aim_oep = {
+            "CUDDY",
+            "DORYY",
+            "ENNSO",
+            "HOIST",
+            "IRLOK",
+            "JANJO",
+            "KODIK",
+            "LOMSI",
+            "MELDI",
+            "NEEKO",
+            "PELTU",
+            "RIKAL",
+            "SAXAN",
+            "TUDEP",
+            "UMESI",
+            "ALLRY",
+            "BUDAR",
+            "ELSIR",
+            "IBERG",
+            "JOOPY",
+            "MUSAK",
+            "NICSO",
+            "OMSAT",
+            "PORTI",
+            "RELIC",
+            "SUPRY",
+            "RAFIN",
+            "LIBOR",  # AIM explicit 6101N06241W
+        }
+
+        qs = parse_qs(urlparse(self.path).query)
+        name = str((qs.get("name") or qs.get("q") or [""])[0]).strip().upper()
+        if not re.fullmatch(r"[A-Z0-9]{2,6}", name or ""):
+            self._send_json(400, {"ok": False, "error": "invalid name"})
+            return
+        if name in aim_oep:
+            self._send_json(
+                404,
+                {
+                    "ok": False,
+                    "error": (
+                        f"{name} is a Transport Canada AIM NAT OEP — "
+                        "use bundled AIM Table 1.1 / Teach; FAA LID is not authoritative here."
+                    ),
+                    "source": "tc-aim-nat-lock",
+                },
+            )
+            return
+
+        def parse_faa_dms(desc: str):
+            m = re.search(
+                r"(\d{1,2})-(\d{2})-(\d{2}(?:\.\d+)?)([NS])\s+"
+                r"(\d{1,3})-(\d{2})-(\d{2}(?:\.\d+)?)([EW])",
+                desc or "",
+                re.I,
+            )
+            if not m:
+                return None
+            def deg(d, mi, sec, hem):
+                val = float(d) + float(mi) / 60.0 + float(sec) / 3600.0
+                if hem.upper() in ("S", "W"):
+                    val = -val
+                return val
+
+            lat = deg(m.group(1), m.group(2), m.group(3), m.group(4))
+            lon = deg(m.group(5), m.group(6), m.group(7), m.group(8))
+            return round(lat, 6), round(lon, 6), m.group(0)
+
+        rnd = "".join(
+            random.choice(string.ascii_letters + string.digits) for _ in range(24)
+        )
+        body = urllib.parse.urlencode(
+            {
+                "dataType": "LIDFIXESWAYPOINTS",
+                "start": "0",
+                "length": "10",
+                "sortcolumn": "fix_identifier",
+                "sortdir": "asc",
+                "searchval": name,
+                "r": rnd,
+            }
+        ).encode("utf-8")
+        req = urllib.request.Request(
+            "https://nfdc.faa.gov/nfdcApps/controllers/PublicDataController/getLidData",
+            data=body,
+            headers={
+                "Content-Type": "application/x-www-form-urlencoded",
+                "Accept": "application/json",
+                "User-Agent": "MyNatTrack/1.0 (private educational; local proxy)",
+                "Referer": "https://www.faa.gov/",
+            },
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=20) as resp:
+                raw = resp.read().decode("utf-8", errors="replace")
+            if not raw.strip():
+                self._send_json(404, {"ok": False, "error": f"No FAA LID hit for {name}"})
+                return
+            payload = json.loads(raw)
+            rows = payload.get("data") or []
+            exact = [
+                r
+                for r in rows
+                if str(r.get("fix_identifier") or "").upper() == name
+            ]
+            pick = exact[0] if exact else None
+            if not pick:
+                self._send_json(404, {"ok": False, "error": f"No FAA LID hit for {name}"})
+                return
+            parsed = parse_faa_dms(str(pick.get("description") or ""))
+            if not parsed:
+                self._send_json(
+                    404,
+                    {"ok": False, "error": f"FAA LID row for {name} had no parseable coordinates"},
+                )
+                return
+            lat, lon, dms = parsed
+            self._send_json(
+                200,
+                {
+                    "ok": True,
+                    "name": name,
+                    "lat": lat,
+                    "lon": lon,
+                    "country": "US",
+                    "source": "FAA NFDC LID Fixes/Waypoints",
+                    "accuracy": "exact",
+                    "notes": (
+                        f"FAA NFDC Fixes/Waypoints ({dms}). "
+                        "Educational — verify current NASR/AIP."
+                    ),
+                },
+            )
+        except (
+            urllib.error.URLError,
+            urllib.error.HTTPError,
+            TimeoutError,
+            ValueError,
+            json.JSONDecodeError,
+        ) as exc:
+            self._send_json(502, {"ok": False, "error": f"FAA LID lookup failed: {exc}"})
 
     def _learn_waypoints(self) -> None:
         """Merge learned NAT fixes into waypoints.json + reference markdown (local Mac only)."""

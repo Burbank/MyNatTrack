@@ -1,0 +1,368 @@
+{
+  "airways": {
+    "M202": {
+      "fixes": [
+        "ADOOR",
+        "ETECK",
+        "CANIT",
+        "CARPX",
+        "UKOKA",
+        "OMALA",
+        "ONGOT",
+        "GOUGH",
+        "KINER",
+        "OVAPI",
+        "MUNEY",
+        "JEBBY",
+        "LOMPI"
+      ],
+      "region": "WATRS / New York OAC",
+      "notes": "Educational simplified sequences from published flight-plan samples; verify CIFP/NFDC."
+    },
+    "M201": {
+      "fixes": [
+        "PERIE",
+        "HANRI",
+        "EMQUE",
+        "GALWY",
+        "PAEPR",
+        "VEGAA",
+        "ATUGI",
+        "DRYED"
+      ],
+      "region": "WATRS / New York OAC",
+      "notes": "Educational simplified sequences from published flight-plan samples; verify CIFP/NFDC."
+    },
+    "M203": {
+      "fixes": [
+        "LSIER",
+        "PERDO",
+        "SELIM",
+        "BOBTU"
+      ],
+      "region": "WATRS / New York OAC",
+      "notes": "Educational simplified sequences from published flight-plan samples; verify CIFP/NFDC."
+    },
+    "M204": {
+      "fixes": [
+        "SUMRS",
+        "FLUPS",
+        "ALOBI"
+      ],
+      "region": "WATRS / New York OAC",
+      "notes": "Educational simplified sequences from published flight-plan samples; verify CIFP/NFDC."
+    }
+  },
+  "waypoints": [
+    {
+      "name": "ADOOR",
+      "lat": 29.400075,
+      "lon": -78.555694,
+      "country": "US",
+      "accuracy": "approximate",
+      "category": "watrs",
+      "notes": "OpenNav/US WATRS/NY OAC educational \u2014 verify NFDC/AIP.",
+      "source": "opennav"
+    },
+    {
+      "name": "ALOBI",
+      "lat": 32.045422,
+      "lon": -71.779975,
+      "country": "US",
+      "accuracy": "approximate",
+      "category": "watrs",
+      "notes": "OpenNav/US WATRS/NY OAC educational \u2014 verify NFDC/AIP.",
+      "source": "opennav"
+    },
+    {
+      "name": "ATUGI",
+      "lat": 35.638467,
+      "lon": -71.52675,
+      "country": "US",
+      "accuracy": "approximate",
+      "category": "watrs",
+      "notes": "OpenNav/US WATRS/NY OAC educational \u2014 verify NFDC/AIP.",
+      "source": "opennav"
+    },
+    {
+      "name": "BOBTU",
+      "lat": 44.117222,
+      "lon": -52.822222,
+      "country": "US",
+      "accuracy": "approximate",
+      "category": "watrs",
+      "notes": "OpenNav/US WATRS/NY OAC educational \u2014 verify NFDC/AIP.",
+      "source": "opennav"
+    },
+    {
+      "name": "CANIT",
+      "lat": 29.562506,
+      "lon": -78.42585,
+      "country": "US",
+      "accuracy": "approximate",
+      "category": "watrs",
+      "notes": "OpenNav/US WATRS/NY OAC educational \u2014 verify NFDC/AIP.",
+      "source": "opennav"
+    },
+    {
+      "name": "CARAC",
+      "lat": 43.0,
+      "lon": -60.0,
+      "country": "US",
+      "accuracy": "approximate",
+      "category": "watrs",
+      "notes": "OpenNav/US WATRS/NY OAC educational \u2014 verify NFDC/AIP.",
+      "source": "opennav"
+    },
+    {
+      "name": "CARPX",
+      "lat": 30.407994,
+      "lon": -77.749975,
+      "country": "US",
+      "accuracy": "approximate",
+      "category": "watrs",
+      "notes": "OpenNav/US WATRS/NY OAC educational \u2014 verify NFDC/AIP.",
+      "source": "opennav"
+    },
+    {
+      "name": "DRYED",
+      "lat": 38.632278,
+      "lon": -66.667461,
+      "country": "US",
+      "accuracy": "approximate",
+      "category": "watrs",
+      "notes": "OpenNav/US WATRS/NY OAC educational \u2014 verify NFDC/AIP.",
+      "source": "opennav"
+    },
+    {
+      "name": "EMQUE",
+      "lat": 31.999083,
+      "lon": -76.686639,
+      "country": "US",
+      "accuracy": "approximate",
+      "category": "watrs",
+      "notes": "OpenNav/US WATRS/NY OAC educational \u2014 verify NFDC/AIP.",
+      "source": "opennav"
+    },
+    {
+      "name": "ETECK",
+      "lat": 29.485667,
+      "lon": -78.487275,
+      "country": "US",
+      "accuracy": "approximate",
+      "category": "watrs",
+      "notes": "OpenNav/US WATRS/NY OAC educational \u2014 verify NFDC/AIP.",
+      "source": "opennav"
+    },
+    {
+      "name": "FLUPS",
+      "lat": 30.576722,
+      "lon": -73.9568,
+      "country": "US",
+      "accuracy": "approximate",
+      "category": "watrs",
+      "notes": "OpenNav/US WATRS/NY OAC educational \u2014 verify NFDC/AIP.",
+      "source": "opennav"
+    },
+    {
+      "name": "GALWY",
+      "lat": 33.583361,
+      "lon": -74.48675,
+      "country": "US",
+      "accuracy": "approximate",
+      "category": "watrs",
+      "notes": "OpenNav/US WATRS/NY OAC educational \u2014 verify NFDC/AIP.",
+      "source": "opennav"
+    },
+    {
+      "name": "GOUGH",
+      "lat": 34.669744,
+      "lon": -71.280656,
+      "country": "US",
+      "accuracy": "approximate",
+      "category": "watrs",
+      "notes": "OpenNav/US WATRS/NY OAC educational \u2014 verify NFDC/AIP.",
+      "source": "opennav"
+    },
+    {
+      "name": "HANRI",
+      "lat": 31.764639,
+      "lon": -77.0,
+      "country": "US",
+      "accuracy": "approximate",
+      "category": "watrs",
+      "notes": "OpenNav/US WATRS/NY OAC educational \u2014 verify NFDC/AIP.",
+      "source": "opennav"
+    },
+    {
+      "name": "JAINS",
+      "lat": 31.355569,
+      "lon": -77.000036,
+      "country": "US",
+      "accuracy": "approximate",
+      "category": "watrs",
+      "notes": "OpenNav/US WATRS/NY OAC educational \u2014 verify NFDC/AIP.",
+      "source": "opennav"
+    },
+    {
+      "name": "JEBBY",
+      "lat": 43.072222,
+      "lon": -57.868056,
+      "country": "US",
+      "accuracy": "approximate",
+      "category": "watrs",
+      "notes": "OpenNav/US WATRS/NY OAC educational \u2014 verify NFDC/AIP.",
+      "source": "opennav"
+    },
+    {
+      "name": "KINER",
+      "lat": 36.574231,
+      "lon": -68.287447,
+      "country": "US",
+      "accuracy": "approximate",
+      "category": "watrs",
+      "notes": "OpenNav/US WATRS/NY OAC educational \u2014 verify NFDC/AIP.",
+      "source": "opennav"
+    },
+    {
+      "name": "LOMPI",
+      "lat": 44.0,
+      "lon": -57.0,
+      "country": "US",
+      "accuracy": "approximate",
+      "category": "watrs",
+      "notes": "OpenNav/US WATRS/NY OAC educational \u2014 verify NFDC/AIP.",
+      "source": "opennav"
+    },
+    {
+      "name": "LSIER",
+      "lat": 33.02805,
+      "lon": -72.041767,
+      "country": "US",
+      "accuracy": "approximate",
+      "category": "watrs",
+      "notes": "OpenNav/US WATRS/NY OAC educational \u2014 verify NFDC/AIP.",
+      "source": "opennav"
+    },
+    {
+      "name": "MUNEY",
+      "lat": 38.5,
+      "lon": -64.964361,
+      "country": "US",
+      "accuracy": "approximate",
+      "category": "watrs",
+      "notes": "OpenNav/US WATRS/NY OAC educational \u2014 verify NFDC/AIP.",
+      "source": "opennav"
+    },
+    {
+      "name": "NOVOK",
+      "lat": 42.381597,
+      "lon": -61.201561,
+      "country": "US",
+      "accuracy": "approximate",
+      "category": "watrs",
+      "notes": "OpenNav/US WATRS/NY OAC educational \u2014 verify NFDC/AIP.",
+      "source": "opennav"
+    },
+    {
+      "name": "OMALA",
+      "lat": 33.242164,
+      "lon": -73.396936,
+      "country": "US",
+      "accuracy": "approximate",
+      "category": "watrs",
+      "notes": "OpenNav/US WATRS/NY OAC educational \u2014 verify NFDC/AIP.",
+      "source": "opennav"
+    },
+    {
+      "name": "ONGOT",
+      "lat": 33.981806,
+      "lon": -72.301667,
+      "country": "US",
+      "accuracy": "approximate",
+      "category": "watrs",
+      "notes": "OpenNav/US WATRS/NY OAC educational \u2014 verify NFDC/AIP.",
+      "source": "opennav"
+    },
+    {
+      "name": "OVAPI",
+      "lat": 37.454594,
+      "lon": -66.809519,
+      "country": "US",
+      "accuracy": "approximate",
+      "category": "watrs",
+      "notes": "OpenNav/US WATRS/NY OAC educational \u2014 verify NFDC/AIP.",
+      "source": "opennav"
+    },
+    {
+      "name": "PAEPR",
+      "lat": 35.042,
+      "lon": -72.416583,
+      "country": "US",
+      "accuracy": "approximate",
+      "category": "watrs",
+      "notes": "OpenNav/US WATRS/NY OAC educational \u2014 verify NFDC/AIP.",
+      "source": "opennav"
+    },
+    {
+      "name": "PERDO",
+      "lat": 33.687161,
+      "lon": -71.036989,
+      "country": "US",
+      "accuracy": "approximate",
+      "category": "watrs",
+      "notes": "OpenNav/US WATRS/NY OAC educational \u2014 verify NFDC/AIP.",
+      "source": "opennav"
+    },
+    {
+      "name": "PERIE",
+      "lat": 31.228642,
+      "lon": -77.796886,
+      "country": "US",
+      "accuracy": "approximate",
+      "category": "watrs",
+      "notes": "OpenNav/US WATRS/NY OAC educational \u2014 verify NFDC/AIP.",
+      "source": "opennav"
+    },
+    {
+      "name": "SELIM",
+      "lat": 38.5,
+      "lon": -62.668933,
+      "country": "US",
+      "accuracy": "approximate",
+      "category": "watrs",
+      "notes": "OpenNav/US WATRS/NY OAC educational \u2014 verify NFDC/AIP.",
+      "source": "opennav"
+    },
+    {
+      "name": "SUMRS",
+      "lat": 28.711689,
+      "lon": -76.558497,
+      "country": "US",
+      "accuracy": "approximate",
+      "category": "watrs",
+      "notes": "OpenNav/US WATRS/NY OAC educational \u2014 verify NFDC/AIP.",
+      "source": "opennav"
+    },
+    {
+      "name": "UKOKA",
+      "lat": 30.64825,
+      "lon": -77.0,
+      "country": "US",
+      "accuracy": "approximate",
+      "category": "watrs",
+      "notes": "OpenNav/US WATRS/NY OAC educational \u2014 verify NFDC/AIP.",
+      "source": "opennav"
+    },
+    {
+      "name": "VEGAA",
+      "lat": 35.323161,
+      "lon": -72.0,
+      "country": "US",
+      "accuracy": "approximate",
+      "category": "watrs",
+      "notes": "OpenNav/US WATRS/NY OAC educational \u2014 verify NFDC/AIP.",
+      "source": "opennav"
+    }
+  ]
+}

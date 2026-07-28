@@ -96,7 +96,7 @@ console.log(
   route.points.map((p) => p.name).join(" ")
 );
 
-if (wp.accuracyVerifiedOn !== "2026-07-27") {
+if (wp.accuracyVerifiedOn !== "2026-07-28") {
   throw new Error("accuracyVerifiedOn mismatch");
 }
 

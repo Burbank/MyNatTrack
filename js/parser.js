@@ -9,6 +9,11 @@
  * - Classic N-prefix half-degree (ambiguous): Nxx yy = xx°30'N / yy°W (e.g. N5050)
  */
 
+import {
+  expandAirwayTokens,
+  isAirwayToken,
+} from "./airways.js";
+
 function dmsToDeg(deg, min = 0, sec = 0, hemi = "N") {
   let v = Math.abs(deg) + min / 60 + sec / 3600;
   const h = hemi.toUpperCase();
@@ -51,7 +56,7 @@ function okPoint(name, lat, lon, extra = {}) {
  * ARINC 424 §7.2.5 whole-degree 5-character oceanic shorthand.
  * Examples: 5050N → 50N050W; 50N50 → 50N150W; 5215N → 52N015W; 4020S → 40S020E
  */
-export function parseArinc424Shorthand(input) {
+function parseArinc424Shorthand(input) {
   const s = String(input || "")
     .trim()
     .toUpperCase();
@@ -95,7 +100,7 @@ export function parseArinc424Shorthand(input) {
  * NAT-recommended half-degree coding: Hxxyy = xx°30'N / yy°00'W
  * Example: H5250 → 52°30'N 050°00'W
  */
-export function parseArincHalfDegreeH(input) {
+function parseArincHalfDegreeH(input) {
   const s = String(input || "")
     .trim()
     .toUpperCase();
@@ -115,7 +120,7 @@ export function parseArincHalfDegreeH(input) {
  * Example: N5050 → 50°30'N 050°00'W
  * Prefer Hxxyy in NAT ops; still accepted for FMS compatibility.
  */
-export function parseArincHalfDegreeNPrefix(input) {
+function parseArincHalfDegreeNPrefix(input) {
   const s = String(input || "")
     .trim()
     .toUpperCase();
@@ -295,7 +300,7 @@ export function parseWaypointInput(raw, db = []) {
   };
 }
 
-export function formatCoordLabel(lat, lon) {
+function formatCoordLabel(lat, lon) {
   const latH = lat >= 0 ? "N" : "S";
   const lonH = lon >= 0 ? "E" : "W";
   const latAbs = Math.abs(lat);
@@ -387,10 +392,13 @@ export function toArinc424(lat, lon) {
  * Separators: whitespace, commas, or middle dots (·).
  * Example: "SOMAX 5020N 4930N 4740N 43N050W SOORY"
  *
+ * If `airways` is provided, ICAO airway tokens (e.g. M202) are expanded to
+ * intermediate fixes between the surrounding named waypoints when known.
+ *
  * Also returns `slots` + `unknowns` so the UI can teach missing names
  * without rejecting the whole paste.
  */
-export function parseRouteString(raw, db = []) {
+export function parseRouteString(raw, db = [], airways = null) {
   const text = String(raw || "").trim();
   if (!text) {
     return {
@@ -401,10 +409,12 @@ export function parseRouteString(raw, db = []) {
       slots: [],
       unknowns: [],
       tokens: [],
+      airwaySkipped: [],
+      airwayExpanded: [],
     };
   }
 
-  const tokens = text
+  let tokens = text
     .replace(/[·•]/g, " ")
     .split(/[\s,;]+/)
     .map((t) => t.trim())
@@ -419,7 +429,18 @@ export function parseRouteString(raw, db = []) {
       slots: [],
       unknowns: [],
       tokens: [],
+      airwaySkipped: [],
+      airwayExpanded: [],
     };
+  }
+
+  let airwaySkipped = [];
+  let airwayExpanded = [];
+  if (airways && typeof airways === "object") {
+    const exp = expandAirwayTokens(tokens, airways);
+    tokens = exp.tokens;
+    airwaySkipped = exp.skipped || [];
+    airwayExpanded = exp.expanded || [];
   }
 
   const points = [];
@@ -439,18 +460,37 @@ export function parseRouteString(raw, db = []) {
     }
   });
 
-  if (errors.length) {
+  // Unexpanded airway ids count as skipped (not teachable as a single fix)
+  for (const awy of airwaySkipped) {
+    if (!unknowns.some((u) => u.token === awy)) {
+      unknowns.push({
+        token: awy,
+        index: -1,
+        error: `Airway ${awy} could not be expanded (need bounding fixes on that airway).`,
+        airway: true,
+      });
+    }
+  }
+
+  if (errors.length || airwaySkipped.length) {
     const detail = errors
       .map((e) => `${e.token} (${e.error})`)
       .join("; ");
+    const awyBit = airwaySkipped.length
+      ? `${detail ? "; " : ""}airway(s) not expanded: ${airwaySkipped.join(", ")}`
+      : "";
     return {
       ok: false,
-      error: `Could not parse ${errors.length} of ${tokens.length} waypoint(s): ${detail}`,
+      error: errors.length
+        ? `Could not parse ${errors.length} of ${tokens.length} waypoint(s): ${detail}${awyBit}`
+        : `Could not expand airway(s): ${airwaySkipped.join(", ")}`,
       points,
       errors,
       slots,
       unknowns,
       tokens,
+      airwaySkipped,
+      airwayExpanded,
     };
   }
 
@@ -461,6 +501,8 @@ export function parseRouteString(raw, db = []) {
     slots,
     unknowns: [],
     tokens,
+    airwaySkipped: [],
+    airwayExpanded,
   };
 }
 

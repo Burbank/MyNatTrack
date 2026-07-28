@@ -159,12 +159,16 @@
               placeholder="Paste route example: SOMAX 5020N 4930N 4740N 43N050W SOORY"
               aria-label="Waypoint or full route entry"
             />
+            <button type="button" class="secondary" id="teach-btn" hidden>Teach</button>
             <button type="button" class="primary" id="add-btn">Add</button>
             <button type="button" class="secondary" id="cancel-edit-btn" hidden>Cancel</button>
             <button type="button" class="secondary" id="clear-btn">Clear</button>
             <div id="suggest" hidden></div>
           </div>
           <p id="error" hidden></p>
+          <p id="route-unknown-remark" class="route-unknown-remark" hidden>
+            UNKNOWN WAYPOINTS NOT LOADED
+          </p>
           <ul class="route-list" id="route-list"></ul>
         </div>
       </section>
@@ -209,12 +213,44 @@
                 <span class="utc-chip-time mono" id="chart-utc-clock">——:——:——</span>
                 <span class="utc-chip-label">UTC</span>
               </div>
+              <div class="chart-route-summary" id="chart-route-summary" hidden title="Route total distance and crude ETE">
+                <span class="chart-route-summary-text mono" id="chart-route-summary-text"></span>
+              </div>
               <div class="chart-toolbar-actions">
                 <button type="button" class="secondary compact" id="nat-tracks-btn">NAT Tracks</button>
                 <button type="button" class="secondary compact" id="chart-fullscreen-btn" aria-pressed="false" title="Full screen chart">
                   Full screen
                 </button>
               </div>
+            </div>
+            <div class="gc-plan-bar" id="gc-plan-bar" hidden>
+              <input
+                id="gc-dep"
+                class="gc-icao"
+                type="text"
+                maxlength="4"
+                spellcheck="false"
+                autocomplete="off"
+                autocapitalize="characters"
+                inputmode="text"
+                placeholder="DEP"
+                aria-label="747-8 departure ICAO"
+                title="747-8 departure ICAO"
+              />
+              <span id="gc-plan-label" class="gc-plan-label">PLAN 747-8 Great Circle</span>
+              <input
+                id="gc-arr"
+                class="gc-icao"
+                type="text"
+                maxlength="4"
+                spellcheck="false"
+                autocomplete="off"
+                autocapitalize="characters"
+                inputmode="text"
+                placeholder="DEST"
+                aria-label="747-8 destination ICAO"
+                title="747-8 destination ICAO"
+              />
             </div>
             <div class="chart-toolbar-toggles">
               <label class="chart-toggle" for="valid-only-tracks" title="Hide tracks outside their validity window">
@@ -235,6 +271,7 @@
           </div>
           <div class="chart-wrap">
             <canvas id="chart" aria-label="North Atlantic route chart"></canvas>
+            <canvas id="chart-ownship" class="chart-ownship" aria-hidden="true"></canvas>
           </div>
         </section>
 
@@ -254,6 +291,7 @@
                   <th title="Initial true track leaving the from-waypoint (ND)">Init True</th>
                   <th id="th-init-mag" title="Initial magnetic track leaving the from-waypoint">Init Mag</th>
                   <th>Dist NM</th>
+                  <th title="Crude ETE with mid-latitude westerlies; climb/descent pad only for airport ends">ETE</th>
                 </tr>
               </thead>
               <tbody id="legs-body"></tbody>
@@ -277,6 +315,51 @@
             Educational and Simulator use only. Not certified for navigation.<br />
             WGS-84 Vincenty tracks &amp; distances; magnetic variation is an approximate offline model.
           </p>
+          <p class="muted settings-gps-note">
+            Ownship (Fly): coarse location only — Precise Location is not required.
+            To stop Safari asking each visit: iPad <strong>Settings → Apps → Safari → Location → Allow</strong>
+            (or Settings → Safari → Location). Sites cannot store a lasting “permission cookie” for GPS;
+            that choice lives in Safari/iOS settings.
+          </p>
+          <p class="muted settings-gc-note">
+            Full-screen with no route: 747-8 airports appear on the chart; tap or type two for a great-circle plan (NM + rough time with westerlies).
+            Those ICAOs are also in the route database for normal entry. Cleared on exit full screen.
+          </p>
+          <p class="muted settings-teach-note">
+            Teach: when editing a single waypoint (or typing one name), use <strong>Teach</strong> (left of Update/Add) to enter or correct chart coordinates.
+            Your manual fix is kept on this device and is never overwritten by online lookups. Use Teach again anytime to revise it.
+          </p>
+          <p class="muted settings-coords-note">
+            <strong>Coordinate sources (official over OpenNav):</strong>
+            Transport Canada AIM NAT Table 1.1 for Gander 050°W OEPs;
+            AirNav Ireland AIP ENR 4.4 for SOMAX/DOGAL/MALOT/LIMRI;
+            FAA NFDC Fixes/Waypoints for US / many oceanic fixes.
+            Online lookup uses FAA only (OpenNav is not used). Eurocontrol EAD requires registration, so some European fixes may still be approximate until Teach/AIP.
+          </p>
+          <div class="settings-icloud-block">
+            <p class="muted settings-icloud-note">
+              <strong>iCloud Drive backup</strong> — Safari cannot write directly into iCloud, but Files can.
+              Export your learned / Teach database, then in the share sheet choose
+              <em>Save to Files → iCloud Drive</em> (e.g. a <code>MyNatTrack</code> folder).
+              On another iPad or MacBook, open this app → Import from that same file.
+              Keep one file and overwrite it when you Teach new fixes so both devices stay aligned.
+            </p>
+            <div class="settings-icloud-actions">
+              <button type="button" class="secondary compact" id="icloud-export-btn">
+                Export learned to Files…
+              </button>
+              <button type="button" class="secondary compact" id="icloud-import-btn">
+                Import learned from Files…
+              </button>
+            </div>
+            <p id="icloud-sync-status" class="md-io-status" hidden></p>
+            <input
+              type="file"
+              id="icloud-import-file"
+              accept=".json,application/json"
+              hidden
+            />
+          </div>
         </div>
         <div class="setting-row">
           <label for="mag-toggle">
@@ -381,7 +464,7 @@
             rel="noopener noreferrer"
             title="Opens ICAO NAT Doc 007 (current edition V.2026-1). ICAO puts the edition in the filename — no permanent “latest.pdf” URL exists; when a new edition is published, this link is updated in the app. Browse all editions via EUR &amp; NAT Documents on icao.int."
           >Download Latest Nat Doc 007</a>
-          <span class="settings-version muted" aria-label="App version">v2.0</span>
+          <span class="settings-version muted" aria-label="App version">v2.4.0</span>
         </div>
       </div>
     </div>
@@ -399,7 +482,7 @@
         </header>
 
         <div class="flow-chart" aria-label="MNPS route verification flowchart">
-          <div class="flow-col flow-col-a">
+          <div class="flow-col">
             <div class="flow-section-label">A · Before entering MNPS airspace</div>
 
             <div class="flow-node step critical">
@@ -437,7 +520,7 @@
                   (ii) Crossload OFP and Notes
                 </div>
               </div>
-              <div class="flow-branch-arm same">
+              <div class="flow-branch-arm">
                 <div class="flow-tag">Same</div>
                 <div class="flow-arrow short dashed" aria-hidden="true"></div>
                 <div class="flow-node mini mute">Continue</div>
@@ -482,7 +565,7 @@
             </div>
           </div>
 
-          <div class="flow-col flow-col-b">
+          <div class="flow-col">
             <div class="flow-section-label">B · In MNPS airspace</div>
 
             <div class="flow-node step">
@@ -498,7 +581,7 @@
               </div>
             </div>
 
-            <div class="flow-branch reclear">
+            <div class="flow-branch">
               <div class="flow-branch-arm">
                 <div class="flow-decision warn">Reclearance?<br /><span>Voice or ACARS</span></div>
                 <div class="flow-arrow short" aria-hidden="true"></div>
@@ -507,7 +590,7 @@
                   Full independent verification
                 </div>
               </div>
-              <div class="flow-branch-arm same">
+              <div class="flow-branch-arm">
                 <div class="flow-tag">No</div>
                 <div class="flow-arrow short dashed" aria-hidden="true"></div>
                 <div class="flow-node mini mute">Continue MNPS</div>
@@ -551,7 +634,8 @@
         </header>
         <ul class="md-io-help">
           <li>Exports the live reference markdown — bundled tables plus your learned and manually taught fixes.</li>
-          <li>Opens the system share menu (Save to Files, AirDrop, Mail, etc.).</li>
+          <li>For cross-device use: Share → <strong>Save to Files → iCloud Drive</strong> (same path on iPad and Mac).</li>
+          <li>Prefer SETREF “Export learned to Files…” for a compact JSON of only your Teach / online growth.</li>
           <li>Use this as a backup before deleting the app or clearing site data.</li>
           <li>If share is unavailable, the same <code>.md</code> file downloads instead.</li>
         </ul>
@@ -613,11 +697,10 @@
           aria-label="Waypoint coordinates"
         />
         <p class="muted teach-hint">
-          Also accepts glued FMS form, e.g. N5000.0W02000.0. Saved to this device for next time.
+          Also accepts glued FMS form, e.g. N5000.0W02000.0. Manual Teach is saved on this device and overrides any online lookup.
         </p>
         <p id="teach-error" class="teach-error" hidden></p>
         <div class="teach-actions">
-          <button type="button" class="secondary" id="teach-skip-btn">Skip</button>
           <button type="button" class="primary" id="teach-save-btn">Save</button>
         </div>
       </div>

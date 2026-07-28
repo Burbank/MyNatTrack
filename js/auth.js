@@ -9,7 +9,7 @@ const UNLOCK_KEY = "mynattrack_unlock_v1";
 const UNLOCK_TOKEN = "ok";
 
 /** True when running as installed web app (iPad Home Screen, etc.). */
-export function isInstalledWebApp() {
+function isInstalledWebApp() {
   try {
     if (window.matchMedia("(display-mode: standalone)").matches) return true;
     if (window.matchMedia("(display-mode: fullscreen)").matches) return true;
@@ -24,7 +24,7 @@ function storage() {
   return isInstalledWebApp() ? localStorage : sessionStorage;
 }
 
-export function isUnlocked() {
+function isUnlocked() {
   try {
     return storage().getItem(UNLOCK_KEY) === UNLOCK_TOKEN;
   } catch {
@@ -32,7 +32,7 @@ export function isUnlocked() {
   }
 }
 
-export function unlockWithPassword(password) {
+function unlockWithPassword(password) {
   if (String(password ?? "") !== APP_PASSWORD) return false;
   try {
     storage().setItem(UNLOCK_KEY, UNLOCK_TOKEN);

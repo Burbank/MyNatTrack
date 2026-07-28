@@ -139,3 +139,165 @@ export function averageBearing(bearingA, bearingB) {
   }
   return normalizeBearing(toDeg(Math.atan2(y, x)));
 }
+
+/**
+ * Spherical great-circle samples for chart drawing (display only).
+ * @returns {{ lat: number, lon: number }[]}
+ */
+export function greatCircleSamples(lat1, lon1, lat2, lon2, steps = 72) {
+  const φ1 = toRad(lat1);
+  const λ1 = toRad(lon1);
+  const φ2 = toRad(lat2);
+  const λ2 = toRad(lon2);
+  const sinΔφ = Math.sin((φ2 - φ1) / 2);
+  const sinΔλ = Math.sin((λ2 - λ1) / 2);
+  const Δ =
+    2 *
+    Math.asin(
+      Math.min(
+        1,
+        Math.sqrt(sinΔφ * sinΔφ + Math.cos(φ1) * Math.cos(φ2) * sinΔλ * sinΔλ)
+      )
+    );
+  if (!(Δ > 1e-12)) {
+    return [
+      { lat: lat1, lon: lon1 },
+      { lat: lat2, lon: lon2 },
+    ];
+  }
+  const sinΔ = Math.sin(Δ);
+  const n = Math.max(2, Math.floor(steps));
+  const pts = [];
+  for (let i = 0; i <= n; i++) {
+    const f = i / n;
+    const A = Math.sin((1 - f) * Δ) / sinΔ;
+    const B = Math.sin(f * Δ) / sinΔ;
+    const x = A * Math.cos(φ1) * Math.cos(λ1) + B * Math.cos(φ2) * Math.cos(λ2);
+    const y = A * Math.cos(φ1) * Math.sin(λ1) + B * Math.cos(φ2) * Math.sin(λ2);
+    const z = A * Math.sin(φ1) + B * Math.sin(φ2);
+    pts.push({
+      lat: toDeg(Math.atan2(z, Math.sqrt(x * x + y * y))),
+      lon: toDeg(Math.atan2(y, x)),
+    });
+  }
+  return pts;
+}
+
+/**
+ * Format minutes as HH:MM (crude ETE / block time).
+ */
+export function formatEteHhMm(minutes) {
+  const m = Math.max(0, Math.round(Number(minutes) || 0));
+  const hh = Math.floor(m / 60);
+  const mm = m % 60;
+  return `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
+}
+
+/**
+ * Crude 747-class time from GC distance + mid-latitude westerlies.
+ * TAS ≈ 480 kt (M0.85). Prevailing wind: west→east, peaking ~45 kt near 50°N.
+ * @param {{ terminalPad?: boolean }} [opts] — climb/descent pad when true (airport legs / GC plan).
+ * @returns {{ minutes: number, label: string, gsKt: number, windKt: number }}
+ */
+export function estimate747BlockTime(distanceNm, lat1, lon1, lat2, lon2, opts = {}) {
+  const terminalPad = opts.terminalPad !== false;
+  const nm = Math.max(0, Number(distanceNm) || 0);
+  const TAS = 480;
+  let windKt = 0;
+  if (
+    Number.isFinite(lat1) &&
+    Number.isFinite(lon1) &&
+    Number.isFinite(lat2) &&
+    Number.isFinite(lon2) &&
+    nm > 1
+  ) {
+    const mid = greatCircleSamples(lat1, lon1, lat2, lon2, 8)[4] || {
+      lat: (lat1 + lat2) / 2,
+      lon: (lon1 + lon2) / 2,
+    };
+    let track = Number.isFinite(opts.initialBearing) ? opts.initialBearing : null;
+    if (track == null) {
+      try {
+        track = vincentyInverse(lat1, lon1, lat2, lon2).initialBearing;
+      } catch {
+        track = 0;
+      }
+    }
+    windKt = prevailingTailwindKt(mid.lat, track, mid.lon);
+  }
+  const gsKt = Math.max(280, TAS + windKt);
+  const cruiseMin = nm > 0 ? (nm / gsKt) * 60 : 0;
+  const pad = terminalPad ? (nm < 120 ? 10 : 20) : 0;
+  const minutes = Math.max(0, Math.round(cruiseMin + pad));
+  return {
+    minutes,
+    label: formatEteHhMm(minutes),
+    gsKt: Math.round(gsKt),
+    windKt: Math.round(windKt),
+  };
+}
+
+/**
+ * Crude global prevailing wind → tailwind along true track (deg).
+ * Pure math (no data tables): mid-latitude westerlies, Asia/NPAC jet, SH jet,
+ * and tropical easterly trades. Educational only.
+ * @param {number} [lon] optional — enables Asia/North-Pacific jet boost
+ */
+function prevailingTailwindKt(lat, trackDeg, lon) {
+  const latN = Number(lat);
+  if (!Number.isFinite(latN)) return 0;
+  const latAbs = Math.abs(latN);
+  const θ = ((Number(trackDeg) || 0) * Math.PI) / 180;
+
+  /** Best (speedKt, wind-from deg true). FROM west=270, FROM east=90. */
+  let bestW = 0;
+  let fromDeg = 270;
+
+  const consider = (speed, from) => {
+    if (speed > bestW) {
+      bestW = speed;
+      fromDeg = from;
+    }
+  };
+
+  // Mid-latitude westerlies (NH stronger; SH included for southern routes)
+  if (latAbs >= 22 && latAbs <= 72) {
+    const peak = latN >= 0 ? 45 : 30;
+    const core = latN >= 0 ? 50 : -48;
+    const band = Math.exp(-0.5 * ((latN - core) / 14) ** 2);
+    consider(peak * band, 270);
+  }
+
+  // Asia / North Pacific subtropical jet (~35°N, lon E Asia or far W Pacific)
+  if (
+    Number.isFinite(lon) &&
+    latN >= 25 &&
+    latN <= 48 &&
+    (lon >= 100 || lon <= -140)
+  ) {
+    const band = Math.exp(-0.5 * ((latN - 35) / 10) ** 2);
+    consider(52 * band, 270);
+  }
+
+  // South Pacific / Indian Ocean mid-lat jet (weaker than NH)
+  if (
+    Number.isFinite(lon) &&
+    latN <= -25 &&
+    latN >= -55 &&
+    ((lon >= 40 && lon <= 180) || lon <= -140)
+  ) {
+    const band = Math.exp(-0.5 * ((latN + 45) / 12) ** 2);
+    consider(32 * band, 270);
+  }
+
+  // Tropical trade easterlies (both hemispheres)
+  if (latAbs >= 5 && latAbs <= 24) {
+    const band = Math.exp(-0.5 * ((latAbs - 14) / 6) ** 2);
+    consider(18 * band, 90);
+  }
+
+  if (bestW < 0.5) return 0;
+  // Tailwind = component of wind-TO along track
+  const toRad = (((fromDeg + 180) % 360) * Math.PI) / 180;
+  return bestW * Math.cos(θ - toRad);
+}

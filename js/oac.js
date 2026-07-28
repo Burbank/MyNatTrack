@@ -1,7 +1,11 @@
 /**
  * NAT Oceanic Area Control (OAC) + adjacent domestic FIRs for chart overlay.
  * OAC limits: ICAO NAT eANP Vol I. OTAs: AIP / NAT manuals / TC AIM (simplified).
- * Labels use CPDLC / FIR location indicators (four-letter codes) only.
+ * Priority: continuous Northern Atlantic OAC rings (EGGX / CZQX / KZWY / LPPO)
+ * from published FIR shapes (simplified). Incomplete areas (e.g. TTZP, SBAO,
+ * KZMA, Pacific OACs) are CPDLC labels only — no inferred boundary boxes.
+ * Labels use CPDLC / FIR location indicators (four-letter codes) where standard;
+ * San Juan is labeled by name (no short CPDLC-style ident on this chart).
  */
 
 function alongLat(lat, lonA, lonB, step = 0.5) {
@@ -73,6 +77,170 @@ export const OAC_SEGMENTS = [
     { lat: 43, lon: -13 },
     { lat: 42, lon: -15 },
   ]),
+
+  // BIRD Reykjavik FIR (complete outline)
+  densifyPath(
+    [
+      { lat: 61.0, lon: -4.0 },
+      { lat: 61.0, lon: -30.0 },
+      { lat: 63.5, lon: -39.0 },
+      { lat: 70.0, lon: -20.0 },
+      { lat: 73.0, lon: -20.0 },
+      { lat: 73.0, lon: 0.0 },
+      { lat: 61.0, lon: 0.0 },
+      { lat: 61.0, lon: -4.0 },
+    ],
+    0.55
+  ),
+  // ENOB Bodø Oceanic FIR
+  densifyPath(
+    [
+      { lat: 82.0, lon: 0.0 },
+      { lat: 82.0, lon: 30.0 },
+      { lat: 71.0, lon: 30.0 },
+      { lat: 71.33, lon: 25.0 },
+      { lat: 70.0, lon: 15.0 },
+      { lat: 66.38, lon: 7.97 },
+      { lat: 63.0, lon: 4.0 },
+      { lat: 63.02, lon: 0.0 },
+      { lat: 82.0, lon: 0.0 },
+    ],
+    0.6
+  ),
+
+  // —— Continuous NAT OAC rings (simplified published FIR outlines) ——
+  // EGGX Shanwick FIR
+  densifyPath(
+    [
+      { lat: 61.0, lon: -30.0 },
+      { lat: 61.0, lon: -10.0 },
+      { lat: 54.57, lon: -10.0 },
+      { lat: 54.0, lon: -15.0 },
+      { lat: 51.0, lon: -15.0 },
+      { lat: 51.0, lon: -8.0 },
+      { lat: 45.0, lon: -8.0 },
+      { lat: 45.0, lon: -30.0 },
+      { lat: 61.0, lon: -30.0 },
+    ],
+    0.55
+  ),
+  // CZQX Gander Oceanic FIR
+  densifyPath(
+    [
+      { lat: 44.94, lon: -51.0 },
+      { lat: 46.0, lon: -50.0 },
+      { lat: 46.87, lon: -51.0 },
+      { lat: 49.67, lon: -51.47 },
+      { lat: 53.08, lon: -54.08 },
+      { lat: 61.0, lon: -63.0 },
+      { lat: 64.0, lon: -63.0 },
+      { lat: 65.0, lon: -58.25 },
+      { lat: 58.5, lon: -50.0 },
+      { lat: 58.5, lon: -41.0 },
+      { lat: 63.5, lon: -39.0 },
+      { lat: 61.0, lon: -30.0 },
+      { lat: 45.0, lon: -30.0 },
+      { lat: 44.94, lon: -51.0 },
+    ],
+    0.55
+  ),
+  // KZWY New York Oceanic East FIR
+  densifyPath(
+    [
+      { lat: 45.0, lon: -40.0 },
+      { lat: 22.3, lon: -40.0 },
+      { lat: 18.0, lon: -45.0 },
+      { lat: 18.0, lon: -61.5 },
+      { lat: 22.0, lon: -64.0 },
+      { lat: 21.24, lon: -67.65 },
+      { lat: 25.0, lon: -68.49 },
+      { lat: 25.0, lon: -73.2 },
+      { lat: 27.83, lon: -74.83 },
+      { lat: 27.83, lon: -76.26 },
+      { lat: 32.25, lon: -77.0 },
+      { lat: 35.09, lon: -72.67 },
+      { lat: 37.23, lon: -72.67 },
+      { lat: 39.0, lon: -67.0 },
+      { lat: 41.87, lon: -67.0 },
+      { lat: 45.0, lon: -53.0 },
+      { lat: 45.0, lon: -40.0 },
+    ],
+    0.55
+  ),
+  // LPPO Santa Maria FIR
+  densifyPath(
+    [
+      { lat: 45.0, lon: -20.0 },
+      { lat: 45.0, lon: -13.0 },
+      { lat: 43.0, lon: -13.0 },
+      { lat: 42.0, lon: -15.0 },
+      { lat: 36.5, lon: -15.0 },
+      { lat: 32.98, lon: -18.4 },
+      { lat: 31.68, lon: -17.46 },
+      { lat: 30.0, lon: -20.0 },
+      { lat: 30.0, lon: -25.0 },
+      { lat: 24.0, lon: -25.0 },
+      { lat: 17.0, lon: -37.5 },
+      { lat: 22.3, lon: -40.0 },
+      { lat: 45.01, lon: -40.0 },
+      { lat: 45.0, lon: -20.0 },
+    ],
+    0.55
+  ),
+  // BGGL Nuuk — NAT-facing outline (arctic pole omitted; continuous with CZQX/BIRD)
+  densifyPath(
+    [
+      { lat: 58.5, lon: -50.0 },
+      { lat: 58.5, lon: -41.0 },
+      { lat: 63.5, lon: -39.0 },
+      { lat: 70.0, lon: -20.0 },
+      { lat: 73.0, lon: -20.0 },
+      { lat: 73.0, lon: -40.0 },
+      { lat: 70.0, lon: -55.0 },
+      { lat: 65.0, lon: -58.25 },
+      { lat: 58.5, lon: -50.0 },
+    ],
+    0.55
+  ),
+
+  // —— South Atlantic / Canarias / Sal / Dakar (simplified FIR outlines) ——
+  // GCCC Canarias FIR
+  densifyPath(
+    [
+      { lat: 27.67, lon: -11.23 },
+      { lat: 27.67, lon: -8.67 },
+      { lat: 26.0, lon: -8.67 },
+      { lat: 26.0, lon: -12.0 },
+      { lat: 23.45, lon: -12.0 },
+      { lat: 23.17, lon: -13.0 },
+      { lat: 21.33, lon: -13.0 },
+      { lat: 21.33, lon: -16.93 },
+      { lat: 19.0, lon: -19.0 },
+      { lat: 24.0, lon: -25.0 },
+      { lat: 30.0, lon: -25.0 },
+      { lat: 30.0, lon: -20.0 },
+      { lat: 31.68, lon: -17.46 },
+      { lat: 31.5, lon: -15.75 },
+      { lat: 30.0, lon: -12.5 },
+      { lat: 27.67, lon: -13.17 },
+      { lat: 27.67, lon: -11.23 },
+    ],
+    0.6
+  ),
+  // GVSC Sal Oceanic
+  densifyPath(
+    [
+      { lat: 24.0, lon: -25.0 },
+      { lat: 19.83, lon: -20.0 },
+      { lat: 15.0, lon: -20.0 },
+      { lat: 12.97, lon: -21.37 },
+      { lat: 17.0, lon: -37.5 },
+      { lat: 24.0, lon: -25.0 },
+    ],
+    0.55
+  ),
+  // SOOO / KZMA / San Juan / TTZP / SBAO / Pacific OACs: CPDLC labels only
+  // (no inferred educational boxes — incomplete official outlines).
 ];
 
 /** Region codes placed inside each OAC near shared boundaries. */
@@ -83,6 +251,18 @@ export const OAC_LABELS = [
   { code: "BIRD", lat: 63.5, lon: -18 },
   { code: "KZWY", lat: 42, lon: -46 },
   { code: "ENOB", lat: 70, lon: 5 },
+  { code: "BGGL", lat: 64.5, lon: -48.0 }, // Nuuk FIR (NAT-facing)
+  { code: "KZMA", boldCode: "KUSA", lat: 27.5, lon: -72.0 }, // FIR + CPDLC login (label only)
+  { code: "San Juan", lat: 18.5, lon: -63.0 }, // label only
+  { code: "TTZP", lat: 11.0, lon: -55.0 }, // Piarco — label only
+  { code: "GVSC", lat: 17.5, lon: -28.0 }, // Sal Oceanic
+  { code: "SOOO", lat: 8.0, lon: -28.0 }, // Dakar oceanic — label only
+  { code: "GCCC", lat: 26.5, lon: -18.0 }, // Canarias
+  { code: "SBAO", lat: -2.0, lon: -30.0 }, // Atlântico / Recife — label only
+  { code: "KZAK", lat: 22.0, lon: -148.0 }, // Oakland Oceanic — label only
+  { code: "PAZA", lat: 52.0, lon: -155.0 }, // Anchorage Oceanic — label only
+  { code: "NZZO", lat: -34.0, lon: 172.0 }, // Auckland Oceanic — label only
+  { code: "NFFF", lat: -10.0, lon: 172.0 }, // Nadi Oceanic — label only
 ];
 
 /**
@@ -154,18 +334,102 @@ export const OTA_AREAS = [
 /**
  * Simplified domestic / oceanic interface segments (landfall side).
  * Drawn lighter than OAC FIR lines so oceanic structure stays primary.
+ * European FIRs: full simplified outlines (Shannon / Scottish / Lisboa / Madrid).
  */
 export const DOMESTIC_FIR_SEGMENTS = [
-  // EISN ↔ EGGX — 015°W (SOTA / NOTA oceanic entry)
-  alongLon(-15, 49, 57),
-  // EGPX ↔ EGGX — 010°W (north of NOTA to Reykjavik boundary)
-  alongLon(-10, 54.5667, 61),
-  // LFRR / EISN ↔ EGGX — 008°W (BOTA / SOTA east edge)
-  alongLon(-8, 45, 54.5667),
-  // LECM / LPPC ↔ EGGX–LPPO corner — 008°W south of 45N stub
-  alongLon(-8, 42, 45),
-  // LPPC ↔ LPPO — ~013°W (Santa Maria east)
-  alongLon(-13, 39, 45),
+  // EISN Shannon FIR
+  densifyPath(
+    [
+      { lat: 54.65, lon: -9.56 },
+      { lat: 55.33, lon: -6.92 },
+      { lat: 54.42, lon: -8.17 },
+      { lat: 53.92, lon: -5.5 },
+      { lat: 52.33, lon: -5.5 },
+      { lat: 51.0, lon: -8.0 },
+      { lat: 51.0, lon: -15.0 },
+      { lat: 54.0, lon: -15.0 },
+      { lat: 54.65, lon: -9.56 },
+    ],
+    0.45
+  ),
+  // EGPX Scottish FIR
+  densifyPath(
+    [
+      { lat: 56.0, lon: -10.0 },
+      { lat: 61.0, lon: -10.0 },
+      { lat: 61.0, lon: 0.0 },
+      { lat: 60.0, lon: 0.0 },
+      { lat: 57.0, lon: 5.0 },
+      { lat: 55.0, lon: 5.0 },
+      { lat: 55.0, lon: -5.5 },
+      { lat: 53.92, lon: -5.5 },
+      { lat: 54.42, lon: -8.17 },
+      { lat: 55.42, lon: -7.33 },
+      { lat: 54.57, lon: -10.0 },
+      { lat: 56.0, lon: -10.0 },
+    ],
+    0.5
+  ),
+  // LPPC Lisboa FIR
+  densifyPath(
+    [
+      { lat: 39.88, lon: -6.87 },
+      { lat: 39.66, lon: -7.5 },
+      { lat: 35.97, lon: -7.38 },
+      { lat: 35.97, lon: -12.0 },
+      { lat: 31.5, lon: -15.75 },
+      { lat: 32.33, lon: -18.13 },
+      { lat: 33.92, lon: -18.07 },
+      { lat: 36.5, lon: -15.0 },
+      { lat: 42.0, lon: -15.0 },
+      { lat: 43.0, lon: -13.0 },
+      { lat: 41.93, lon: -6.57 },
+      { lat: 39.88, lon: -6.87 },
+    ],
+    0.5
+  ),
+  // LECM Madrid FIR
+  densifyPath(
+    [
+      { lat: 41.58, lon: -6.25 },
+      { lat: 43.0, lon: -13.0 },
+      { lat: 45.0, lon: -13.0 },
+      { lat: 44.54, lon: -5.14 },
+      { lat: 42.7, lon: -0.07 },
+      { lat: 35.83, lon: -2.1 },
+      { lat: 35.83, lon: -7.38 },
+      { lat: 39.66, lon: -7.5 },
+      { lat: 41.58, lon: -6.25 },
+    ],
+    0.5
+  ),
+
+  // CZUL Montreal — eastern approaches / CZQX interface (simplified)
+  densifyPath(
+    [
+      { lat: 45.0, lon: -80.0 },
+      { lat: 50.0, lon: -80.0 },
+      { lat: 52.0, lon: -70.0 },
+      { lat: 50.0, lon: -64.0 },
+      { lat: 47.0, lon: -64.0 },
+      { lat: 45.0, lon: -67.0 },
+      { lat: 45.0, lon: -80.0 },
+    ],
+    0.55
+  ),
+  // CZEG Edmonton — northern / Arctic face toward CZQX (simplified educational)
+  densifyPath(
+    [
+      { lat: 55.0, lon: -110.0 },
+      { lat: 70.0, lon: -110.0 },
+      { lat: 70.0, lon: -60.0 },
+      { lat: 62.0, lon: -60.0 },
+      { lat: 55.0, lon: -75.0 },
+      { lat: 55.0, lon: -110.0 },
+    ],
+    0.7
+  ),
+
   // CZQM / CZQX domestic interface — ~055°W Labrador / NL approaches
   alongLon(-55, 45, 55),
   // KZNY / KZBW ↔ KZWY — ~067°W approximate western oceanic / domestic join
@@ -178,21 +442,12 @@ export const DOMESTIC_FIR_SEGMENTS = [
     ],
     0.5
   ),
-  // BGGL ↔ CZQX / BIRD — ~040°W Greenland approaches (simplified)
-  densifyPath(
-    [
-      { lat: 58.5, lon: -43 },
-      { lat: 63.5, lon: -39 },
-      { lat: 65, lon: -40 },
-    ],
-    0.5
-  ),
 ];
 
 /**
  * Adjacent domestic FIRs — CPDLC / FIR indicators near the oceanic interface
  * (kept close to landfall so they stay in a typical NAT route frame).
- * Oceanic CZQX / KZWY labels remain mid-ocean in OAC_LABELS.
+ * Oceanic CZQX / KZWY / BIRD / ENOB / BGGL labels remain in OAC_LABELS.
  */
 export const DOMESTIC_FIR_LABELS = [
   // UK / Ireland / France / Iberia — west of airport clutter, near 008–015°W
@@ -202,10 +457,10 @@ export const DOMESTIC_FIR_LABELS = [
   { code: "LFRR", lat: 48.2, lon: -5.0 }, // Brest
   { code: "LECM", lat: 43.2, lon: -7.2 }, // Madrid (NW corner)
   { code: "LPPC", lat: 40.2, lon: -9.5 }, // Lisboa
-  // Canada / Greenland / US northeast — near 055–067°W interfaces
+  // Canada / US northeast
   { code: "CZQM", lat: 46.8, lon: -60.5 }, // Moncton
-  { code: "CZUL", lat: 48.5, lon: -68.0 }, // Montreal (eastern approaches)
-  { code: "BGGL", lat: 63.2, lon: -48.0 }, // Nuuk approaches
+  { code: "CZUL", lat: 48.5, lon: -68.0 }, // Montreal
+  { code: "CZEG", lat: 60.0, lon: -95.0 }, // Edmonton
   { code: "KZBW", lat: 42.8, lon: -68.5 }, // Boston ARTCC
   { code: "KZNY", lat: 40.5, lon: -71.5 }, // New York ARTCC (domestic; oceanic = KZWY)
 ];
