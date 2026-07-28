@@ -11,6 +11,7 @@ import {
   formatCockpitLat,
   formatCockpitLatLon,
   formatCockpitLon,
+  formatFmsLatLon,
   parseRouteString,
   parseWaypointInput,
   parseWaypointsFromMarkdown,
@@ -2747,7 +2748,7 @@ function updateGpsCoordsChip() {
     hideGpsCoordsChip();
     return;
   }
-  // Only format when stationary (avoid cockpit string work while moving)
+  // Display: cockpit long-hand. Clipboard: glued FMS so route paste is one token.
   const latTxt = formatCockpitLat(gps.lat);
   const lonTxt = formatCockpitLon(gps.lon);
   state.gpsStationary = {
@@ -2755,7 +2756,7 @@ function updateGpsCoordsChip() {
     lon: gps.lon,
     latTxt,
     lonTxt,
-    paste: `${latTxt} ${lonTxt}`,
+    paste: formatFmsLatLon(gps.lat, gps.lon),
   };
   if (el.chartGpsLat) el.chartGpsLat.textContent = latTxt;
   if (el.chartGpsLon) el.chartGpsLon.textContent = lonTxt;
@@ -2789,13 +2790,13 @@ async function onGpsCoordsChipActivate() {
     await navigator.clipboard.writeText(frozen.paste);
     if (el.chartGpsCoords) {
       el.chartGpsCoords.classList.add("is-copied");
-      el.chartGpsCoords.title = "Copied — paste into route entry";
+      el.chartGpsCoords.title = "Copied FMS string — paste into route entry";
       clearTimeout(gpsCoordsCopiedTimer);
       gpsCoordsCopiedTimer = window.setTimeout(() => {
         el.chartGpsCoords?.classList.remove("is-copied");
         if (el.chartGpsCoords) {
           el.chartGpsCoords.title =
-            "Present position (stationary). Tap to copy and centre chart.";
+            "Present position (stationary). Tap to copy FMS coords for route paste and centre chart.";
         }
       }, 1600);
     }

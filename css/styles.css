@@ -1387,7 +1387,7 @@ body.chart-fullscreen.viewport-a2903 #chart-panel .chart-toolbar {
   align-items: stretch;
 }
 
-/* Same Valid only / East / West controls as normal view — only NAT Tracks is hidden */
+/* Same Valid NAT only / East / West controls as normal view — only NAT Tracks is hidden */
 body.chart-fullscreen #nat-tracks-btn {
   display: none !important;
 }

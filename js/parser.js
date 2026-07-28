@@ -469,6 +469,21 @@ export function formatCockpitLatLon(lat, lon) {
 }
 
 /**
+ * Compact FMS pair for route paste (no spaces): N5000.0W02000.0
+ * Route entry splits on whitespace, so cockpit long-hand cannot be pasted as one fix.
+ */
+export function formatFmsLatLon(lat, lon) {
+  const latH = lat >= 0 ? "N" : "S";
+  const lonH = lon >= 0 ? "E" : "W";
+  const la = degMinTenths(Math.abs(lat));
+  const lo = degMinTenths(Math.abs(lon));
+  return (
+    `${latH}${String(la.deg).padStart(2, "0")}${formatMinTenths(la.min)}` +
+    `${lonH}${String(lo.deg).padStart(3, "0")}${formatMinTenths(lo.min)}`
+  );
+}
+
+/**
  * Format a whole/half-degree North Atlantic grid point as ARINC 424 identifier when possible.
  */
 export function toArinc424(lat, lon) {

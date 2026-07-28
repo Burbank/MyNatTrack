@@ -221,8 +221,8 @@
                   id="chart-gps-coords"
                   class="gps-coords-chip"
                   hidden
-                  title="Present position (stationary). Tap to copy and centre chart."
-                  aria-label="Present position. Tap to copy coordinates and centre chart."
+                  title="Present position (stationary). Tap to copy FMS coords for route paste and centre chart."
+                  aria-label="Present position. Tap to copy FMS coordinates for route paste and centre chart."
                 >
                   <span class="gps-coords-lat mono" id="chart-gps-lat"></span>
                   <span class="gps-coords-lon mono" id="chart-gps-lon"></span>
@@ -268,9 +268,9 @@
               />
             </div>
             <div class="chart-toolbar-toggles">
-              <label class="chart-toggle" for="valid-only-tracks" title="Hide tracks outside their validity window">
+              <label class="chart-toggle" for="valid-only-tracks" title="Hide NAT tracks outside their validity window">
                 <input type="checkbox" id="valid-only-tracks" checked />
-                <span class="toggle-label-full">Valid only</span>
+                <span class="toggle-label-full">Valid NAT only</span>
               </label>
               <label class="chart-toggle" for="show-east-tracks">
                 <input type="checkbox" id="show-east-tracks" checked />
@@ -367,7 +367,7 @@
           <p class="muted settings-gps-note">
             Ownship (Fly): coarse location only — Precise Location is not required.
             When stationary, cockpit lat/lon appears beside the UTC clock (mini and full screen);
-            tap to copy and centre the chart. Hidden while moving.
+            tap to copy an FMS paste string (e.g. N2546.3W08011.4) and centre the chart. Hidden while moving.
             To stop Safari asking each visit: iPad <strong>Settings → Apps → Safari → Location → Allow</strong>
             (or Settings → Safari → Location). Sites cannot store a lasting “permission cookie” for GPS;
             that choice lives in Safari/iOS settings.
@@ -520,7 +520,7 @@
             rel="noopener noreferrer"
             title="Opens ICAO NAT Doc 007 (current edition V.2026-1). ICAO puts the edition in the filename — no permanent “latest.pdf” URL exists; when a new edition is published, this link is updated in the app. Browse all editions via EUR &amp; NAT Documents on icao.int."
           >Download Latest Nat Doc 007</a>
-          <span class="settings-version muted" aria-label="App version">v2.5.0</span>
+          <span class="settings-version muted" aria-label="App version">v2.5.1</span>
         </div>
       </div>
     </div>
