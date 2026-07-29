@@ -1642,6 +1642,7 @@ body.chart-fullscreen #nat-tracks-btn {
 body.chart-fullscreen .chart-toggle:has(#valid-only-tracks),
 body.chart-fullscreen .chart-toggle:has(#show-east-tracks),
 body.chart-fullscreen .chart-toggle:has(#show-west-tracks),
+body.chart-fullscreen .chart-toggle:has(#day-night-toggle),
 body.chart-fullscreen .chart-toggle-wx,
 body.chart-fullscreen .chart-toggle-vs-gc:not([hidden]) {
   display: flex !important;

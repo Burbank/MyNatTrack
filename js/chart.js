@@ -16,6 +16,7 @@ import {
   runwayLabels,
 } from "./diversionAirports.js";
 import { airports747List } from "./airports747.js";
+import { subsolarPoint, geodesicCircleLonLat, normalizeLon } from "./solar.js";
 
 /** Cached diversion-only list (always on chart). */
 let diversionOnlyCache = null;
@@ -357,6 +358,72 @@ function strokeLandPoly(ctx, C, poly) {
   const first = poly[0];
   if (last.onLimb && first.onLimb) addLimbArc(ctx, C, last, first);
   ctx.closePath();
+}
+
+/**
+ * Soft night-side wash (layered penumbra around the anti-solar point).
+ * Source-over only — never destination-out (that punched holes through land).
+ */
+function drawDayNightShade(ctx, layout, bright, when = new Date()) {
+  const { cx, cy, radius: R, lat0, lon0 } = layout;
+  if (!Number.isFinite(R) || R < 8) return;
+  const sun = subsolarPoint(when);
+  const antiLat = -sun.lat;
+  const antiLon = normalizeLon(sun.lon + 180);
+  const C = {
+    sinLat0: Math.sin(toRad(lat0)),
+    cosLat0: Math.cos(toRad(lat0)),
+    lon0: toRad(lon0),
+    cx,
+    cy,
+    R,
+  };
+
+  // Outer → inner: light twilight fringe, then deeper night core
+  const bands = bright
+    ? [
+        { deg: 100, fill: "rgba(28, 48, 92, 0.09)" },
+        { deg: 94, fill: "rgba(22, 42, 84, 0.12)" },
+        { deg: 88, fill: "rgba(18, 36, 76, 0.14)" },
+        { deg: 80, fill: "rgba(14, 30, 68, 0.12)" },
+      ]
+    : [
+        { deg: 100, fill: "rgba(4, 12, 28, 0.10)" },
+        { deg: 94, fill: "rgba(2, 8, 22, 0.14)" },
+        { deg: 88, fill: "rgba(0, 4, 16, 0.16)" },
+        { deg: 80, fill: "rgba(0, 2, 12, 0.14)" },
+      ];
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(cx, cy, R - 0.5, 0, Math.PI * 2);
+  ctx.clip();
+  ctx.globalCompositeOperation = "source-over";
+
+  for (const { deg, fill } of bands) {
+    const ring = geodesicCircleLonLat(antiLat, antiLon, deg, 72);
+    const poly = clippedLandRing(ring, C, 1);
+    if (!poly || poly.length < 3) continue;
+    ctx.beginPath();
+    strokeLandPoly(ctx, C, poly);
+    ctx.fillStyle = fill;
+    ctx.fill();
+  }
+
+  // Very faint terminator cue (not a hard razor line)
+  const termRing = geodesicCircleLonLat(sun.lat, sun.lon, 90, 72);
+  const termPoly = clippedLandRing(termRing, C, 1);
+  if (termPoly && termPoly.length >= 3) {
+    ctx.beginPath();
+    strokeLandPoly(ctx, C, termPoly);
+    ctx.strokeStyle = bright
+      ? "rgba(255, 160, 70, 0.22)"
+      : "rgba(150, 180, 230, 0.10)";
+    ctx.lineWidth = 1.1;
+    ctx.stroke();
+  }
+
+  ctx.restore();
 }
 
 function drawLand(ctx, layout, bright, lite = false) {
@@ -1640,6 +1707,15 @@ export function drawChart(canvas, data) {
   drawGlobeBase(ctx, layout, bright, width, height);
   drawLand(ctx, layout, bright, lite);
   drawGrid(ctx, layout, bright, width, height, lite);
+  // Day/night under airspace / weather / routes so those stay sharp
+  if (!lite && data.showDayNight !== false) {
+    drawDayNightShade(
+      ctx,
+      layout,
+      bright,
+      data.now instanceof Date ? data.now : new Date()
+    );
+  }
   // Airspace lines under airports; labels after so they can dodge ICAO text
   if (data.showAirspace !== false) {
     drawOac(ctx, layout, bright, {

@@ -1,6 +1,6 @@
 {
   "version": "2026-07-26-2200Z",
-  "accuracyVerifiedOn": "2026-07-28",
+  "accuracyVerifiedOn": "2026-07-29",
   "disclaimer": "Reference compilation only – NOT for navigation. Always verify with current official AIPs, NOTAMs, and certified FMS/nav database before flight.",
   "sourceDoc": "NAT_HLA_Waypoints_Reference.md + NAT_HLA_Named_Waypoints_Sample.md + OpenNav + TC AIM NAT",
   "coordinateSources": {
@@ -2219,6 +2219,26 @@
       "name": "4730/20",
       "lat": 47.5,
       "lon": -20.0,
+      "category": "nat-track",
+      "region": "learned",
+      "accuracy": "approximate",
+      "notes": "Learned from NAT tracks message"
+    },
+    {
+      "id": "59/15",
+      "name": "59/15",
+      "lat": 59.0,
+      "lon": -15.0,
+      "category": "nat-track",
+      "region": "learned",
+      "accuracy": "approximate",
+      "notes": "Learned from NAT tracks message"
+    },
+    {
+      "id": "58/15",
+      "name": "58/15",
+      "lat": 58.0,
+      "lon": -15.0,
       "category": "nat-track",
       "region": "learned",
       "accuracy": "approximate",

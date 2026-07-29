@@ -383,9 +383,11 @@ Coordinate fixes absorbed from downloaded OTS track routings (approximate; educa
 | 57/50 | N57 00.0 | W050 00.0 | Learned from NAT tracks message |
 | 5730/20 | N57 30.0 | W020 00.0 | Learned from NAT tracks message |
 | 5730/30 | N57 30.0 | W030 00.0 | Learned from NAT tracks message |
+| 58/15 | N58 00.0 | W015 00.0 | Learned from NAT tracks message |
 | 58/20 | N58 00.0 | W020 00.0 | Learned from NAT tracks message |
 | 58/30 | N58 00.0 | W030 00.0 | Learned from NAT tracks message |
 | 58/40 | N58 00.0 | W040 00.0 | Learned from NAT tracks message |
+| 59/15 | N59 00.0 | W015 00.0 | Learned from NAT tracks message |
 | 59/20 | N59 00.0 | W020 00.0 | Learned from NAT tracks message |
 | 59/30 | N59 00.0 | W030 00.0 | Learned from NAT tracks message |
 | 59/40 | N59 00.0 | W040 00.0 | Learned from NAT tracks message |

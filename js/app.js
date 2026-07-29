@@ -64,7 +64,7 @@ const STORED_ROUTE_KEY = "mynattrack_stored_route_v1";
 const LAST_ROUTE_KEY = "mynattrack_last_route_v1";
 const SETTINGS_KEY = "mynattrack_settings_v1";
 /** Keep in sync with package.json / sw.js CACHE bump. */
-const APP_VERSION = "2.6.3";
+const APP_VERSION = "2.6.5";
 /** Waypoints learned silently from NAT track messages (coords already in the message). */
 const LEARNED_WP_KEY = "mynattrack_learned_waypoints_v1";
 const LEARNED_VERIFIED_KEY = "mynattrack_accuracy_verified_v1";
@@ -92,6 +92,8 @@ const state = {
     showLiveThunderstorms: false,
     /** Fullscreen + multi-leg route: compare filed vs first→last GC */
     showVsGreatCircle: false,
+    /** Globe day/night terminator shade (UTC sun model) */
+    showDayNight: true,
   },
   mdText: "",
   /** Original bundled markdown before learned-NAT section is merged */
@@ -144,6 +146,8 @@ const state = {
   gcPlanCache: null,
   /** Memoized first→last GC compare for a loaded route. */
   vsGcCache: null,
+  /** Last UTC minute key used to refresh day/night shade */
+  dayNightMinuteKey: "",
   /** Last GC framing key — reset pan/zoom when dep/arr plan changes. */
   gcViewKey: "",
   /**
@@ -274,6 +278,7 @@ const el = {
   chartRouteSummaryGc: document.getElementById("chart-route-summary-gc"),
   vsGreatCircleToggle: document.getElementById("vs-great-circle-toggle"),
   vsGcToggleLabel: document.getElementById("vs-gc-toggle-label"),
+  dayNightToggle: document.getElementById("day-night-toggle"),
   gcPlanBar: document.getElementById("gc-plan-bar"),
   gcDep: document.getElementById("gc-dep"),
   gcArr: document.getElementById("gc-arr"),
@@ -350,6 +355,9 @@ function syncTrackToggleUi() {
   }
   if (el.vsGreatCircleToggle) {
     el.vsGreatCircleToggle.checked = state.settings.showVsGreatCircle === true;
+  }
+  if (el.dayNightToggle) {
+    el.dayNightToggle.checked = state.settings.showDayNight !== false;
   }
 }
 
@@ -679,6 +687,7 @@ function loadSettings() {
   if (state.settings.showVsGreatCircle !== true) {
     state.settings.showVsGreatCircle = false;
   }
+  if (state.settings.showDayNight !== false) state.settings.showDayNight = true;
   if (el.stormSystemsToggle) {
     el.stormSystemsToggle.checked = state.settings.showStormSystems === true;
   }
@@ -687,6 +696,9 @@ function loadSettings() {
   }
   if (el.vsGreatCircleToggle) {
     el.vsGreatCircleToggle.checked = state.settings.showVsGreatCircle === true;
+  }
+  if (el.dayNightToggle) {
+    el.dayNightToggle.checked = state.settings.showDayNight !== false;
   }
 }
 
@@ -2320,6 +2332,14 @@ function tickNatValidity() {
       renderChart();
     }
   }
+  // Advance terminator about once per UTC minute while shade is on
+  if (state.settings.showDayNight !== false) {
+    const minuteKey = `${now.getUTCFullYear()}-${now.getUTCMonth()}-${now.getUTCDate()}-${now.getUTCHours()}-${now.getUTCMinutes()}`;
+    if (minuteKey !== state.dayNightMinuteKey) {
+      state.dayNightMinuteKey = minuteKey;
+      renderChart();
+    }
+  }
 }
 
 function startNatClockTimer() {
@@ -2765,6 +2785,8 @@ function paintChart(lite = false) {
     show747Airports: gcIdle,
     stormSystems,
     liveRadar,
+    showDayNight: state.settings.showDayNight !== false,
+    now: new Date(),
   });
   // After layout settles, load/refresh radar for the new regional window
   if (
@@ -4676,6 +4698,12 @@ async function init() {
     saveSettings();
     state.vsGcCache = null;
     syncChartRouteSummary();
+    renderChart();
+  });
+
+  el.dayNightToggle?.addEventListener("change", () => {
+    state.settings.showDayNight = !!el.dayNightToggle.checked;
+    saveSettings();
     renderChart();
   });
 
