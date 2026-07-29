@@ -64,7 +64,7 @@ const STORED_ROUTE_KEY = "mynattrack_stored_route_v1";
 const LAST_ROUTE_KEY = "mynattrack_last_route_v1";
 const SETTINGS_KEY = "mynattrack_settings_v1";
 /** Keep in sync with package.json / sw.js CACHE bump. */
-const APP_VERSION = "2.6.2";
+const APP_VERSION = "2.6.3";
 /** Waypoints learned silently from NAT track messages (coords already in the message). */
 const LEARNED_WP_KEY = "mynattrack_learned_waypoints_v1";
 const LEARNED_VERIFIED_KEY = "mynattrack_accuracy_verified_v1";
@@ -498,14 +498,26 @@ function buildVsGreatCircleCompare() {
   if (cached && cached.key === key) return cached.plan;
   const inv = vincentyInverse(a.lat, a.lon, b.lat, b.lon);
   if (!Number.isFinite(inv.distanceNm) || inv.distanceNm <= 0) return null;
-  const time = estimate747BlockTime(inv.distanceNm, a.lat, a.lon, b.lat, b.lon, {
+  /*
+   * Match Legs ETE padding: each airport end that would touch a leg gets a
+   * climb/descent pad. A multi-leg KMIA…EHAM route pads the first leg AND the
+   * last leg (~20+20). A single GC call with terminalPad:true only pads once,
+   * which made vs-GC look ~20 min “faster” even for a ~27 NM distance delta.
+   */
+  const cruise = estimate747BlockTime(inv.distanceNm, a.lat, a.lon, b.lat, b.lon, {
+    terminalPad: false,
     initialBearing: inv.initialBearing,
   });
+  const padEach = inv.distanceNm < 120 ? 10 : 20;
+  let padMin = 0;
+  if (isAirportWaypoint(a)) padMin += padEach;
+  if (isAirportWaypoint(b)) padMin += padEach;
+  const eteMin = Math.max(0, Math.round(cruise.minutes + padMin));
   const plan = {
     points: greatCircleSamples(a.lat, a.lon, b.lat, b.lon, 80),
     distanceNm: inv.distanceNm,
-    eteMin: time.minutes,
-    timeLabel: time.label,
+    eteMin,
+    timeLabel: formatEteHhMm(eteMin),
     fromName: a.name || "START",
     toName: b.name || "END",
   };
@@ -4301,6 +4313,8 @@ function escapeHtml(s) {
 
 async function init() {
   await ensureUnlocked();
+
+  if (el.settingsVersion) el.settingsVersion.textContent = `v${APP_VERSION}`;
 
   ensureRouteHintPlacement();
   loadSettings();
