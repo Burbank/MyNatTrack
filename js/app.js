@@ -63,6 +63,8 @@ const STORED_ROUTE_KEY = "mynattrack_stored_route_v1";
 /** Last non-empty working route cleared in this browser (Restore last route). */
 const LAST_ROUTE_KEY = "mynattrack_last_route_v1";
 const SETTINGS_KEY = "mynattrack_settings_v1";
+/** Keep in sync with package.json / sw.js CACHE bump. */
+const APP_VERSION = "2.6.2";
 /** Waypoints learned silently from NAT track messages (coords already in the message). */
 const LEARNED_WP_KEY = "mynattrack_learned_waypoints_v1";
 const LEARNED_VERIFIED_KEY = "mynattrack_accuracy_verified_v1";
@@ -264,6 +266,7 @@ const el = {
   natUtcClock: document.getElementById("nat-utc-clock"),
   natUtcLabel: document.getElementById("nat-utc-label"),
   natUtcChip: document.getElementById("nat-utc-chip"),
+  settingsVersion: document.getElementById("settings-version"),
   themeBtn: document.getElementById("theme-btn"),
   chartFullscreenBtn: document.getElementById("chart-fullscreen-btn"),
   chartRouteSummary: document.getElementById("chart-route-summary"),
