@@ -1,5 +1,5 @@
-/* MyNatTrack service worker — network-first with cache fallback (offline after first load). */
-const CACHE = "mynattrack-v2.6.5-20260729";
+/* MyNatTrack service worker — cache-first shell (offline-friendly), silent update when online. */
+const CACHE = "mynattrack-v2.6.6-20260729";
 
 const ASSETS = [
   "./",
@@ -55,16 +55,33 @@ self.addEventListener("activate", (event) => {
   );
 });
 
+function isLiveApi(pathname) {
+  return (
+    pathname.includes("/api/nat-tracks") ||
+    pathname.includes("/api/weather-major")
+  );
+}
+
+/** Fetch and refresh cache; never throws to the page. */
+function networkUpdate(request) {
+  return fetch(request)
+    .then((response) => {
+      if (response && response.status === 200 && response.type === "basic") {
+        const copy = response.clone();
+        caches.open(CACHE).then((cache) => cache.put(request, copy));
+      }
+      return response;
+    })
+    .catch(() => null);
+}
+
 self.addEventListener("fetch", (event) => {
   const { request } = event;
   if (request.method !== "GET") return;
 
   const url = new URL(request.url);
-  // Always hit network for live APIs (never serve a stale proxy response from SW)
-  if (
-    url.pathname.includes("/api/nat-tracks") ||
-    url.pathname.includes("/api/weather-major")
-  ) {
+  // Live APIs: network only (JSON error if offline — app already handles silently)
+  if (isLiveApi(url.pathname)) {
     event.respondWith(
       fetch(request).catch(
         () =>
@@ -77,19 +94,37 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Network-first so JS/CSS updates are not stuck behind an old cache-first SW.
-  // Falls back to cache when offline (airplane mode after a prior visit).
+  // App shell / static: cache-first so iPad offline open never hits Safari’s
+  // “offline” interstitial. When online, refresh the cache in the background.
+  const cacheKey =
+    request.mode === "navigate" ? "./index.html" : request;
+
   event.respondWith(
-    fetch(request)
-      .then((response) => {
-        if (response && response.status === 200 && response.type === "basic") {
-          const copy = response.clone();
-          caches.open(CACHE).then((cache) => cache.put(request, copy));
+    caches.match(cacheKey).then((cached) => {
+      const online =
+        typeof self.navigator === "undefined" ||
+        self.navigator.onLine !== false;
+
+      if (cached) {
+        if (online) {
+          event.waitUntil(networkUpdate(request.mode === "navigate" ? request : request));
         }
-        return response;
-      })
-      .catch(() =>
-        caches.match(request).then((cached) => cached || caches.match("./index.html"))
-      )
+        return cached;
+      }
+
+      // First visit / missing asset: try network, else fall back to shell
+      return networkUpdate(request).then(
+        (response) =>
+          response ||
+          caches.match("./index.html").then(
+            (shell) =>
+              shell ||
+              new Response("MyNatTrack offline — open once while online to cache.", {
+                status: 503,
+                headers: { "Content-Type": "text/plain; charset=utf-8" },
+              })
+          )
+      );
+    })
   );
 });

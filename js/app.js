@@ -64,7 +64,7 @@ const STORED_ROUTE_KEY = "mynattrack_stored_route_v1";
 const LAST_ROUTE_KEY = "mynattrack_last_route_v1";
 const SETTINGS_KEY = "mynattrack_settings_v1";
 /** Keep in sync with package.json / sw.js CACHE bump. */
-const APP_VERSION = "2.6.5";
+const APP_VERSION = "2.6.6";
 /** Waypoints learned silently from NAT track messages (coords already in the message). */
 const LEARNED_WP_KEY = "mynattrack_learned_waypoints_v1";
 const LEARNED_VERIFIED_KEY = "mynattrack_accuracy_verified_v1";
@@ -4759,7 +4759,10 @@ async function init() {
         window.location.reload();
       });
       const reg = await navigator.serviceWorker.register("./sw.js");
-      reg.update?.().catch(() => {});
+      // Silent update check only when online (avoids pointless failed fetches offline)
+      if (navigator.onLine !== false) {
+        reg.update?.().catch(() => {});
+      }
     } catch (err) {
       console.warn("SW register failed", err);
     }
