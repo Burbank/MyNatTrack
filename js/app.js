@@ -88,6 +88,8 @@ const state = {
     showStormSystems: false,
     /** Fullscreen: live convective/TS — online memory only */
     showLiveThunderstorms: false,
+    /** Fullscreen + multi-leg route: compare filed vs first→last GC */
+    showVsGreatCircle: false,
   },
   mdText: "",
   /** Original bundled markdown before learned-NAT section is merged */
@@ -138,6 +140,8 @@ const state = {
   gcArrIcao: "",
   /** Memoized GC great-circle plan (keyed by dep|arr ICAO). */
   gcPlanCache: null,
+  /** Memoized first→last GC compare for a loaded route. */
+  vsGcCache: null,
   /** Last GC framing key — reset pan/zoom when dep/arr plan changes. */
   gcViewKey: "",
   /**
@@ -264,6 +268,9 @@ const el = {
   chartFullscreenBtn: document.getElementById("chart-fullscreen-btn"),
   chartRouteSummary: document.getElementById("chart-route-summary"),
   chartRouteSummaryText: document.getElementById("chart-route-summary-text"),
+  chartRouteSummaryGc: document.getElementById("chart-route-summary-gc"),
+  vsGreatCircleToggle: document.getElementById("vs-great-circle-toggle"),
+  vsGcToggleLabel: document.getElementById("vs-gc-toggle-label"),
   gcPlanBar: document.getElementById("gc-plan-bar"),
   gcDep: document.getElementById("gc-dep"),
   gcArr: document.getElementById("gc-arr"),
@@ -338,6 +345,9 @@ function syncTrackToggleUi() {
   if (el.liveTsToggle) {
     el.liveTsToggle.checked = state.settings.showLiveThunderstorms === true;
   }
+  if (el.vsGreatCircleToggle) {
+    el.vsGreatCircleToggle.checked = state.settings.showVsGreatCircle === true;
+  }
 }
 
 function setChartFullscreen(on) {
@@ -356,6 +366,7 @@ function setChartFullscreen(on) {
   }
   syncTrackToggleUi();
   syncGcPlanBar();
+  syncVsGreatCircleUi();
   // Allow layout to settle before redraw
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
@@ -447,6 +458,71 @@ function buildGcPlan() {
   return plan;
 }
 
+/** Multi-leg filed route (not idle 2-airport GC planner). */
+function routeEligibleForVsGreatCircle() {
+  return Array.isArray(state.route) && state.route.length >= 3;
+}
+
+/**
+ * First→last great-circle comparison for a loaded multi-leg route.
+ * @returns {null | {
+ *   points: {lat:number,lon:number}[],
+ *   distanceNm: number,
+ *   eteMin: number,
+ *   timeLabel: string,
+ *   fromName: string,
+ *   toName: string
+ * }}
+ */
+function buildVsGreatCircleCompare() {
+  if (state.settings.showVsGreatCircle !== true) return null;
+  if (!routeEligibleForVsGreatCircle()) return null;
+  const a = state.route[0];
+  const b = state.route[state.route.length - 1];
+  if (
+    !a ||
+    !b ||
+    !Number.isFinite(a.lat) ||
+    !Number.isFinite(a.lon) ||
+    !Number.isFinite(b.lat) ||
+    !Number.isFinite(b.lon)
+  ) {
+    return null;
+  }
+  if (a.lat === b.lat && a.lon === b.lon) return null;
+  const key = `${a.lat.toFixed(5)},${a.lon.toFixed(5)}|${b.lat.toFixed(5)},${b.lon.toFixed(5)}`;
+  const cached = state.vsGcCache;
+  if (cached && cached.key === key) return cached.plan;
+  const inv = vincentyInverse(a.lat, a.lon, b.lat, b.lon);
+  if (!Number.isFinite(inv.distanceNm) || inv.distanceNm <= 0) return null;
+  const time = estimate747BlockTime(inv.distanceNm, a.lat, a.lon, b.lat, b.lon, {
+    initialBearing: inv.initialBearing,
+  });
+  const plan = {
+    points: greatCircleSamples(a.lat, a.lon, b.lat, b.lon, 80),
+    distanceNm: inv.distanceNm,
+    eteMin: time.minutes,
+    timeLabel: time.label,
+    fromName: a.name || "START",
+    toName: b.name || "END",
+  };
+  state.vsGcCache = { key, plan };
+  return plan;
+}
+
+function syncVsGreatCircleUi() {
+  const fullscreen = document.body.classList.contains("chart-fullscreen");
+  const show = fullscreen && routeEligibleForVsGreatCircle();
+  if (el.vsGcToggleLabel) el.vsGcToggleLabel.hidden = !show;
+  if (el.vsGreatCircleToggle) {
+    el.vsGreatCircleToggle.checked = state.settings.showVsGreatCircle === true;
+  }
+  if (!show && el.chartRouteSummaryGc) {
+    el.chartRouteSummaryGc.hidden = true;
+    el.chartRouteSummaryGc.textContent = "";
+  }
+}
+
 function updateGcCityChip(which, icao) {
   const label = which === "dep" ? el.gcDepCity : el.gcArrCity;
   if (!label) return;
@@ -492,6 +568,7 @@ function syncGcPlanBar() {
   const show =
     document.body.classList.contains("chart-fullscreen") && routeIsIdleForGcPlan();
   if (el.gcPlanBar) el.gcPlanBar.hidden = !show;
+  syncVsGreatCircleUi();
   if (!show) return;
   updateGcPlanLabel();
 }
@@ -584,11 +661,17 @@ function loadSettings() {
   if (state.settings.showLiveThunderstorms !== true) {
     state.settings.showLiveThunderstorms = false;
   }
+  if (state.settings.showVsGreatCircle !== true) {
+    state.settings.showVsGreatCircle = false;
+  }
   if (el.stormSystemsToggle) {
     el.stormSystemsToggle.checked = state.settings.showStormSystems === true;
   }
   if (el.liveTsToggle) {
     el.liveTsToggle.checked = state.settings.showLiveThunderstorms === true;
+  }
+  if (el.vsGreatCircleToggle) {
+    el.vsGreatCircleToggle.checked = state.settings.showVsGreatCircle === true;
   }
 }
 
@@ -2044,12 +2127,35 @@ function syncChartRouteSummary(nm, eteMin) {
   if (!state.route.length || state.route.length < 2) {
     el.chartRouteSummary.hidden = true;
     el.chartRouteSummaryText.textContent = "";
+    if (el.chartRouteSummaryGc) {
+      el.chartRouteSummaryGc.hidden = true;
+      el.chartRouteSummaryGc.textContent = "";
+    }
+    syncVsGreatCircleUi();
     return;
   }
   const n = Number.isFinite(nm) ? nm : state.routeTotals.totalNm;
   const e = Number.isFinite(eteMin) ? eteMin : state.routeTotals.totalEteMin;
   el.chartRouteSummaryText.textContent = `${formatDistanceNm(n)} NM · ETE ${formatEteHhMm(e)}`;
   el.chartRouteSummary.hidden = false;
+
+  const vs =
+    document.body.classList.contains("chart-fullscreen") &&
+    state.settings.showVsGreatCircle === true
+      ? buildVsGreatCircleCompare()
+      : null;
+  if (el.chartRouteSummaryGc) {
+    if (vs) {
+      el.chartRouteSummaryGc.textContent = `GC ${formatDistanceNm(vs.distanceNm)} NM · ETE ${vs.timeLabel}`;
+      el.chartRouteSummaryGc.hidden = false;
+      el.chartRouteSummaryGc.title = `Great circle ${vs.fromName} → ${vs.toName}`;
+    } else {
+      el.chartRouteSummaryGc.textContent = "";
+      el.chartRouteSummaryGc.hidden = true;
+      el.chartRouteSummaryGc.title = "";
+    }
+  }
+  syncVsGreatCircleUi();
 }
 
 function updateTotalsLine(legsCount, totalNm, totalEteMin) {
@@ -2616,6 +2722,10 @@ function paintChart(lite = false) {
       ? getLiveRadarMemory()
       : null;
   const gcPlan = gcIdle ? buildGcPlan() : null;
+  const gcCompare =
+    fullscreen && !gcIdle && state.settings.showVsGreatCircle === true
+      ? buildVsGreatCircleCompare()
+      : null;
   /** Provisional focus while picking GC airports (1 or 2 ends). */
   const gcFocusAirports = [];
   if (gcIdle) {
@@ -2635,6 +2745,7 @@ function paintChart(lite = false) {
     pan: state.chartPan,
     lite,
     gcPlan,
+    gcCompare,
     gcFocusAirports,
     show747Airports: gcIdle,
     stormSystems,
@@ -4542,6 +4653,14 @@ async function init() {
   el.showEastTracks?.addEventListener("change", syncTrackToggles);
   el.showWestTracks?.addEventListener("change", syncTrackToggles);
   el.validOnlyTracks?.addEventListener("change", syncTrackToggles);
+
+  el.vsGreatCircleToggle?.addEventListener("change", () => {
+    state.settings.showVsGreatCircle = !!el.vsGreatCircleToggle.checked;
+    saveSettings();
+    state.vsGcCache = null;
+    syncChartRouteSummary();
+    renderChart();
+  });
 
   el.stormSystemsToggle?.addEventListener("change", () => {
     state.settings.showStormSystems = !!el.stormSystemsToggle.checked;

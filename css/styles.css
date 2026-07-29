@@ -482,9 +482,12 @@ html.theme-bright .panel {
 
 .chart-route-summary {
   display: none;
-  align-items: center;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0.08rem;
   margin-left: 0.35rem;
-  padding: 0.25rem 0.55rem;
+  padding: 0.22rem 0.55rem 0.24rem;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.04);
@@ -496,6 +499,23 @@ html.theme-bright .panel {
   font-weight: 600;
   letter-spacing: 0.02em;
   white-space: nowrap;
+}
+
+.chart-route-summary-gc {
+  font-size: 0.66rem;
+  font-weight: 550;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  color: #8fd9a8;
+  line-height: 1.15;
+}
+
+.chart-route-summary-gc[hidden] {
+  display: none !important;
+}
+
+html.theme-bright .chart-route-summary-gc {
+  color: #1f7a45;
 }
 
 body.chart-fullscreen .chart-route-summary:not([hidden]) {
@@ -1622,12 +1642,18 @@ body.chart-fullscreen #nat-tracks-btn {
 body.chart-fullscreen .chart-toggle:has(#valid-only-tracks),
 body.chart-fullscreen .chart-toggle:has(#show-east-tracks),
 body.chart-fullscreen .chart-toggle:has(#show-west-tracks),
-body.chart-fullscreen .chart-toggle-wx {
+body.chart-fullscreen .chart-toggle-wx,
+body.chart-fullscreen .chart-toggle-vs-gc:not([hidden]) {
   display: flex !important;
 }
 
 /* Weather ticks only in fullscreen */
 .chart-toggle-wx {
+  display: none !important;
+}
+
+/* vs GC — fullscreen + multi-leg route only (JS also toggles [hidden]) */
+.chart-toggle-vs-gc {
   display: none !important;
 }
 

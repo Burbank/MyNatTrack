@@ -1711,6 +1711,16 @@ export function drawChart(canvas, data) {
     }
   }
 
+  /* Filed route vs first→last GC (under solid route so route stays on top) */
+  const gcCompare = data.gcCompare;
+  if (gcCompare?.points?.length >= 2) {
+    drawPolyline(ctx, layout, gcCompare.points, {
+      stroke: bright ? "#1f7a45" : "#8fd9a8",
+      width: bright ? 2.2 : 2,
+      dash: [6, 5],
+    });
+  }
+
   const route = data.route || [];
   if (route.length >= 2) {
     drawPolyline(ctx, layout, route, {
