@@ -28,6 +28,7 @@ import {
 import { drawChart, loadLandData, paintOwnshipOverlay, hitTestChartAirport, hitTestWeather } from "./chart.js";
 import { lookupAirport747, airports747List } from "./airports747.js";
 import { airportDisplayCode } from "./airportIata.js";
+import { hasDigitalAtis, openDatisInSafari } from "./datisAirports.js";
 import {
   loadStormSystemsAndSigmets,
   refreshStormSystemsInBackground,
@@ -64,7 +65,7 @@ const STORED_ROUTE_KEY = "mynattrack_stored_route_v1";
 const LAST_ROUTE_KEY = "mynattrack_last_route_v1";
 const SETTINGS_KEY = "mynattrack_settings_v1";
 /** Keep in sync with package.json / sw.js CACHE bump. */
-const APP_VERSION = "2.6.6";
+const APP_VERSION = "2.6.9";
 /** Waypoints learned silently from NAT track messages (coords already in the message). */
 const LEARNED_WP_KEY = "mynattrack_learned_waypoints_v1";
 const LEARNED_VERIFIED_KEY = "mynattrack_accuracy_verified_v1";
@@ -368,6 +369,8 @@ function setChartFullscreen(on) {
     el.chartFullscreenBtn.setAttribute("aria-pressed", on ? "true" : "false");
     el.chartFullscreenBtn.title = on ? "Exit full screen chart" : "Full screen chart";
   }
+  const datisLegend = document.getElementById("datis-legend");
+  if (datisLegend) datisLegend.setAttribute("aria-hidden", on ? "false" : "true");
   if (!on) {
     clearGcPlan();
     stopLiveTsRefreshTimer();
@@ -2782,7 +2785,10 @@ function paintChart(lite = false) {
     gcPlan,
     gcCompare,
     gcFocusAirports,
-    show747Airports: gcIdle,
+    /* Full-screen shows 747-8 set so D-ATIS greens are available in flight too */
+    show747Airports: fullscreen,
+    /* Green D-ATIS gears on mini-map and full-screen */
+    highlightDatis: true,
     stormSystems,
     liveRadar,
     showDayNight: state.settings.showDayNight !== false,
@@ -3283,6 +3289,9 @@ function bindChartGestures() {
   if (!canvas || canvas.dataset.gesturesBound === "1") return;
   canvas.dataset.gesturesBound = "1";
 
+  const LONG_PRESS_MS = 520;
+  const TAP_SLOP_PX = 12;
+
   let pinchStartDist = 0;
   let pinchStartZoom = 1;
   let panning = false;
@@ -3297,6 +3306,34 @@ function bindChartGestures() {
   let velY = 0;
   let lastMoveT = 0;
   let momentumRaf = 0;
+  let longPressTimer = 0;
+  let longPressFired = false;
+
+  const clearLongPress = () => {
+    if (longPressTimer) {
+      clearTimeout(longPressTimer);
+      longPressTimer = 0;
+    }
+  };
+
+  const armLongPress = (clientX, clientY) => {
+    clearLongPress();
+    longPressFired = false;
+    longPressTimer = window.setTimeout(() => {
+      longPressTimer = 0;
+      if (tapMoved || mousePanMoved) return;
+      if (tryDatisLongPress(clientX, clientY)) {
+        longPressFired = true;
+        panning = false;
+        stopMomentum();
+        try {
+          navigator.vibrate?.(12);
+        } catch {
+          /* ignore */
+        }
+      }
+    }, LONG_PRESS_MS);
+  };
 
   const stopMomentum = () => {
     if (momentumRaf) {
@@ -3347,28 +3384,35 @@ function bindChartGestures() {
     return Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
   };
 
-  const tryAirportTap = (clientX, clientY) => {
-    if (
-      !document.body.classList.contains("chart-fullscreen") ||
-      !routeIsIdleForGcPlan()
-    ) {
-      return;
-    }
+  const hitAirportAt = (clientX, clientY) => {
+    if (!document.body.classList.contains("chart-fullscreen")) return null;
     const layout = state.lastChartLayout;
-    if (!layout) return;
+    if (!layout) return null;
     const rect = canvas.getBoundingClientRect();
-    const x = clientX - rect.left;
-    const y = clientY - rect.top;
-    const ap = hitTestChartAirport(
+    return hitTestChartAirport(
       layout,
-      x,
-      y,
+      clientX - rect.left,
+      clientY - rect.top,
       layout.width || rect.width,
       layout.height || rect.height,
       30,
-      true
+      true /* fullscreen always plots 747-8 set */
     );
-    if (ap) selectGcAirportFromTap(ap);
+  };
+
+  /** Short tap: GC DEP/DEST only (never opens D-ATIS). */
+  const tryAirportTap = (clientX, clientY) => {
+    const ap = hitAirportAt(clientX, clientY);
+    if (!ap) return;
+    if (routeIsIdleForGcPlan()) selectGcAirportFromTap(ap);
+  };
+
+  /** Long-press green D-ATIS airport → Safari / new tab (online only). */
+  const tryDatisLongPress = (clientX, clientY) => {
+    const ap = hitAirportAt(clientX, clientY);
+    if (!ap) return false;
+    if (!hasDigitalAtis(ap.icao) || navigator.onLine === false) return false;
+    return openDatisInSafari(ap.icao);
   };
 
   const tryWeatherTap = (clientX, clientY) => {
@@ -3410,6 +3454,7 @@ function bindChartGestures() {
     (e) => {
       stopMomentum();
       if (e.touches.length === 2) {
+        clearLongPress();
         panning = false;
         tapMoved = true;
         pinchStartDist = touchDist(e.touches);
@@ -3417,6 +3462,7 @@ function bindChartGestures() {
       } else if (e.touches.length === 1) {
         panning = true;
         tapMoved = false;
+        longPressFired = false;
         lastX = e.touches[0].clientX;
         lastY = e.touches[0].clientY;
         lastMoveT = performance.now();
@@ -3425,6 +3471,7 @@ function bindChartGestures() {
         tapStartX = lastX;
         tapStartY = lastY;
         tapStartT = lastMoveT;
+        armLongPress(tapStartX, tapStartY);
       }
     },
     { passive: true }
@@ -3435,6 +3482,7 @@ function bindChartGestures() {
     (e) => {
       if (e.touches.length === 2 && pinchStartDist >= 8) {
         e.preventDefault();
+        clearLongPress();
         panning = false;
         tapMoved = true;
         stopMomentum();
@@ -3448,8 +3496,9 @@ function bindChartGestures() {
         const t = e.touches[0];
         const dx = t.clientX - lastX;
         const dy = t.clientY - lastY;
-        if (Math.hypot(t.clientX - tapStartX, t.clientY - tapStartY) > 12) {
+        if (Math.hypot(t.clientX - tapStartX, t.clientY - tapStartY) > TAP_SLOP_PX) {
           tapMoved = true;
+          clearLongPress();
         }
         notePanDelta(dx, dy);
         applyChartPanPixels(dx, dy);
@@ -3465,10 +3514,12 @@ function bindChartGestures() {
     (e) => {
       if (e.touches.length < 2) pinchStartDist = 0;
       if (e.touches.length === 0) {
+        clearLongPress();
         const wasTap =
+          !longPressFired &&
           !tapMoved &&
           performance.now() - tapStartT < 450 &&
-          Math.hypot(lastX - tapStartX, lastY - tapStartY) <= 12;
+          Math.hypot(lastX - tapStartX, lastY - tapStartY) <= TAP_SLOP_PX;
         panning = false;
         if (wasTap) {
           stopMomentum();
@@ -3479,8 +3530,10 @@ function bindChartGestures() {
         } else {
           markChartInteracting();
         }
+        longPressFired = false;
       }
       if (e.touches.length === 1) {
+        clearLongPress();
         panning = true;
         lastX = e.touches[0].clientX;
         lastY = e.touches[0].clientY;
@@ -3488,6 +3541,26 @@ function bindChartGestures() {
       }
     },
     { passive: true }
+  );
+
+  canvas.addEventListener(
+    "touchcancel",
+    () => {
+      clearLongPress();
+      longPressFired = false;
+      panning = false;
+    },
+    { passive: true }
+  );
+
+  canvas.addEventListener(
+    "contextmenu",
+    (e) => {
+      if (document.body.classList.contains("chart-fullscreen")) {
+        e.preventDefault();
+      }
+    },
+    { passive: false }
   );
 
   canvas.addEventListener(
@@ -3507,6 +3580,7 @@ function bindChartGestures() {
     stopMomentum();
     panning = true;
     mousePanMoved = false;
+    longPressFired = false;
     lastX = e.clientX;
     lastY = e.clientY;
     lastMoveT = performance.now();
@@ -3516,13 +3590,16 @@ function bindChartGestures() {
     tapStartY = lastY;
     tapStartT = lastMoveT;
     canvas.style.cursor = "grabbing";
+    armLongPress(tapStartX, tapStartY);
   });
 
   window.addEventListener("mousemove", (e) => {
-    if (!panning) return;
+    if (!panning && !longPressTimer) return;
     if (Math.hypot(e.clientX - tapStartX, e.clientY - tapStartY) > 8) {
       mousePanMoved = true;
+      clearLongPress();
     }
+    if (!panning) return;
     const dx = e.clientX - lastX;
     const dy = e.clientY - lastY;
     notePanDelta(dx, dy);
@@ -3532,10 +3609,14 @@ function bindChartGestures() {
   });
 
   const endMousePan = (e) => {
-    if (!panning) return;
+    clearLongPress();
+    if (!panning && !longPressFired) return;
+    const wasPanning = panning;
     panning = false;
     canvas.style.cursor = "grab";
     const wasTap =
+      wasPanning &&
+      !longPressFired &&
       !mousePanMoved &&
       performance.now() - tapStartT < 450 &&
       Math.hypot((e?.clientX ?? lastX) - tapStartX, (e?.clientY ?? lastY) - tapStartY) <= 8;
@@ -3548,6 +3629,7 @@ function bindChartGestures() {
     } else {
       markChartInteracting();
     }
+    longPressFired = false;
   };
   window.addEventListener("mouseup", endMousePan);
 }

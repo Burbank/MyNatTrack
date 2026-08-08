@@ -17,7 +17,7 @@
     <link rel="shortcut icon" href="icons/favicon.png" />
     <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
     <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
-    <link rel="stylesheet" href="css/styles.css?v=2.0" />
+    <link rel="stylesheet" href="css/styles.css?v=2.6.9" />
     <title>MyNatTrack</title>
     <!--
       Critical header: full-width 3-col grid.
@@ -354,6 +354,7 @@
           </div>
           <div class="chart-wrap">
             <p id="weather-status" class="weather-status muted" hidden></p>
+            <p class="datis-legend" id="datis-legend" aria-hidden="true">Green = D-ATIS</p>
             <canvas id="chart" aria-label="North Atlantic route chart"></canvas>
             <canvas id="chart-ownship" class="chart-ownship" aria-hidden="true"></canvas>
             <aside id="wx-detail" class="wx-detail" hidden>
@@ -426,8 +427,9 @@
             turn amber (digits stay normal). Clear when GPS is lost. Browser location time is OS fix time, not certified GNSS time.
           </p>
           <p class="muted settings-gc-note">
-            Full-screen with no route: 747-8 airports appear on the chart; tap or type two for a great-circle plan (NM + rough time with westerlies).
-            Those ICAOs are also in the route database for normal entry. Cleared on exit full screen.
+            Full screen: 747-8 airports appear on the chart. With no route, tap or type two for a great-circle plan (NM + rough time with westerlies); cleared on exit full screen.
+            Those ICAOs are also in the route database for normal entry.
+            Green gears = confirmed D-ATIS (atis.guru). Full-screen legend: Green = D-ATIS. Short tap = GC DEP/DEST. Long-press a green airport (online) opens digital ATIS in Safari (not inside the app).
           </p>
           <p class="muted settings-teach-note">
             Teach: when editing a single waypoint (or typing one name), use <strong>Teach</strong> (left of Update/Add) to enter or correct chart coordinates.
@@ -573,7 +575,7 @@
             rel="noopener noreferrer"
             title="Opens ICAO NAT Doc 007 (current edition V.2026-1). ICAO puts the edition in the filename — no permanent “latest.pdf” URL exists; when a new edition is published, this link is updated in the app. Browse all editions via EUR &amp; NAT Documents on icao.int."
           >Download Latest Nat Doc 007</a>
-          <span class="settings-version muted" id="settings-version" aria-label="App version">v2.6.6</span>
+          <span class="settings-version muted" id="settings-version" aria-label="App version">v2.6.9</span>
         </div>
       </div>
     </div>
@@ -857,6 +859,6 @@
       </div>
     </div>
 
-    <script type="module" src="js/app.js?v=2.0"></script>
+    <script type="module" src="js/app.js?v=2.6.9"></script>
   </body>
 </html>

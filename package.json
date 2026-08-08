@@ -1,7 +1,7 @@
 {
   "name": "mynattrack",
   "private": true,
-  "version": "2.6.6",
+  "version": "2.6.9",
   "type": "module",
   "description": "Private NAT HLA track/distance PWA for iPad"
 }

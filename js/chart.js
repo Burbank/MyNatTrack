@@ -16,6 +16,7 @@ import {
   runwayLabels,
 } from "./diversionAirports.js";
 import { airports747List } from "./airports747.js";
+import { hasDigitalAtis } from "./datisAirports.js";
 import { subsolarPoint, geodesicCircleLonLat, normalizeLon } from "./solar.js";
 
 /** Cached diversion-only list (always on chart). */
@@ -27,7 +28,7 @@ function getDiversionChartAirports() {
   return diversionOnlyCache;
 }
 
-/** Diversions + 747 extras (no ICAO double-plot). Used only in GC full-screen idle mode. */
+/** Diversions + 747 extras (no ICAO double-plot). Used in full-screen chart mode. */
 let chartAirportsWith747Cache = null;
 function getChartAirportsWith747() {
   if (!chartAirportsWith747Cache) {
@@ -811,13 +812,17 @@ function drawDiversionAirports(
   height,
   showRwyLabels = true,
   lite = false,
-  include747 = false
+  include747 = false,
+  highlightDatis = false
 ) {
   const color = bright ? "#0057b8" : "rgba(100, 190, 255, 0.95)";
+  const datisColor = bright ? "#0a7a32" : "rgba(72, 210, 120, 0.98)";
   const labelFill = bright ? "#003d7a" : "rgba(160, 220, 255, 0.95)";
   const rwyFill = bright ? "rgba(0, 61, 122, 0.78)" : "rgba(160, 220, 255, 0.75)";
   const halo = bright ? "rgba(255,255,255,0.85)" : "rgba(8,20,30,0.75)";
   const leader = bright ? "rgba(0, 61, 122, 0.45)" : "rgba(140, 200, 240, 0.45)";
+  const gearColorFor = (icao) =>
+    highlightDatis && hasDigitalAtis(icao) ? datisColor : color;
 
   const icaoFont = "700 10px ui-monospace, SFMono-Regular, Menlo, monospace";
   const rwyFont = "600 9px ui-monospace, SFMono-Regular, Menlo, monospace";
@@ -852,7 +857,7 @@ function drawDiversionAirports(
     for (const ap of airports) {
       const p = project(ap.lat, ap.lon, 0, 0, layout);
       if (!inCanvas(p, width, height, 4)) continue;
-      drawAirportGear(ctx, p.x, p.y, color, 1);
+      drawAirportGear(ctx, p.x, p.y, gearColorFor(ap.icao), 1);
     }
     ctx.restore();
     return [];
@@ -928,9 +933,9 @@ function drawDiversionAirports(
     placed.push({ v, box: chosen.box, off: chosen.off });
   }
 
-  // Symbols
+  // Symbols (green gear = confirmed D-ATIS)
   for (const v of visible) {
-    drawAirportGear(ctx, v.x, v.y, color, 1);
+    drawAirportGear(ctx, v.x, v.y, gearColorFor(v.ap.icao), 1);
   }
 
   // Leaders + labels
@@ -1735,7 +1740,8 @@ export function drawChart(canvas, data) {
     height,
     data.showRwyLabels !== false,
     lite,
-    data.show747Airports === true
+    data.show747Airports === true,
+    data.highlightDatis === true
   );
   if (data.showAirspace !== false && !lite) {
     drawOac(ctx, layout, bright, {

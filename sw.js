@@ -1,5 +1,5 @@
 /* MyNatTrack service worker — cache-first shell (offline-friendly), silent update when online. */
-const CACHE = "mynattrack-v2.6.6-20260729";
+const CACHE = "mynattrack-v2.6.9-20260808";
 
 const ASSETS = [
   "./",
@@ -21,6 +21,7 @@ const ASSETS = [
   "./js/airports747.js",
   "./js/airportShortNames.js",
   "./js/airportIata.js",
+  "./js/datisAirports.js",
   "./js/natTracks.js",
   "./data/waypoints.json",
   "./data/watrs-airways.json",
