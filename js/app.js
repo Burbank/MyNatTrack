@@ -65,7 +65,10 @@ const STORED_ROUTE_KEY = "mynattrack_stored_route_v1";
 const LAST_ROUTE_KEY = "mynattrack_last_route_v1";
 const SETTINGS_KEY = "mynattrack_settings_v1";
 /** Keep in sync with package.json / sw.js CACHE bump. */
-const APP_VERSION = "2.6.9";
+const APP_VERSION = "2.7.0";
+/** Chart pinch/wheel zoom range (must match clampChartZoom). */
+const CHART_ZOOM_MIN = 0.55;
+const CHART_ZOOM_MAX = 5;
 /** Waypoints learned silently from NAT track messages (coords already in the message). */
 const LEARNED_WP_KEY = "mynattrack_learned_waypoints_v1";
 const LEARNED_VERIFIED_KEY = "mynattrack_accuracy_verified_v1";
@@ -635,12 +638,14 @@ function syncGcChartFit() {
   if (key) resetChartView();
 }
 
-/** Full-screen GC planner: 1st tap → DEP, 2nd → DEST, further tap restarts with new DEP. */
+/** Full-screen GC planner: 1st tap → DEP, 2nd → DEST, further tap restarts with new DEP.
+ *  Only armed at max zoom so wide/overview taps do not clobber DEP/DEST. */
 function selectGcAirportFromTap(ap) {
   if (!ap?.icao) return;
   if (
     !document.body.classList.contains("chart-fullscreen") ||
-    !routeIsIdleForGcPlan()
+    !routeIsIdleForGcPlan() ||
+    !isChartZoomedToMax()
   ) {
     return;
   }
@@ -3222,7 +3227,12 @@ function startGpsWatchIfAlreadyGranted() {
 }
 
 function clampChartZoom(z) {
-  return Math.max(0.55, Math.min(5, z));
+  return Math.max(CHART_ZOOM_MIN, Math.min(CHART_ZOOM_MAX, z));
+}
+
+/** True when the chart is at (or essentially at) maximum zoom. */
+function isChartZoomedToMax() {
+  return clampChartZoom(state.chartZoom) >= CHART_ZOOM_MAX - 0.02;
 }
 
 /** Allow panning the fit window over the whole globe (BA / JNB / Asia, etc.). */
@@ -3400,8 +3410,9 @@ function bindChartGestures() {
     );
   };
 
-  /** Short tap: GC DEP/DEST only (never opens D-ATIS). */
+  /** Short tap: GC DEP/DEST only at max zoom (never opens D-ATIS). */
   const tryAirportTap = (clientX, clientY) => {
+    if (!isChartZoomedToMax()) return;
     const ap = hitAirportAt(clientX, clientY);
     if (!ap) return;
     if (routeIsIdleForGcPlan()) selectGcAirportFromTap(ap);

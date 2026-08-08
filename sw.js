@@ -1,5 +1,5 @@
 /* MyNatTrack service worker — cache-first shell (offline-friendly), silent update when online. */
-const CACHE = "mynattrack-v2.6.9-20260808";
+const CACHE = "mynattrack-v2.7.0-20260808";
 
 const ASSETS = [
   "./",
